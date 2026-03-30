@@ -156,7 +156,10 @@ flowchart TB
 
 **Flow:** User sends a message in the renderer → **`ai-helper.js`** appends a user bubble and calls **`window.electronAPI.openRouterChatStream({ messages, onChunk, onDone, onError })`** → preload **`ipcRenderer.send('openrouter-stream-start', { requestId, messages })`** → **`main.js`** **`ipcMain.on('openrouter-stream-start', …)`** calls **`api-helper.js`** **`streamChat`** → OpenRouter HTTPS stream → main **`event.sender.send('openrouter-stream-event', { requestId, type: 'chunk'|'done'|'error', … })`** → preload forwards to callbacks → **`ai-helper`** updates the assistant bubble text (and history).
 
-**Secrets:** **`OPENROUTER_API_KEY`** is read **only in the main process** (`api-helper.js`). Set it in the environment before **`npm start`** (see **`README.md`**). Never put the key in renderer code or committed files.
+**Secrets:** **`OPENROUTER_API_KEY`** is read **only in the main process** (`api-helper.js`).
+Set it either via:
+- environment variable **`OPENROUTER_API_KEY`** before **`npm start`**, or
+- create a git-ignored `OPENROUTER_API_KEY.txt` in the repo root (single line; never commit real keys).
 
 **Model:** Default model id is **`OPENROUTER_MODEL`** in **`api-helper.js`** (change in one place).
 
@@ -294,7 +297,7 @@ See **`window.electronAPI`** in **Diagnoses Room and OpenRouter**.
 | Window does not appear | `node ./node_modules/electron/cli.js . --disable-gpu`; check console for load errors |
 | **`npm` not found** | Install Node LTS; reopen terminal |
 | CSS/JS not loading | Paths relative to `renderer/index.html`; CSP includes `style-src 'self'` |
-| **Diagnoses Room / OpenRouter errors** | Set **`OPENROUTER_API_KEY`** (see **`README.md`**); check main console for network errors; model id in **`api-helper.js`**. |
+| **Diagnoses Room / OpenRouter errors** | Set **`OPENROUTER_API_KEY`** (env var or `OPENROUTER_API_KEY.txt` in repo root; see **`README.md`**); check main console for network errors; model id in **`api-helper.js`**. |
 | Icon not updating | Fully quit the app; Windows taskbar may cache icons |
 
 ---
