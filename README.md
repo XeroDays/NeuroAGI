@@ -19,6 +19,21 @@ npm start
 
 If the project folder path contains spaces, quote it, e.g. `cd "C:\path\to\NeuroAGI"`.
 
+### OpenRouter (Diagnoses Room chat)
+
+The **Diagnoses Room** screen streams replies from [OpenRouter](https://openrouter.ai/).
+
+Set your API key either as an environment variable **`OPENROUTER_API_KEY`** or by creating `OPENROUTER_API_KEY.txt` in the repo root (this file is git-ignored; never commit real keys):
+
+- **Windows (cmd):** `set OPENROUTER_API_KEY=sk-or-...` then `npm start`
+- **Windows (PowerShell):** `$env:OPENROUTER_API_KEY="sk-or-..."; npm start`
+- **macOS / Linux:** `export OPENROUTER_API_KEY=sk-or-...` then `npm start`
+
+File option:
+- Put the key as a single line inside `OPENROUTER_API_KEY.txt` (repo root).
+
+The default model is configured in **`api-helper.js`** (`OPENROUTER_MODEL`).
+
 > **Note:** If the GitHub repository is still named differently (e.g. `Open-Health`), use that URL and `cd` into the folder name you get after clone.
 
 ### Windows (recommended helpers)
@@ -51,6 +66,7 @@ The **`start`** script uses `node ./node_modules/electron/cli.js .` so the `elec
 
 ```
 ├── main.js              # Electron main process
+├── api-helper.js        # OpenRouter streaming (main process; uses OPENROUTER_API_KEY)
 ├── preload.js           # Preload / contextBridge bridge
 ├── package.json
 ├── renderer/            # UI (HTML, CSS, ES modules)
@@ -74,6 +90,7 @@ The on-screen app title and shared labels live in **`renderer/scripts/constants.
 | **`electron` is not recognized** | Run `npm install`, then `npm start` (the repo’s script calls Electron via Node). |
 | **`npm` fails in PowerShell** | Use **`npm.cmd`** or **`install-deps.bat`** / **`run.bat`**. |
 | **Blank or no window** | `node ./node_modules/electron/cli.js . --disable-gpu` from the project root. |
+| **Diagnoses Room: “OPENROUTER_API_KEY is not set”** | Set the env var or `OPENROUTER_API_KEY.txt` (see **OpenRouter** above) and restart the app. |
 | **Push rejected (large file)** | Do not commit **`node_modules/`**. It is listed in **`.gitignore`**. |
 
 ## License

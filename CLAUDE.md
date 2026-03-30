@@ -8,7 +8,12 @@ This file is the **handoff / memory** for AI assistants and developers working o
 
 ## Product intent
 
-**NeuroAGI** is a desktop app (Electron + JavaScript). Current state: **minimal shell** — one window, **two HTML screens** (home + Diagnoses Room), glass UI. No backend, database, or clinical data pipeline yet.
+**NeuroAGI** is a desktop app (Electron + JavaScript). Current state: **one window**, **two HTML screens**:
+
+- **Home** (`renderer/index.html`) — glass-style UI; entry to the Diagnoses Room.
+- **Diagnoses Room** (`renderer/diagnoses-room.html`) — dark, ChatGPT-like **chat UI**: message list, bottom composer, **streaming assistant replies** via **[OpenRouter](https://openrouter.ai/)** (see **Diagnoses Room and OpenRouter**).
+
+There is **no separate backend service** in-repo; the main process calls OpenRouter over HTTPS. No database or clinical data pipeline yet.
 
 ---
 
@@ -27,23 +32,26 @@ This file is the **handoff / memory** for AI assistants and developers working o
 
 ```
 NeuroAGI/
-├── main.js                 # Main process entry (package.json "main")
+├── main.js                 # Main process entry (package.json "main"); IPC handlers
+├── api-helper.js           # OpenRouter streaming chat (main only; SSE parse)
 ├── preload.js              # Preload bridge for the renderer
 ├── package.json
-├── README.md               # GitHub / human onboarding
+├── README.md               # GitHub / human onboarding (incl. OPENROUTER_API_KEY)
 ├── .gitignore              # includes node_modules/
 ├── run.bat
 ├── install-deps.bat        # Windows: npm.cmd install
 ├── CLAUDE.md
 ├── renderer/               # Single “site” loaded by BrowserWindow
 │   ├── index.html            # Home (glass UI)
-│   ├── diagnoses-room.html   # Second screen
+│   ├── diagnoses-room.html   # Chat screen (dark theme; not glass)
 │   ├── styles/
-│   │   └── app.css
+│   │   ├── app.css
+│   │   └── diagnoses-room.css   # Diagnoses Room only
 │   ├── scripts/
 │   │   ├── constants.js      # APP_TITLE, screen names, labels
 │   │   ├── app.js            # Home: title + navigate to diagnoses room
-│   │   └── diagnoses-room.js
+│   │   ├── ai-helper.js      # Chat orchestration: history + stream → DOM
+│   │   └── diagnoses-room.js # Diagnoses Room UI wiring
 │   └── assets/
 │       ├── images/
 │       ├── fonts/
@@ -56,13 +64,17 @@ NeuroAGI/
 | Path | Purpose |
 |------|---------|
 | `package.json` | `name`: `neuro-agi`; `main`: `main.js`; **`scripts.start`**: `node ./node_modules/electron/cli.js .` |
-| `main.js` | Main process: lifecycle, `loadFile` → `renderer/index.html`; window **`icon`** + macOS **`app.dock.setIcon`** (see **App icon and branding**) |
-| `preload.js` | `contextBridge.exposeInMainWorld('electronAPI', …)` |
+| `main.js` | Main process: lifecycle, `loadFile` → `renderer/index.html`; window **`icon`** + macOS **`app.dock.setIcon`**; **IPC** for OpenRouter stream (see **Diagnoses Room and OpenRouter**) |
+| `api-helper.js` | **`streamChat(messages, onDelta, onDone, onError)`** — `fetch` OpenRouter `chat/completions` with **`stream: true`**, parse SSE; model constant **`OPENROUTER_MODEL`**; reads **`process.env.OPENROUTER_API_KEY`** |
+| `preload.js` | **`contextBridge.exposeInMainWorld('electronAPI', { openRouterChatStream })`** |
 | `renderer/index.html` | Home screen; glass UI; `type="module"` → `scripts/app.js` |
-| `renderer/diagnoses-room.html` | Second screen (“Diagnoses Room”); link back to `index.html` |
+| `renderer/diagnoses-room.html` | Diagnoses Room: dark chat layout; CSP same family as home; **`styles/diagnoses-room.css`** only |
+| `renderer/styles/diagnoses-room.css` | Black/near-black theme, bubbles, composer |
+| `renderer/scripts/ai-helper.js` | **`createAiChat({ messagesEl, onStreamingChange })`** — conversation array, calls **`electronAPI.openRouterChatStream`**, updates assistant bubble from stream |
+| `renderer/scripts/diagnoses-room.js` | Titles, composer, Enter/send, **`AiHelper`** integration |
 | `renderer/scripts/constants.js` | Shared strings: **`APP_TITLE`**, **`SCREEN_DIAGNOSES_ROOM`**, button label |
-| `renderer/styles/` | Stylesheets |
-| `renderer/scripts/*.js` | ES modules (`import` from `constants.js`); no Node in renderer |
+| `renderer/styles/app.css` | Home / glass theme |
+| `renderer/scripts/*.js` (modules) | ES modules (`import` from `constants.js`); no Node in renderer |
 | `renderer/assets/images/` | Images; **`logo.png`** is the **window / taskbar / Dock** icon via `main.js` (also usable in HTML as `assets/images/logo.png`) |
 | `renderer/assets/fonts/` | Webfonts |
 | `renderer/assets/icons/` | SVG/PNG icons for the UI |
@@ -79,6 +91,7 @@ NeuroAGI/
 
 - **Node.js** LTS (18+ recommended)
 - **npm** (ships with Node)
+- **OpenRouter** (optional for Diagnoses Room): an API key in **`OPENROUTER_API_KEY`** when exercising chat; see **`README.md`**
 
 ---
 
@@ -139,12 +152,58 @@ flowchart TB
 
 ---
 
+## Diagnoses Room and OpenRouter
+
+**Flow:** User sends a message in the renderer → **`ai-helper.js`** appends a user bubble and calls **`window.electronAPI.openRouterChatStream({ messages, onChunk, onDone, onError })`** → preload **`ipcRenderer.send('openrouter-stream-start', { requestId, messages })`** → **`main.js`** **`ipcMain.on('openrouter-stream-start', …)`** calls **`api-helper.js`** **`streamChat`** → OpenRouter HTTPS stream → main **`event.sender.send('openrouter-stream-event', { requestId, type: 'chunk'|'done'|'error', … })`** → preload forwards to callbacks → **`ai-helper`** updates the assistant bubble text (and history).
+
+**Secrets:** **`OPENROUTER_API_KEY`** is read **only in the main process** (`api-helper.js`). Set it in the environment before **`npm start`** (see **`README.md`**). Never put the key in renderer code or committed files.
+
+**Model:** Default model id is **`OPENROUTER_MODEL`** in **`api-helper.js`** (change in one place).
+
+```mermaid
+flowchart LR
+  subgraph ren [Renderer]
+    DR[diagnoses-room.js]
+    AI[ai-helper.js]
+    DR --> AI
+  end
+  subgraph pre [preload.js]
+    API[electronAPI]
+  end
+  subgraph mainProc [Main]
+    M[main.js]
+    AH[api-helper.js]
+    M --> AH
+  end
+  OpenRouterNode[OpenRouter API]
+  AI --> API
+  API --> M
+  AH --> OpenRouterNode
+  M --> API
+```
+
+### IPC channels (main ↔ renderer)
+
+| Channel / pattern | Direction | Purpose |
+|-------------------|-----------|---------|
+| **`openrouter-stream-start`** | Renderer → main (`send` with `{ requestId, messages }`) | Start streaming completion; **`messages`** is `{ role, content }[]`. |
+| **`openrouter-stream-event`** | Main → renderer (`send` to sender) | Stream lifecycle: **`chunk`** (delta text), **`done`**, **`error`** (message string); all include **`requestId`**. |
+
+### `window.electronAPI` (preload)
+
+| Method | Behavior |
+|--------|----------|
+| **`openRouterChatStream({ messages, onChunk, onDone, onError })`** | Registers listener for **`openrouter-stream-event`**, sends **`openrouter-stream-start`**, removes listener on **done** / **error**. Returns a **cleanup** function (v1: optional; does not abort the HTTP stream). |
+
+---
+
 ## Security conventions (do not weaken casually)
 
 - **`contextIsolation: true`**, **`nodeIntegration: false`**
 - **Paths**: `path.join(__dirname, 'renderer', 'index.html')` and `path.join(__dirname, 'preload.js')` so paths with spaces and packaging work.
-- **CSP** on `renderer/index.html`: `default-src 'self'; script-src 'self'; style-src 'self'`. Adjust if you add inline scripts/styles or external URLs.
+- **CSP** on **`renderer/index.html`** and **`renderer/diagnoses-room.html`**: `default-src 'self'; script-src 'self'; style-src 'self'`. No inline **scripts**. Adjust if you add inline scripts, CDNs, or `eval`.
 - For main ↔ renderer communication, use **`ipcMain` / `ipcRenderer`** with channels exposed only through **`preload.js`**.
+- **Do not** move **`OPENROUTER_API_KEY`** into the renderer or preload source; keep network + key in **main**.
 
 ---
 
@@ -174,13 +233,16 @@ Electron accepts **PNG** for `icon` on many platforms; **ICO** is often recommen
 
 | Goal | Where to work |
 |------|----------------|
-| New UI | `renderer/index.html`, `renderer/styles/app.css`, `renderer/scripts/app.js` |
-| Static assets | `renderer/assets/images|fonts|icons/` (paths relative to `index.html`) |
+| New UI (home) | `renderer/index.html`, `renderer/styles/app.css`, `renderer/scripts/app.js` |
+| Diagnoses Room chat UI | `renderer/diagnoses-room.html`, `renderer/styles/diagnoses-room.css`, `renderer/scripts/diagnoses-room.js` |
+| Chat logic (history, bubbles, stream wiring) | `renderer/scripts/ai-helper.js` |
+| OpenRouter / HTTP stream | `api-helper.js` + IPC in `main.js` |
+| Static assets | `renderer/assets/images|fonts|icons/` (paths relative to each HTML file) |
 | Safe APIs for the page | `preload.js` + handlers in `main.js` |
 | OS menus, shortcuts, second windows | `main.js` |
 | Installer / EXE icons, platform extras | `resources/build/` (e.g. `app.ico`, entitlements) + packager (e.g. **electron-builder**); see **App icon and branding** |
 
-Current **`window.electronAPI`**: empty object placeholder in `preload.js`.
+See **`window.electronAPI`** in **Diagnoses Room and OpenRouter**.
 
 ---
 
@@ -203,7 +265,7 @@ Current **`window.electronAPI`**: empty object placeholder in `preload.js`.
 |-----|-------------------|
 | **No installer / bundle** | Add **electron-builder**, **electron-forge**, or equivalent → `.exe` / `.msi` / `.dmg`, optional **code signing**. |
 | **No auto-update** | Plan **electron-updater** or vendor store updates once installers exist. |
-| **Dev vs prod** | e.g. disable **DevTools** and trim menus when `app.isPackaged` or `NODE_ENV === 'production'`. |
+| **Dev vs prod** | e.g. disable **DevTools** shortcut / menu and trim menus when **`app.isPackaged`** or **`NODE_ENV === 'production'`**. |
 | **`electron` in `dependencies`** | Some teams move Electron to **`devDependencies`** when only the **built** artifact is distributed; both patterns exist. |
 | **Quality / CI** | Linting, tests, and CI are not in scope of the folder tree but matter for serious releases. |
 | **Regulated / clinical data** | If the app handles real PHI or similar, **compliance** (encryption, audit, BAAs, etc.) is separate from this architecture doc. |
@@ -232,6 +294,7 @@ Current **`window.electronAPI`**: empty object placeholder in `preload.js`.
 | Window does not appear | `node ./node_modules/electron/cli.js . --disable-gpu`; check console for load errors |
 | **`npm` not found** | Install Node LTS; reopen terminal |
 | CSS/JS not loading | Paths relative to `renderer/index.html`; CSP includes `style-src 'self'` |
+| **Diagnoses Room / OpenRouter errors** | Set **`OPENROUTER_API_KEY`** (see **`README.md`**); check main console for network errors; model id in **`api-helper.js`**. |
 | Icon not updating | Fully quit the app; Windows taskbar may cache icons |
 
 ---
@@ -246,3 +309,4 @@ Current **`window.electronAPI`**: empty object placeholder in `preload.js`.
 - **Git / Windows:** **`.gitignore`** → `node_modules/`; history rewrite if large files were pushed; **`install-deps.bat`**, **`run.bat`** + **`npm.cmd`**; **`start`** script → **`node ./node_modules/electron/cli.js .`**.
 - **`README.md`** for GitHub onboarding; **`CLAUDE.md`** for deep project context.
 - **Project rename:** product and UI title **NeuroAGI**; npm package name **`neuro-agi`** (`package.json` / lockfile).
+- **Diagnoses Room chat:** dark **`diagnoses-room.css`** theme; **`ai-helper.js`** + **`api-helper.js`**; OpenRouter streaming over **IPC**; **`OPENROUTER_API_KEY`** in main only; **`README.md`** env instructions.

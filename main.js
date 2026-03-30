@@ -1,7 +1,29 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
+const { streamChat } = require('./api-helper');
 
 const iconPath = path.join(__dirname, 'renderer', 'assets', 'images', 'logo.png');
+
+ipcMain.on('openrouter-stream-start', (event, payload) => {
+  const { requestId, messages } = payload || {};
+  if (!requestId || !Array.isArray(messages)) {
+    return;
+  }
+  const sender = event.sender;
+  streamChat(
+    messages,
+    (text) => {
+      sender.send('openrouter-stream-event', { requestId, type: 'chunk', text });
+    },
+    () => {
+      sender.send('openrouter-stream-event', { requestId, type: 'done' });
+    },
+    (err) => {
+      const message = err instanceof Error ? err.message : String(err);
+      sender.send('openrouter-stream-event', { requestId, type: 'error', message });
+    }
+  );
+});
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
