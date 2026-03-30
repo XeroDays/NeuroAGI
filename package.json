@@ -1,0 +1,16 @@
+{
+  "name": "open-health",
+  "version": "1.0.0",
+  "description": "Open Health - Electron app",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {},
+  "dependencies": {
+    "electron": "^28.0.0"
+  }
+}
