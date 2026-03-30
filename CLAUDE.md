@@ -8,7 +8,7 @@ This file is the **handoff / memory** for AI assistants and developers working o
 
 ## Product intent
 
-**Open Health** is a desktop app (name and domain TBD as features grow). Current state: **minimal Electron shell** — one window, static welcome screen. No backend, database, or health data yet.
+**Open Health** is a desktop app (name and domain TBD as features grow). Current state: **minimal Electron shell** — one window, **two HTML screens** (home + Diagnoses Room), glass UI. No backend, database, or health data yet.
 
 ---
 
@@ -33,11 +33,14 @@ Open Health/
 ├── run.bat
 ├── CLAUDE.md
 ├── renderer/               # Single “site” loaded by BrowserWindow
-│   ├── index.html
+│   ├── index.html            # Home (glass UI)
+│   ├── diagnoses-room.html   # Second screen
 │   ├── styles/
 │   │   └── app.css
 │   ├── scripts/
-│   │   └── app.js
+│   │   ├── constants.js      # APP_TITLE, screen names, labels
+│   │   ├── app.js            # Home: title + navigate to diagnoses room
+│   │   └── diagnoses-room.js
 │   └── assets/
 │       ├── images/
 │       ├── fonts/
@@ -52,9 +55,11 @@ Open Health/
 | `package.json` | `name`: `open-health`; `main`: `main.js`; `scripts.start`: `electron .` |
 | `main.js` | Main process: lifecycle, `loadFile` → `renderer/index.html`; window **`icon`** + macOS **`app.dock.setIcon`** (see **App icon and branding**) |
 | `preload.js` | `contextBridge.exposeInMainWorld('electronAPI', …)` |
-| `renderer/index.html` | UI shell; CSP; links to `styles/app.css`, `scripts/app.js` |
+| `renderer/index.html` | Home screen; glass UI; `type="module"` → `scripts/app.js` |
+| `renderer/diagnoses-room.html` | Second screen (“Diagnoses Room”); link back to `index.html` |
+| `renderer/scripts/constants.js` | Shared strings: **`APP_TITLE`**, **`SCREEN_DIAGNOSES_ROOM`**, button label |
 | `renderer/styles/` | Stylesheets |
-| `renderer/scripts/` | Renderer JS (no Node; use `electronAPI` via preload for IPC) |
+| `renderer/scripts/*.js` | ES modules (`import` from `constants.js`); no Node in renderer |
 | `renderer/assets/images/` | Images; **`logo.png`** is the **window / taskbar / Dock** icon via `main.js` (also usable in HTML as `assets/images/logo.png`) |
 | `renderer/assets/fonts/` | Webfonts |
 | `renderer/assets/icons/` | SVG/PNG icons for the UI |
@@ -219,3 +224,4 @@ Current **`window.electronAPI`**: empty object placeholder in `preload.js`.
 - **Renderer layout:** `renderer/` as web root (`index.html`, `styles/`, `scripts/`, `assets/`); `main.js` loads `renderer/index.html`; `resources/build/` for future packaging.
 - **Production readiness** section: what the architecture already supports vs gaps before shipping (packaging, signing, updates, prod toggles, compliance caveat).
 - **App icon and branding:** `renderer/assets/images/logo.png` wired in `main.js` (`BrowserWindow` `icon`, macOS `app.dock.setIcon`); packaged EXE uses `resources/build/` + builder when added.
+- **Two renderer screens:** home (`index.html`) → `diagnoses-room.html`; shared **`constants.js`** for titles/labels; glass UI theme in `app.css`.

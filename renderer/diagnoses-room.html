@@ -8,12 +8,16 @@
   <link rel="stylesheet" href="styles/app.css">
 </head>
 <body class="app-shell">
+  <header class="app-header glass-bar">
+    <h1 id="app-title" class="app-title"></h1>
+  </header>
   <main class="app-main">
-    <div class="home-stack">
-      <h1 id="app-title" class="app-title"></h1>
-      <button type="button" id="btn-start-diagnostics" class="glass-button" aria-label="Start Human Diagnostics"></button>
-    </div>
+    <section class="glass-panel" aria-labelledby="screen-title">
+      <h2 id="screen-title"></h2>
+      <p>Diagnostics workspace. Add tools and flows here.</p>
+      <a class="glass-button-link" href="index.html">Back to home</a>
+    </section>
   </main>
-  <script type="module" src="scripts/app.js"></script>
+  <script type="module" src="scripts/diagnoses-room.js"></script>
 </body>
 </html>
