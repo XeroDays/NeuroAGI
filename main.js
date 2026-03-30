@@ -1,11 +1,14 @@
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
 
+const iconPath = path.join(__dirname, 'renderer', 'assets', 'images', 'logo.png');
+
 function createWindow() {
   const mainWindow = new BrowserWindow({
     width: 800,
     height: 600,
     show: false,
+    icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
@@ -24,6 +27,10 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  if (process.platform === 'darwin') {
+    app.dock.setIcon(iconPath);
+  }
+
   createWindow();
 
   app.on('activate', () => {

@@ -50,12 +50,12 @@ Open Health/
 | Path | Purpose |
 |------|---------|
 | `package.json` | `name`: `open-health`; `main`: `main.js`; `scripts.start`: `electron .` |
-| `main.js` | Main process: lifecycle, `loadFile` → `renderer/index.html` |
+| `main.js` | Main process: lifecycle, `loadFile` → `renderer/index.html`; window **`icon`** + macOS **`app.dock.setIcon`** (see **App icon and branding**) |
 | `preload.js` | `contextBridge.exposeInMainWorld('electronAPI', …)` |
 | `renderer/index.html` | UI shell; CSP; links to `styles/app.css`, `scripts/app.js` |
 | `renderer/styles/` | Stylesheets |
 | `renderer/scripts/` | Renderer JS (no Node; use `electronAPI` via preload for IPC) |
-| `renderer/assets/images/` | Images — e.g. `src="assets/images/file.png"` from HTML |
+| `renderer/assets/images/` | Images; **`logo.png`** is the **window / taskbar / Dock** icon via `main.js` (also usable in HTML as `assets/images/logo.png`) |
 | `renderer/assets/fonts/` | Webfonts |
 | `renderer/assets/icons/` | SVG/PNG icons for the UI |
 | `resources/build/` | Reserved for installer branding / platform files when packaging |
@@ -137,6 +137,19 @@ flowchart TB
 
 ---
 
+## App icon and branding
+
+| Concern | How it works in this repo |
+|---------|----------------------------|
+| **Window / taskbar (Windows, Linux)** | **`BrowserWindow`** **`icon`** is set to **`path.join(__dirname, 'renderer', 'assets', 'images', 'logo.png')`** in `main.js`. |
+| **macOS Dock** | In **`app.whenReady()`**, **`app.dock.setIcon(iconPath)`** when **`process.platform === 'darwin'`**. |
+| **Logo inside the page** | Optional **`<img src="assets/images/logo.png" alt="…">`** in `renderer/index.html` (same file; not automatic from `BrowserWindow` icon). |
+| **`.exe` / installer icon (packaged app)** | **`BrowserWindow` `icon`** does not set the built executable icon. Add a multi-size **`.ico`** (Windows) under **`resources/build/`** and point **electron-builder** (or similar) at it (e.g. **`build.win.icon`**) when packaging is added. |
+
+Electron accepts **PNG** for `icon` on many platforms; **ICO** is often recommended for Windows taskbar fidelity at install time.
+
+---
+
 ## Extending the app
 
 | Goal | Where to work |
@@ -145,7 +158,7 @@ flowchart TB
 | Static assets | `renderer/assets/images|fonts|icons/` (paths relative to `index.html`) |
 | Safe APIs for the page | `preload.js` + handlers in `main.js` |
 | OS menus, shortcuts, second windows | `main.js` |
-| Installer icons / entitlements | `resources/build/` + packager config (e.g. electron-builder) when added |
+| Installer / EXE icons, platform extras | `resources/build/` (e.g. `app.ico`, entitlements) + packager (e.g. **electron-builder**); see **App icon and branding** |
 
 Current **`window.electronAPI`**: empty object placeholder in `preload.js`.
 
@@ -196,6 +209,7 @@ Current **`window.electronAPI`**: empty object placeholder in `preload.js`.
 | Window does not appear | `npx electron . --disable-gpu`; check console for load errors |
 | `npm` / `electron` not found | Install Node LTS; reopen terminal; `npm install` in project root |
 | CSS/JS not loading | Confirm `href`/`src` paths are relative to `renderer/index.html`; CSP includes `style-src 'self'` |
+| Icon not updating | Fully quit the app and restart; on Windows, taskbar may cache icons |
 
 ---
 
@@ -204,3 +218,4 @@ Current **`window.electronAPI`**: empty object placeholder in `preload.js`.
 - Scaffold: Electron + preload + CSP, `run.bat`.
 - **Renderer layout:** `renderer/` as web root (`index.html`, `styles/`, `scripts/`, `assets/`); `main.js` loads `renderer/index.html`; `resources/build/` for future packaging.
 - **Production readiness** section: what the architecture already supports vs gaps before shipping (packaging, signing, updates, prod toggles, compliance caveat).
+- **App icon and branding:** `renderer/assets/images/logo.png` wired in `main.js` (`BrowserWindow` `icon`, macOS `app.dock.setIcon`); packaged EXE uses `resources/build/` + builder when added.
