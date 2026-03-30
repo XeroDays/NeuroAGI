@@ -1,7 +1,7 @@
 {
-  "name": "open-health",
+  "name": "neuro-agi",
   "version": "1.0.0",
-  "description": "Open Health - Electron app",
+  "description": "NeuroAGI - Electron desktop app",
   "main": "main.js",
   "scripts": {
     "start": "node ./node_modules/electron/cli.js ."

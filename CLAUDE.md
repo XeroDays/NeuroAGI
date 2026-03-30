@@ -1,4 +1,4 @@
-# Open Health — project context
+# NeuroAGI — project context
 
 This file is the **handoff / memory** for AI assistants and developers working on this repo. Update it when architecture or workflows change.
 
@@ -8,7 +8,7 @@ This file is the **handoff / memory** for AI assistants and developers working o
 
 ## Product intent
 
-**Open Health** is a desktop app (name and domain TBD as features grow). Current state: **minimal Electron shell** — one window, **two HTML screens** (home + Diagnoses Room), glass UI. No backend, database, or health data yet.
+**NeuroAGI** is a desktop app (Electron + JavaScript). Current state: **minimal shell** — one window, **two HTML screens** (home + Diagnoses Room), glass UI. No backend, database, or clinical data pipeline yet.
 
 ---
 
@@ -26,7 +26,7 @@ This file is the **handoff / memory** for AI assistants and developers working o
 ## Project layout (source tree)
 
 ```
-Open Health/
+NeuroAGI/
 ├── main.js                 # Main process entry (package.json "main")
 ├── preload.js              # Preload bridge for the renderer
 ├── package.json
@@ -55,7 +55,7 @@ Open Health/
 
 | Path | Purpose |
 |------|---------|
-| `package.json` | `name`: `open-health`; `main`: `main.js`; **`scripts.start`**: `node ./node_modules/electron/cli.js .` |
+| `package.json` | `name`: `neuro-agi`; `main`: `main.js`; **`scripts.start`**: `node ./node_modules/electron/cli.js .` |
 | `main.js` | Main process: lifecycle, `loadFile` → `renderer/index.html`; window **`icon`** + macOS **`app.dock.setIcon`** (see **App icon and branding**) |
 | `preload.js` | `contextBridge.exposeInMainWorld('electronAPI', …)` |
 | `renderer/index.html` | Home screen; glass UI; `type="module"` → `scripts/app.js` |
@@ -84,10 +84,10 @@ Open Health/
 
 ## How to run
 
-Project folder name may include a space (`Open Health`). Quote paths in shells.
+Project folder path may include spaces—quote paths in shells.
 
 ```powershell
-cd "C:\Users\User\Desktop\Open Health"
+cd "C:\Users\User\Desktop\NeuroAGI"
 npm install   # first time or after clone / pull
 npm start
 ```
@@ -206,7 +206,7 @@ Current **`window.electronAPI`**: empty object placeholder in `preload.js`.
 | **Dev vs prod** | e.g. disable **DevTools** and trim menus when `app.isPackaged` or `NODE_ENV === 'production'`. |
 | **`electron` in `dependencies`** | Some teams move Electron to **`devDependencies`** when only the **built** artifact is distributed; both patterns exist. |
 | **Quality / CI** | Linting, tests, and CI are not in scope of the folder tree but matter for serious releases. |
-| **Health / regulated data** | If the app handles real PHI or similar, **compliance** (encryption, audit, BAAs, etc.) is separate from this architecture doc. |
+| **Regulated / clinical data** | If the app handles real PHI or similar, **compliance** (encryption, audit, BAAs, etc.) is separate from this architecture doc. |
 
 ### Optional hardening (later)
 
@@ -245,3 +245,4 @@ Current **`window.electronAPI`**: empty object placeholder in `preload.js`.
 - **Two renderer screens:** home (`index.html`) → `diagnoses-room.html`; shared **`constants.js`** for titles/labels; glass UI theme in `app.css`.
 - **Git / Windows:** **`.gitignore`** → `node_modules/`; history rewrite if large files were pushed; **`install-deps.bat`**, **`run.bat`** + **`npm.cmd`**; **`start`** script → **`node ./node_modules/electron/cli.js .`**.
 - **`README.md`** for GitHub onboarding; **`CLAUDE.md`** for deep project context.
+- **Project rename:** product and UI title **NeuroAGI**; npm package name **`neuro-agi`** (`package.json` / lockfile).

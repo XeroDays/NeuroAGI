@@ -2,7 +2,7 @@
  * Application display strings (renderer only; safe for CSP, no Node).
  * Edit here to change titles and labels app-wide.
  */
-export const APP_TITLE = 'Open Health';
+export const APP_TITLE = 'NeuroAGI';
 
 /** Second screen name (Diagnoses Room). */
 export const SCREEN_DIAGNOSES_ROOM = 'Diagnoses Room';

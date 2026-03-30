@@ -1,4 +1,4 @@
-# Open Health
+# NeuroAGI
 
 Desktop app built with [Electron](https://www.electronjs.org/) and JavaScript. Two screens: a cyan glass-style home view and a **Diagnoses Room** workspace.
 
@@ -10,13 +10,15 @@ Desktop app built with [Electron](https://www.electronjs.org/) and JavaScript. T
 ## Quick start
 
 ```bash
-git clone https://github.com/XeroDays/Open-Health.git
-cd Open-Health
+git clone https://github.com/XeroDays/NeuroAGI.git
+cd NeuroAGI
 npm install
 npm start
 ```
 
-If your folder path contains spaces, quote it, e.g. `cd "C:\path\to\Open Health"`.
+If the project folder path contains spaces, quote it, e.g. `cd "C:\path\to\NeuroAGI"`.
+
+> **Note:** If the GitHub repository is still named differently (e.g. `Open-Health`), use that URL and `cd` into the folder name you get after clone.
 
 ### Windows (recommended helpers)
 
@@ -62,7 +64,7 @@ The **`start`** script uses `node ./node_modules/electron/cli.js .` so the `elec
 └── CLAUDE.md            # Detailed context for contributors / AI assistants
 ```
 
-Copy and labels such as the app title live in **`renderer/scripts/constants.js`**.
+The on-screen app title and shared labels live in **`renderer/scripts/constants.js`** (`APP_TITLE`, etc.).
 
 ## Troubleshooting
 
@@ -79,4 +81,4 @@ ISC (see `package.json`).
 
 ## Disclaimer
 
-This is a UI shell for experimentation. It is **not** medical software and does not provide diagnosis or treatment. Do not use it for real clinical decisions without proper validation, compliance, and professional oversight.
+This is a UI shell for experimentation. It is **not** a certified medical device or clinical decision tool and does not replace professional judgment. Do not use it for real patient care without appropriate validation, compliance, and oversight.
