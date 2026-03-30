@@ -4,7 +4,7 @@
   "description": "Open Health - Electron app",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "node ./node_modules/electron/cli.js ."
   },
   "keywords": [],
   "author": "",

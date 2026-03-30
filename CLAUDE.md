@@ -19,7 +19,7 @@ This file is the **handoff / memory** for AI assistants and developers working o
 | Runtime | **Electron** (^28, see `package.json`) |
 | Language | **JavaScript** (CommonJS `require` in main/preload) |
 | UI | **HTML + CSS + JS** under `renderer/` (no React/Vue; optional later) |
-| Build | None — run with `electron .` |
+| Build | None — `npm start` runs Electron via **`node ./node_modules/electron/cli.js .`** (reliable on Windows when `electron` is not on `PATH`) |
 
 ---
 
@@ -30,7 +30,10 @@ Open Health/
 ├── main.js                 # Main process entry (package.json "main")
 ├── preload.js              # Preload bridge for the renderer
 ├── package.json
+├── README.md               # GitHub / human onboarding
+├── .gitignore              # includes node_modules/
 ├── run.bat
+├── install-deps.bat        # Windows: npm.cmd install
 ├── CLAUDE.md
 ├── renderer/               # Single “site” loaded by BrowserWindow
 │   ├── index.html            # Home (glass UI)
@@ -47,12 +50,12 @@ Open Health/
 │       └── icons/          # In-app UI icons (not OS installer icons)
 ├── resources/              # Packager / OS extras (not loaded by loadFile)
 │   └── build/              # e.g. app.ico, entitlements when using electron-builder
-└── node_modules/
+└── node_modules/           # not in Git; run npm install locally
 ```
 
 | Path | Purpose |
 |------|---------|
-| `package.json` | `name`: `open-health`; `main`: `main.js`; `scripts.start`: `electron .` |
+| `package.json` | `name`: `open-health`; `main`: `main.js`; **`scripts.start`**: `node ./node_modules/electron/cli.js .` |
 | `main.js` | Main process: lifecycle, `loadFile` → `renderer/index.html`; window **`icon`** + macOS **`app.dock.setIcon`** (see **App icon and branding**) |
 | `preload.js` | `contextBridge.exposeInMainWorld('electronAPI', …)` |
 | `renderer/index.html` | Home screen; glass UI; `type="module"` → `scripts/app.js` |
@@ -64,7 +67,10 @@ Open Health/
 | `renderer/assets/fonts/` | Webfonts |
 | `renderer/assets/icons/` | SVG/PNG icons for the UI |
 | `resources/build/` | Reserved for installer branding / platform files when packaging |
-| `run.bat` | Windows launcher with `pause` |
+| `run.bat` | Windows: `npm.cmd start` + `pause` (avoids PowerShell blocking `npm.ps1`) |
+| `install-deps.bat` | Windows: `npm.cmd install` + `pause` |
+| `.gitignore` | **`node_modules/`** — never commit dependencies (GitHub 100 MB file limit; `electron.exe` is larger) |
+| `README.md` | Public repo overview, install, troubleshooting |
 | `CLAUDE.md` | This file |
 
 ---
@@ -78,21 +84,30 @@ Open Health/
 
 ## How to run
 
-Project folder name includes a space (`Open Health`). Always quote paths in shells.
+Project folder name may include a space (`Open Health`). Quote paths in shells.
 
 ```powershell
 cd "C:\Users\User\Desktop\Open Health"
-npm install   # first time or after pulling changes
+npm install   # first time or after clone / pull
 npm start
 ```
 
-**`run.bat`** (project root): `cd /d "%~dp0"` → `npm start` → `pause` so a double-clicked window stays open on errors.
+**Windows — batch files (recommended if PowerShell blocks npm):**
 
-**Direct Electron (e.g. GPU issues):**
+- **`install-deps.bat`**: `npm.cmd install` from project root.
+- **`run.bat`**: `npm.cmd start` then `pause` so errors stay visible.
+
+**Why `npm.cmd`:** Some Windows setups disable running scripts, so **`npm`** in **PowerShell** tries **`npm.ps1`** and fails with *“running scripts is disabled”*. **`npm.cmd`** (or **Command Prompt**) avoids that. **`run.bat`** / **`install-deps.bat`** call **`npm.cmd`** explicitly.
+
+**PowerShell alternatives:** `npm.cmd install` / `npm.cmd start`, or `Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned`.
+
+**Direct Electron (e.g. GPU issues), from project root:**
 
 ```powershell
-npx electron . --disable-gpu
+node ./node_modules/electron/cli.js . --disable-gpu
 ```
+
+Human-facing steps are also in **[README.md](README.md)**.
 
 ---
 
@@ -210,11 +225,14 @@ Current **`window.electronAPI`**: empty object placeholder in `preload.js`.
 
 | Symptom | What to try |
 |---------|----------------|
-| Terminal opens and closes immediately | Run from PowerShell or use `run.bat` |
-| Window does not appear | `npx electron . --disable-gpu`; check console for load errors |
-| `npm` / `electron` not found | Install Node LTS; reopen terminal; `npm install` in project root |
-| CSS/JS not loading | Confirm `href`/`src` paths are relative to `renderer/index.html`; CSP includes `style-src 'self'` |
-| Icon not updating | Fully quit the app and restart; on Windows, taskbar may cache icons |
+| **`npm` / “running scripts is disabled”** (PowerShell) | Use **`npm.cmd`**, **Command Prompt**, **`install-deps.bat`** / **`run.bat`**, or relax execution policy for **CurrentUser** (see **How to run**) |
+| **`electron` is not recognized** | Run **`npm install`**; `package.json` **`start`** uses **`node ./node_modules/electron/cli.js .`** so PATH shim is not required |
+| Git push rejected — **large file** / **`electron.exe`** | **`node_modules`** was committed by mistake; remove from history, keep **`node_modules/`** in **`.gitignore`**, never commit **`node_modules`** |
+| Terminal opens and closes immediately | Use **`run.bat`** or a persistent terminal |
+| Window does not appear | `node ./node_modules/electron/cli.js . --disable-gpu`; check console for load errors |
+| **`npm` not found** | Install Node LTS; reopen terminal |
+| CSS/JS not loading | Paths relative to `renderer/index.html`; CSP includes `style-src 'self'` |
+| Icon not updating | Fully quit the app; Windows taskbar may cache icons |
 
 ---
 
@@ -225,3 +243,5 @@ Current **`window.electronAPI`**: empty object placeholder in `preload.js`.
 - **Production readiness** section: what the architecture already supports vs gaps before shipping (packaging, signing, updates, prod toggles, compliance caveat).
 - **App icon and branding:** `renderer/assets/images/logo.png` wired in `main.js` (`BrowserWindow` `icon`, macOS `app.dock.setIcon`); packaged EXE uses `resources/build/` + builder when added.
 - **Two renderer screens:** home (`index.html`) → `diagnoses-room.html`; shared **`constants.js`** for titles/labels; glass UI theme in `app.css`.
+- **Git / Windows:** **`.gitignore`** → `node_modules/`; history rewrite if large files were pushed; **`install-deps.bat`**, **`run.bat`** + **`npm.cmd`**; **`start`** script → **`node ./node_modules/electron/cli.js .`**.
+- **`README.md`** for GitHub onboarding; **`CLAUDE.md`** for deep project context.
