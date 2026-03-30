@@ -1,5 +1,5 @@
 @echo off
 cd /d "%~dp0"
-npm start
+call npm.cmd start
 echo.
 pause
