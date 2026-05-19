@@ -31,46 +31,67 @@ Double-click **`install-deps.bat`** once after cloning, then **`run.bat`** to la
 
 ### Windows: PowerShell and `npm`
 
-If PowerShell shows **“running scripts is disabled”** when you run `npm`:
+If PowerShell shows **"running scripts is disabled"** when you run `npm`:
 
 - Use **Command Prompt** (`cmd.exe`) instead, or  
 - Run **`npm.cmd install`** and **`npm.cmd start`** (note the **`.cmd`**), or  
 - For your user only: `Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned`
 
-The **`start`** script uses `node ./node_modules/electron/cli.js .` so the `electron` binary does not need to be on your `PATH`.
-
 ## Scripts
 
 | Command | Description |
 |---------|-------------|
-| `npm start` | Launches the Electron app |
+| `npm start` | Launches the Electron app via `scripts/start-electron.js` |
 | `npm install` | Installs dependencies (creates `node_modules`; not committed to Git) |
 
 ## Project layout
 
 ```
-├── main.js              # Electron main process
-├── preload.js           # Preload / contextBridge bridge
 ├── package.json
-├── renderer/            # UI (HTML, CSS, ES modules)
-│   ├── index.html
-│   ├── diagnoses-room.html
-│   ├── styles/
-│   ├── scripts/
-│   └── assets/
-├── resources/build/     # Reserved for installer icons (e.g. electron-builder)
+├── scripts/
+│   └── start-electron.js       # Spawns Electron cleanly
+├── src/
+│   ├── main/
+│   │   ├── index.js             # App bootstrap (lifecycle, IPC, window)
+│   │   ├── ipc/
+│   │   │   └── register.js      # IPC handler registration
+│   │   └── windows/
+│   │       └── main-window.js   # BrowserWindow creation
+│   ├── preload/
+│   │   └── index.js             # contextBridge → window.electronAPI
+│   ├── renderer/
+│   │   ├── index.html           # Home screen (glass UI)
+│   │   ├── screens/
+│   │   │   └── diagnoses-room/
+│   │   │       └── index.html   # Diagnoses Room screen
+│   │   ├── scripts/
+│   │   │   ├── constants.js     # Shared display strings
+│   │   │   ├── app.js           # Home screen logic
+│   │   │   └── diagnoses-room.js
+│   │   ├── styles/
+│   │   │   └── app.css
+│   │   └── assets/
+│   │       ├── images/
+│   │       ├── fonts/
+│   │       └── icons/
+│   └── shared/
+│       └── ipc/
+│           └── channels.js      # IPC channel name constants
+├── .vscode/
+│   └── launch.json              # Debug Main Process
 ├── run.bat
 ├── install-deps.bat
-└── CLAUDE.md            # Detailed context for contributors / AI assistants
+├── CLAUDE.md
+└── README.md
 ```
 
-The on-screen app title and shared labels live in **`renderer/scripts/constants.js`** (`APP_TITLE`, etc.).
+The on-screen app title and shared labels live in **`src/renderer/scripts/constants.js`** (`APP_TITLE`, etc.).
 
 ## Troubleshooting
 
 | Issue | What to try |
 |-------|-------------|
-| **`electron` is not recognized** | Run `npm install`, then `npm start` (the repo’s script calls Electron via Node). |
+| **`electron` is not recognized** | Run `npm install`, then `npm start` (the repo's script calls Electron via Node). |
 | **`npm` fails in PowerShell** | Use **`npm.cmd`** or **`install-deps.bat`** / **`run.bat`**. |
 | **Blank or no window** | `node ./node_modules/electron/cli.js . --disable-gpu` from the project root. |
 | **Push rejected (large file)** | Do not commit **`node_modules/`**. It is listed in **`.gitignore`**. |

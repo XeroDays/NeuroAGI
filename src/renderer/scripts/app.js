@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btn) {
     btn.textContent = LABEL_START_HUMAN_DIAGNOSTICS;
     btn.addEventListener('click', () => {
-      window.location.href = 'diagnoses-room.html';
+      window.location.href = 'screens/diagnoses-room/index.html';
     });
   }
 });
