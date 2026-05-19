@@ -104,6 +104,50 @@ body.app-shell::before {
   position: relative;
 }
 
+.home-selects-row {
+  display: flex;
+  gap: 0.75rem;
+  width: 100%;
+  justify-content: flex-end;
+}
+
+.glass-select {
+  width: auto;
+  height: 2.5rem;
+  padding: 0 2.2rem 0 0.9rem;
+  font: inherit;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  background: var(--glass-bg);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  box-shadow: var(--glass-shadow);
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='rgba(255,255,255,0.7)' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.85rem center;
+}
+
+.glass-select:focus {
+  border-color: rgba(34, 211, 238, 0.6);
+  box-shadow: var(--glass-shadow), 0 0 0 3px rgba(34, 211, 238, 0.15);
+}
+
+.glass-select option {
+  background: #1a1a2e;
+  color: #ececec;
+  padding: 0.5rem 0.75rem;
+}
+
+.glass-select option:checked {
+  background: #16213e;
+}
+
 .glass-input {
   width: 100%;
   height: 3rem;

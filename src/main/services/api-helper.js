@@ -1,27 +1,6 @@
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const OPENROUTER_MODEL = 'qwen/qwen3.6-plus-preview:free';
 
-const fs = require('fs');
-const path = require('path');
-
-function loadOpenRouterApiKey() {
-  if (process.env.OPENROUTER_API_KEY) return process.env.OPENROUTER_API_KEY;
-
-  const keyFilePath = path.join(process.cwd(), 'OPENROUTER_API_KEY.txt');
-  try {
-    const raw = fs.readFileSync(keyFilePath, 'utf8');
-    for (const line of raw.split(/\r?\n/)) {
-      const t = line.trim();
-      if (!t) continue;
-      if (t.startsWith('#')) continue;
-      return t;
-    }
-  } catch {
-    // Missing file is fine; we'll show a helpful error below.
-  }
-  return null;
-}
-
 /**
  * Stream chat completions from OpenRouter (SSE).
  * @param {Array<{ role: string, content: string }>} messages
@@ -30,11 +9,11 @@ function loadOpenRouterApiKey() {
  * @param {(err: Error) => void} onError
  */
 async function streamChat(messages, onDelta, onDone, onError) {
-  const apiKey = loadOpenRouterApiKey();
+  const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
     onError(
       new Error(
-        'OpenRouter API key is not set. Set OPENROUTER_API_KEY in your environment, or put the key in OPENROUTER_API_KEY.txt (repo root).'
+        'OPENROUTER_API_KEY is not set. Add it to the .env file in the project root.'
       )
     );
     return;

@@ -1,3 +1,4 @@
+require("dotenv").config();
 const { app, Menu } = require("electron");
 const { createMainWindow } = require("./windows/main-window");
 const { registerIpcHandlers } = require("./ipc/register");
