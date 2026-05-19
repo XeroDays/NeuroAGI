@@ -47,24 +47,27 @@ NeuroAGI/
     ├── main/
     │   ├── index.js              # App bootstrap (lifecycle, IPC, window)
     │   ├── ipc/
-    │   │   └── register.js       # ipcMain.handle registrations
+    │   │   └── register.js       # ipcMain.handle + ipcMain.on registrations
     │   ├── middleware/            # Business logic (add modules here)
-    │   ├── services/             # Helper / data services (add modules here)
+    │   ├── services/
+    │   │   └── api-helper.js     # OpenRouter streaming chat (SSE); OPENROUTER_MODEL
     │   └── windows/
     │       └── main-window.js    # BrowserWindow creation + config
     ├── preload/
-    │   └── index.js              # contextBridge → window.electronAPI
+    │   └── index.js              # contextBridge → window.electronAPI (incl. openRouterChatStream)
     ├── renderer/
     │   ├── index.html            # Home screen (glass UI)
     │   ├── screens/
     │   │   └── diagnoses-room/
-    │   │       └── index.html    # Diagnoses Room screen
+    │   │       └── index.html    # Diagnoses Room chat screen (dark theme)
     │   ├── scripts/
     │   │   ├── constants.js      # APP_TITLE, screen names, labels
     │   │   ├── app.js            # Home: title + navigate to diagnoses room
-    │   │   └── diagnoses-room.js
+    │   │   ├── diagnoses-room.js # Diagnoses Room UI wiring (composer, send)
+    │   │   └── ai-helper.js      # Chat orchestration: history + stream → DOM
     │   ├── styles/
-    │   │   └── app.css
+    │   │   ├── app.css           # Home / glass theme
+    │   │   └── diagnoses-room.css # Diagnoses Room dark chat theme
     │   └── assets/
     │       ├── images/
     │       ├── fonts/
@@ -80,15 +83,18 @@ NeuroAGI/
 | `scripts/start-electron.js` | Spawns Electron cleanly (clears `ELECTRON_RUN_AS_NODE`, inherits stdio) |
 | `src/main/index.js` | App bootstrap: hide menu, register IPC, create window; macOS re-activate; quit on all windows closed |
 | `src/main/windows/main-window.js` | Creates `BrowserWindow` (800×600, hidden until ready, then show+focus); preload + `contextIsolation`; loads `src/renderer/index.html` |
-| `src/main/ipc/register.js` | All `ipcMain.handle` routes (currently: `ping`) |
+| `src/main/ipc/register.js` | All IPC registrations: `ping` (handle) + OpenRouter stream (on/send) |
 | `src/main/middleware/` | Business logic modules (add as features grow) |
-| `src/main/services/` | Helper / data service modules (add as features grow) |
-| `src/preload/index.js` | `contextBridge.exposeInMainWorld('electronAPI', …)` |
+| `src/main/services/api-helper.js` | `streamChat(messages, onDelta, onDone, onError)` — OpenRouter HTTPS stream; reads `OPENROUTER_API_KEY` |
+| `src/preload/index.js` | `contextBridge.exposeInMainWorld('electronAPI', { ping, openRouterChatStream })` |
 | `src/shared/ipc/channels.js` | Shared IPC channel name constants |
 | `src/renderer/index.html` | Home screen; glass UI; `type="module"` → `scripts/app.js` |
-| `src/renderer/screens/diagnoses-room/index.html` | Diagnoses Room screen; link back to `../../index.html` |
+| `src/renderer/screens/diagnoses-room/index.html` | Diagnoses Room: dark chat layout; loads `diagnoses-room.css`; link back to `../../index.html` |
 | `src/renderer/scripts/constants.js` | Shared strings: **`APP_TITLE`**, **`SCREEN_DIAGNOSES_ROOM`**, button label |
-| `src/renderer/styles/` | Stylesheets |
+| `src/renderer/scripts/ai-helper.js` | `createAiChat({ messagesEl, onStreamingChange })` — conversation array, calls `electronAPI.openRouterChatStream`, updates assistant bubble from stream |
+| `src/renderer/scripts/diagnoses-room.js` | Diagnoses Room UI wiring: titles, composer, Enter/send, `AiHelper` integration |
+| `src/renderer/styles/app.css` | Home / glass theme |
+| `src/renderer/styles/diagnoses-room.css` | Diagnoses Room dark chat theme (bubbles, composer) |
 | `src/renderer/scripts/*.js` | ES modules (`import` from `constants.js`); no Node in renderer |
 | `src/renderer/assets/images/` | Images; **`logo.png`** is the window / taskbar / Dock icon via `main-window.js` |
 | `src/renderer/assets/fonts/` | Webfonts |
@@ -271,7 +277,7 @@ flowchart LR
 | Safe APIs for the page | `src/preload/index.js` + handlers in `src/main/ipc/register.js` |
 | OS menus, shortcuts, second windows | `src/main/` |
 
-Current **`window.electronAPI`**: `ping` method (placeholder) in `src/preload/index.js`.
+Current **`window.electronAPI`**: `ping` + `openRouterChatStream` in `src/preload/index.js`. See **Diagnoses Room and OpenRouter** for chat IPC flow.
 
 ---
 

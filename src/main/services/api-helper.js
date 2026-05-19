@@ -5,18 +5,16 @@ const fs = require('fs');
 const path = require('path');
 
 function loadOpenRouterApiKey() {
-  // Prefer env var (recommended).
   if (process.env.OPENROUTER_API_KEY) return process.env.OPENROUTER_API_KEY;
 
-  // Local dev fallback: file at repo root (git-ignored).
-  const keyFilePath = path.join(__dirname, 'OPENROUTER_API_KEY.txt');
+  const keyFilePath = path.join(process.cwd(), 'OPENROUTER_API_KEY.txt');
   try {
     const raw = fs.readFileSync(keyFilePath, 'utf8');
     for (const line of raw.split(/\r?\n/)) {
       const t = line.trim();
       if (!t) continue;
       if (t.startsWith('#')) continue;
-      return t; // first non-empty non-comment line
+      return t;
     }
   } catch {
     // Missing file is fine; we'll show a helpful error below.
