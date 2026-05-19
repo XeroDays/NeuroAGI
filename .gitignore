@@ -1,5 +1,9 @@
 node_modules/
+<<<<<<< HEAD
 dist/
 out/
 *.log
 .DS_Store
+=======
+OPENROUTER_API_KEY.txt
+>>>>>>> aedf3621cbb7ede8f8bae83f0c3e4142daec4cb9
