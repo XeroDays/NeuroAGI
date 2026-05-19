@@ -32,7 +32,6 @@ There is **no separate backend service** in-repo; the main process calls OpenRou
 
 ```
 NeuroAGI/
-<<<<<<< HEAD
 ├── package.json
 ├── package-lock.json
 ├── .gitignore
@@ -73,40 +72,10 @@ NeuroAGI/
     └── shared/
         └── ipc/
             └── channels.js       # IPC channel name constants
-=======
-├── main.js                 # Main process entry (package.json "main"); IPC handlers
-├── api-helper.js           # OpenRouter streaming chat (main only; SSE parse)
-├── preload.js              # Preload bridge for the renderer
-├── package.json
-├── README.md               # GitHub / human onboarding (incl. OPENROUTER_API_KEY)
-├── .gitignore              # includes node_modules/
-├── run.bat
-├── install-deps.bat        # Windows: npm.cmd install
-├── CLAUDE.md
-├── renderer/               # Single “site” loaded by BrowserWindow
-│   ├── index.html            # Home (glass UI)
-│   ├── diagnoses-room.html   # Chat screen (dark theme; not glass)
-│   ├── styles/
-│   │   ├── app.css
-│   │   └── diagnoses-room.css   # Diagnoses Room only
-│   ├── scripts/
-│   │   ├── constants.js      # APP_TITLE, screen names, labels
-│   │   ├── app.js            # Home: title + navigate to diagnoses room
-│   │   ├── ai-helper.js      # Chat orchestration: history + stream → DOM
-│   │   └── diagnoses-room.js # Diagnoses Room UI wiring
-│   └── assets/
-│       ├── images/
-│       ├── fonts/
-│       └── icons/          # In-app UI icons (not OS installer icons)
-├── resources/              # Packager / OS extras (not loaded by loadFile)
-│   └── build/              # e.g. app.ico, entitlements when using electron-builder
-└── node_modules/           # not in Git; run npm install locally
->>>>>>> aedf3621cbb7ede8f8bae83f0c3e4142daec4cb9
 ```
 
 | Path | Purpose |
 |------|---------|
-<<<<<<< HEAD
 | `package.json` | `name`: `neuro-agi`; `main`: `src/main/index.js`; `scripts.start`: `node scripts/start-electron.js` |
 | `scripts/start-electron.js` | Spawns Electron cleanly (clears `ELECTRON_RUN_AS_NODE`, inherits stdio) |
 | `src/main/index.js` | App bootstrap: hide menu, register IPC, create window; macOS re-activate; quit on all windows closed |
@@ -125,24 +94,6 @@ NeuroAGI/
 | `src/renderer/assets/fonts/` | Webfonts |
 | `src/renderer/assets/icons/` | SVG/PNG icons for the UI |
 | `.vscode/launch.json` | Debug Main Process (Electron from `node_modules`) |
-=======
-| `package.json` | `name`: `neuro-agi`; `main`: `main.js`; **`scripts.start`**: `node ./node_modules/electron/cli.js .` |
-| `main.js` | Main process: lifecycle, `loadFile` → `renderer/index.html`; window **`icon`** + macOS **`app.dock.setIcon`**; **IPC** for OpenRouter stream (see **Diagnoses Room and OpenRouter**) |
-| `api-helper.js` | **`streamChat(messages, onDelta, onDone, onError)`** — `fetch` OpenRouter `chat/completions` with **`stream: true`**, parse SSE; model constant **`OPENROUTER_MODEL`**; reads **`process.env.OPENROUTER_API_KEY`** |
-| `preload.js` | **`contextBridge.exposeInMainWorld('electronAPI', { openRouterChatStream })`** |
-| `renderer/index.html` | Home screen; glass UI; `type="module"` → `scripts/app.js` |
-| `renderer/diagnoses-room.html` | Diagnoses Room: dark chat layout; CSP same family as home; **`styles/diagnoses-room.css`** only |
-| `renderer/styles/diagnoses-room.css` | Black/near-black theme, bubbles, composer |
-| `renderer/scripts/ai-helper.js` | **`createAiChat({ messagesEl, onStreamingChange })`** — conversation array, calls **`electronAPI.openRouterChatStream`**, updates assistant bubble from stream |
-| `renderer/scripts/diagnoses-room.js` | Titles, composer, Enter/send, **`AiHelper`** integration |
-| `renderer/scripts/constants.js` | Shared strings: **`APP_TITLE`**, **`SCREEN_DIAGNOSES_ROOM`**, button label |
-| `renderer/styles/app.css` | Home / glass theme |
-| `renderer/scripts/*.js` (modules) | ES modules (`import` from `constants.js`); no Node in renderer |
-| `renderer/assets/images/` | Images; **`logo.png`** is the **window / taskbar / Dock** icon via `main.js` (also usable in HTML as `assets/images/logo.png`) |
-| `renderer/assets/fonts/` | Webfonts |
-| `renderer/assets/icons/` | SVG/PNG icons for the UI |
-| `resources/build/` | Reserved for installer branding / platform files when packaging |
->>>>>>> aedf3621cbb7ede8f8bae83f0c3e4142daec4cb9
 | `run.bat` | Windows: `npm.cmd start` + `pause` (avoids PowerShell blocking `npm.ps1`) |
 | `install-deps.bat` | Windows: `npm.cmd install` + `pause` |
 | `.gitignore` | `node_modules/`, `dist/`, `out/`, `*.log`, `.DS_Store` |
@@ -279,17 +230,10 @@ flowchart LR
 ## Security conventions (do not weaken casually)
 
 - **`contextIsolation: true`**, **`nodeIntegration: false`**
-<<<<<<< HEAD
 - **Paths**: `path.join(__dirname, ...)` so paths with spaces and packaging work.
 - **CSP** on `src/renderer/index.html`: `default-src 'self'; script-src 'self'; style-src 'self'`. Adjust if you add inline scripts/styles or external URLs.
 - For main ↔ renderer communication, use **`ipcMain` / `ipcRenderer`** with channels exposed only through **`src/preload/index.js`**.
 - IPC channel names are centralized in **`src/shared/ipc/channels.js`**; preload mirrors them (cannot reliably `require` shared modules with sandbox on).
-=======
-- **Paths**: `path.join(__dirname, 'renderer', 'index.html')` and `path.join(__dirname, 'preload.js')` so paths with spaces and packaging work.
-- **CSP** on **`renderer/index.html`** and **`renderer/diagnoses-room.html`**: `default-src 'self'; script-src 'self'; style-src 'self'`. No inline **scripts**. Adjust if you add inline scripts, CDNs, or `eval`.
-- For main ↔ renderer communication, use **`ipcMain` / `ipcRenderer`** with channels exposed only through **`preload.js`**.
-- **Do not** move **`OPENROUTER_API_KEY`** into the renderer or preload source; keep network + key in **main**.
->>>>>>> aedf3621cbb7ede8f8bae83f0c3e4142daec4cb9
 
 ---
 
@@ -318,7 +262,6 @@ flowchart LR
 
 | Goal | Where to work |
 |------|----------------|
-<<<<<<< HEAD
 | New screen | `src/renderer/screens/<name>/index.html` + script in `src/renderer/scripts/` |
 | New UI on home | `src/renderer/index.html`, `src/renderer/styles/app.css`, `src/renderer/scripts/app.js` |
 | Static assets | `src/renderer/assets/images|fonts|icons/` (paths relative to HTML file) |
@@ -329,18 +272,6 @@ flowchart LR
 | OS menus, shortcuts, second windows | `src/main/` |
 
 Current **`window.electronAPI`**: `ping` method (placeholder) in `src/preload/index.js`.
-=======
-| New UI (home) | `renderer/index.html`, `renderer/styles/app.css`, `renderer/scripts/app.js` |
-| Diagnoses Room chat UI | `renderer/diagnoses-room.html`, `renderer/styles/diagnoses-room.css`, `renderer/scripts/diagnoses-room.js` |
-| Chat logic (history, bubbles, stream wiring) | `renderer/scripts/ai-helper.js` |
-| OpenRouter / HTTP stream | `api-helper.js` + IPC in `main.js` |
-| Static assets | `renderer/assets/images|fonts|icons/` (paths relative to each HTML file) |
-| Safe APIs for the page | `preload.js` + handlers in `main.js` |
-| OS menus, shortcuts, second windows | `main.js` |
-| Installer / EXE icons, platform extras | `resources/build/` (e.g. `app.ico`, entitlements) + packager (e.g. **electron-builder**); see **App icon and branding** |
-
-See **`window.electronAPI`** in **Diagnoses Room and OpenRouter**.
->>>>>>> aedf3621cbb7ede8f8bae83f0c3e4142daec4cb9
 
 ---
 
@@ -361,22 +292,10 @@ See **`window.electronAPI`** in **Diagnoses Room and OpenRouter**.
 |-----|-------------------|
 | **No installer / bundle** | Add **electron-builder**, **electron-forge**, or equivalent. |
 | **No auto-update** | Plan **electron-updater** or vendor store updates once installers exist. |
-<<<<<<< HEAD
 | **Dev vs prod** | Disable **DevTools** and trim menus when `app.isPackaged` or `NODE_ENV === 'production'`. |
 | **`electron` in `devDependencies`** | Already correct for development; bundler strips it for distribution. |
 | **Quality / CI** | Linting, tests, and CI are not in scope yet. |
 | **Regulated / clinical data** | If the app handles real PHI, compliance (encryption, audit, BAAs, etc.) is separate from architecture. |
-=======
-| **Dev vs prod** | e.g. disable **DevTools** shortcut / menu and trim menus when **`app.isPackaged`** or **`NODE_ENV === 'production'`**. |
-| **`electron` in `dependencies`** | Some teams move Electron to **`devDependencies`** when only the **built** artifact is distributed; both patterns exist. |
-| **Quality / CI** | Linting, tests, and CI are not in scope of the folder tree but matter for serious releases. |
-| **Regulated / clinical data** | If the app handles real PHI or similar, **compliance** (encryption, audit, BAAs, etc.) is separate from this architecture doc. |
-
-### Optional hardening (later)
-
-- Consider **`sandbox: true`** in `webPreferences` when preload + IPC are stable (can interact with preload capabilities).
-- **Pin Electron** (exact version or controlled lockfile bumps) near release so CI and users don’t drift on `^`.
->>>>>>> aedf3621cbb7ede8f8bae83f0c3e4142daec4cb9
 
 ---
 
@@ -396,20 +315,13 @@ See **`window.electronAPI`** in **Diagnoses Room and OpenRouter**.
 | Terminal opens and closes immediately | Use **`run.bat`** or a persistent terminal |
 | Window does not appear | `node ./node_modules/electron/cli.js . --disable-gpu`; check console for load errors |
 | **`npm` not found** | Install Node LTS; reopen terminal |
-<<<<<<< HEAD
 | CSS/JS not loading | Paths relative to the HTML file loading them; CSP includes `style-src 'self'` |
-=======
-| CSS/JS not loading | Paths relative to `renderer/index.html`; CSP includes `style-src 'self'` |
-| **Diagnoses Room / OpenRouter errors** | Set **`OPENROUTER_API_KEY`** (env var or `OPENROUTER_API_KEY.txt` in repo root; see **`README.md`**); check main console for network errors; model id in **`api-helper.js`**. |
-| Icon not updating | Fully quit the app; Windows taskbar may cache icons |
->>>>>>> aedf3621cbb7ede8f8bae83f0c3e4142daec4cb9
 
 ---
 
 ## Changelog (high level)
 
 - Scaffold: Electron + preload + CSP, `run.bat`.
-<<<<<<< HEAD
 - **Renderer layout:** `renderer/` as web root with `styles/`, `scripts/`, `assets/`.
 - **Production readiness** section added.
 - **App icon and branding:** `logo.png` wired in `main-window.js`.
@@ -418,13 +330,3 @@ See **`window.electronAPI`** in **Diagnoses Room and OpenRouter**.
 - **README.md** for GitHub onboarding; **CLAUDE.md** for project context.
 - **Project rename:** product and UI title **NeuroAGI**; npm package name **`neuro-agi`**.
 - **Restructured to `src/` layout** (following Flowter template): `src/main/` (index, ipc, windows, middleware, services), `src/preload/`, `src/renderer/` (with `screens/` for additional pages), `src/shared/` (IPC channels). Added `scripts/start-electron.js`, `.vscode/launch.json`. Electron moved to `devDependencies`.
-=======
-- **Renderer layout:** `renderer/` as web root (`index.html`, `styles/`, `scripts/`, `assets/`); `main.js` loads `renderer/index.html`; `resources/build/` for future packaging.
-- **Production readiness** section: what the architecture already supports vs gaps before shipping (packaging, signing, updates, prod toggles, compliance caveat).
-- **App icon and branding:** `renderer/assets/images/logo.png` wired in `main.js` (`BrowserWindow` `icon`, macOS `app.dock.setIcon`); packaged EXE uses `resources/build/` + builder when added.
-- **Two renderer screens:** home (`index.html`) → `diagnoses-room.html`; shared **`constants.js`** for titles/labels; glass UI theme in `app.css`.
-- **Git / Windows:** **`.gitignore`** → `node_modules/`; history rewrite if large files were pushed; **`install-deps.bat`**, **`run.bat`** + **`npm.cmd`**; **`start`** script → **`node ./node_modules/electron/cli.js .`**.
-- **`README.md`** for GitHub onboarding; **`CLAUDE.md`** for deep project context.
-- **Project rename:** product and UI title **NeuroAGI**; npm package name **`neuro-agi`** (`package.json` / lockfile).
-- **Diagnoses Room chat:** dark **`diagnoses-room.css`** theme; **`ai-helper.js`** + **`api-helper.js`**; OpenRouter streaming over **IPC**; **`OPENROUTER_API_KEY`** in main only; **`README.md`** env instructions.
->>>>>>> aedf3621cbb7ede8f8bae83f0c3e4142daec4cb9

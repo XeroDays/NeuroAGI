@@ -63,12 +63,6 @@ If PowerShell shows **"running scripts is disabled"** when you run `npm`:
 ## Project layout
 
 ```
-<<<<<<< HEAD
-=======
-├── main.js              # Electron main process
-├── api-helper.js        # OpenRouter streaming (main process; uses OPENROUTER_API_KEY)
-├── preload.js           # Preload / contextBridge bridge
->>>>>>> aedf3621cbb7ede8f8bae83f0c3e4142daec4cb9
 ├── package.json
 ├── scripts/
 │   └── start-electron.js       # Spawns Electron cleanly
