@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.title = APP_TITLE;
 
   const titleEl = document.getElementById('app-title');
+  const input = document.getElementById('health-input');
   const btn = document.getElementById('btn-start-diagnostics');
 
   if (titleEl) {
@@ -14,9 +15,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (btn) {
-    btn.textContent = LABEL_START_HUMAN_DIAGNOSTICS;
     btn.addEventListener('click', () => {
-      window.location.href = 'screens/diagnoses-room/index.html';
+      const issue = input?.value?.trim() || '';
+      const params = issue ? `?issue=${encodeURIComponent(issue)}` : '';
+      window.location.href = `screens/diagnoses-room/index.html${params}`;
     });
   }
 });

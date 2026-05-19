@@ -8,4 +8,7 @@ export const APP_TITLE = 'NeuroAGI';
 export const SCREEN_DIAGNOSES_ROOM = 'Diagnoses Room';
 
 /** Home screen primary action. */
-export const LABEL_START_HUMAN_DIAGNOSTICS = 'Start Human Diagnostics';
+export const LABEL_START_HUMAN_DIAGNOSTICS = 'Diagnose me';
+
+/** Home screen input placeholder. */
+export const PLACEHOLDER_HEALTH_INPUT = "Describe how you're feeling\u2026";

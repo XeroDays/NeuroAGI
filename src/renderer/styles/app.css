@@ -92,11 +92,75 @@ body.app-shell::before {
   align-items: center;
   gap: 1.25rem;
   text-align: center;
-  max-width: min(100%, 22rem);
+  width: 80%;
 }
 
 .home-stack .app-title {
   line-height: 1.2;
+}
+
+.home-input-wrap {
+  width: 100%;
+  position: relative;
+}
+
+.glass-input {
+  width: 100%;
+  height: 3rem;
+  padding: 0 3.5rem 0 1.1rem;
+  font: inherit;
+  font-size: 0.95rem;
+  color: #1a1a2e;
+  background: #fff;
+  border: none;
+  border-radius: 999px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  outline: none;
+  transition: box-shadow 0.2s ease;
+}
+
+.glass-input::placeholder {
+  color: #999;
+}
+
+.glass-input:focus {
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+}
+
+.home-input-wrap .glass-button {
+  position: absolute;
+  right: 0.35rem;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border-radius: 50%;
+  border: none;
+  background: #1a1a2e;
+  color: #fff;
+  box-shadow: none;
+  transition: background 0.2s ease;
+}
+
+.home-input-wrap .glass-button:hover {
+  background: #1a1a2e;
+  border-color: transparent;
+  transform: translateY(-50%);
+  box-shadow: none;
+}
+
+.home-input-wrap .glass-button:active {
+  transform: translateY(-50%);
+}
+
+.home-input-wrap .glass-button:focus-visible {
+  outline: 2px solid rgba(34, 211, 238, 0.8);
+  outline-offset: 2px;
 }
 
 .glass-button {
