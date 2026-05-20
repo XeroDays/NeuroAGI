@@ -26,6 +26,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  if (input) {
+    input.focus();
+  }
+
   if (btn) {
     btn.addEventListener('click', () => {
       const issue = input?.value?.trim() || '';
