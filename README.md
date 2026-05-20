@@ -78,16 +78,19 @@ If PowerShell shows **"running scripts is disabled"** when you run `npm`:
 │   ├── renderer/
 │   │   ├── index.html           # Home screen (glass UI)
 │   │   ├── screens/
-│   │   │   └── diagnoses-room/
-│   │   │       └── index.html   # Diagnoses Room screen
+│   │   │   ├── questionnaire/
+│   │   │   │   └── index.html   # Questionnaire screen
+│   │   │   └── doctor/
+│   │   │       └── index.html   # Doctor screen
 │   │   ├── scripts/
 │   │   │   ├── constants.js     # Shared display strings
 │   │   │   ├── app.js           # Home screen logic
-│   │   │   ├── diagnoses-room.js
-│   │   │   └── ai-helper.js     # Chat stream orchestration
+│   │   │   ├── questionnaire.js # Questionnaire screen logic
+│   │   │   └── doctor.js        # Doctor screen logic
 │   │   ├── styles/
 │   │   │   ├── app.css          # Home / glass theme
-│   │   │   └── diagnoses-room.css # Dark chat theme
+│   │   │   ├── questionnaire.css # Questionnaire pastel theme
+│   │   │   └── doctor.css       # Doctor pastel theme
 │   │   └── assets/
 │   │       ├── images/
 │   │       ├── fonts/

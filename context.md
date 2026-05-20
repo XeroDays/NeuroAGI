@@ -51,21 +51,18 @@ src/
 │   ├── screens/
 │   │   ├── questionnaire/
 │   │   │   └── index.html    # Questionnaire screen (shown after home submit)
-│   │   ├── doctor/
-│   │   │   └── index.html    # Doctor screen (shown after questionnaire submit; placeholder body for now)
-│   │   └── diagnoses-room/
-│   │       └── index.html    # Diagnoses Room chat screen (orphan — not reachable from app)
+│   │   └── doctor/
+│   │       └── index.html    # Doctor screen (shown after questionnaire submit; placeholder body for now)
 │   ├── scripts/
 │   │   ├── constants.js      # APP_TITLE, SCREEN_QUESTIONNAIRE, SCREEN_DOCTOR, SCREEN_DIAGNOSES_ROOM, labels
 │   │   ├── app.js            # Home screen: populates UI, navigates to questionnaire with issue/gender/age params
 │   │   ├── questionnaire.js  # Questionnaire screen: calls startReportCollection on load, renders per-type controls, on Submit calls submitQuestionnaire IPC and navigates to doctor screen
-│   │   ├── doctor.js         # Doctor screen: sets titles, renders summary from URL params
-│   │   └── diagnoses-room.js # Diagnoses Room screen: sets titles only (chat logic removed)
+│   │   └── doctor.js         # Doctor screen: sets titles, renders summary from URL params
 │   ├── styles/
 │   │   ├── app.css           # Home screen pastel theme
 │   │   ├── questionnaire.css # Questionnaire pastel theme + responsive grid + centered spinner overlay
 │   │   ├── doctor.css        # Doctor screen pastel theme + centered glass card
-│   │   └── diagnoses-room.css # Chat screen dark theme
+│   │   └── diagnoses-room.css # Chat screen dark theme (orphan — no HTML consumer)
 │   └── assets/
 │       ├── images/
 │       ├── fonts/
@@ -125,17 +122,16 @@ src/
 
 The chat feature has been removed from the renderer:
 - `src/renderer/scripts/ai-helper.js` was **deleted**
-- `src/renderer/scripts/diagnoses-room.js` no longer wires the composer/send (only sets the titles)
+- `src/renderer/scripts/diagnoses-room.js` was **deleted** (its only job was to set titles; the screen itself is orphan)
 - Preload no longer exposes `openRouterChatStream`
 - `register.js` no longer handles `OPENROUTER_STREAM_START`
 - Channels `OPENROUTER_STREAM_*` removed from `src/shared/ipc/channels.js`
 
 Still present (orphan, ready to reuse):
 - `src/main/services/api-helper.js` — `streamChat()` + `OPENROUTER_MODEL`
-- `src/renderer/screens/diagnoses-room/index.html` — chat DOM (`#chat-messages`, `#chat-input`, `#chat-send`) still present but inert
-- `src/renderer/styles/diagnoses-room.css` — full dark chat theme
+- `src/renderer/styles/diagnoses-room.css` — full dark chat theme (no HTML consumer; remove when no longer wanted as a style reference)
 
-To re-enable: re-add the channels, re-expose `openRouterChatStream` in preload, re-register the handler in `register.js`, and re-add a renderer module that wires the DOM to it.
+The screen HTML (`src/renderer/screens/diagnoses-room/index.html`) was deleted along with its script. To re-enable: re-add the channels, re-expose `openRouterChatStream` in preload, re-register the handler in `register.js`, recreate the screen HTML, and add a renderer module that wires the DOM to it.
 
 ### Adding a new IPC channel
 
