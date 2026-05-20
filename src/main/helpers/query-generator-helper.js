@@ -3,10 +3,23 @@ function GenerateQuestionnaireLLMQuery ({ issue, gender, age } = {}) {
   const safeGender = String(gender || "male").toLowerCase();
   const safeAge = String(age || "30");
 
+  const now = new Date();
+  const dateTimeStr = now.toLocaleString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZoneName: "short",
+  });
+
   return `You are a highly experienced medical doctor, licensed physician, and PhD-level clinical specialist conducting a professional medical intake assessment.
 
   The user is a ${safeAge}-year-old ${safeGender} reporting the following issue: "${safeIssue}".
-  
+
+  For awareness, the current date and time of this request is ${dateTimeStr}.
+
   Your task is to generate intelligent, medically relevant follow-up questions that help gather deeper clinical insights about the user's condition, symptoms, history, severity, triggers, duration, lifestyle factors, medications, and risk indicators.
   
   Requirements:

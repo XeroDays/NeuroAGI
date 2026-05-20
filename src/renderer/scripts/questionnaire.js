@@ -30,6 +30,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
+  let loadedQuestions = [];
+
   try {
     const result = await window.electronAPI.startReportCollection({ issue, gender, age });
     if (!result || !result.ok) {
@@ -40,6 +42,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       showError('No questions were returned. Please try again.');
       return;
     }
+    loadedQuestions = questions;
     renderQuestions(questions);
     statusEl.hidden = true;
     formEl.hidden = false;
@@ -49,11 +52,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     showError(err?.message || String(err));
   }
 
-  submitBtn?.addEventListener('click', () => {
+  submitBtn?.addEventListener('click', async () => {
     const answers = collectAnswers(formEl);
-    console.log('Questionnaire submitted:', { issue, gender, age, answers });
     submitBtn.disabled = true;
-    submitBtn.textContent = 'Submitted';
+    submitBtn.textContent = 'Submitting…';
+    try {
+      await window.electronAPI?.submitQuestionnaire?.({
+        issue,
+        gender,
+        age,
+        questions: loadedQuestions,
+        answers,
+      });
+      const q = new URLSearchParams();
+      if (issue) q.set('issue', issue);
+      q.set('gender', gender);
+      q.set('age', age);
+      window.location.href = `../doctor/index.html?${q}`;
+    } catch (err) {
+      console.error('SubmitQuestionnaire failed:', err);
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Submit';
+      showError(err?.message || String(err));
+    }
   });
 
   function showError(msg) {

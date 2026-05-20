@@ -35,9 +35,9 @@ src/
 ├── main/
 │   ├── index.js              # Bootstrap: dotenv config, hide menu, register IPC, create window
 │   ├── ipc/
-│   │   └── register.js       # IPC handlers: ping, startReportCollection, openDevTools
+│   │   └── register.js       # IPC handlers: ping, startReportCollection, submitQuestionnaire, openDevTools
 │   ├── middlewares/
-│   │   └── collector-middleware.js # StartReportcollection({ issue, gender, age }) — entry from home screen; tiered JSON parser (strict → normalize → jsonrepair)
+│   │   └── collector-middleware.js # StartReportcollection({ issue, gender, age }) — entry from home screen, tiered JSON parser (strict → normalize → jsonrepair). SubmitQuestionnaire({ issue, gender, age, questions, answers }) — logs the full Q&A dump on questionnaire submit
 │   ├── helpers/
 │   │   └── query-generator-helper.js # GenerateQuestionnaireLLMQuery({ issue, gender, age }) — builds intake-doctor prompt that returns a JSON array of questions
 │   ├── services/
@@ -45,22 +45,26 @@ src/
 │   └── windows/
 │       └── main-window.js    # BrowserWindow: 800x600, hidden until ready, preload + contextIsolation
 ├── preload/
-│   └── index.js              # contextBridge → window.electronAPI { ping, startReportCollection, openDevTools }
+│   └── index.js              # contextBridge → window.electronAPI { ping, startReportCollection, submitQuestionnaire, openDevTools }
 ├── renderer/
 │   ├── index.html            # Home screen
 │   ├── screens/
 │   │   ├── questionnaire/
 │   │   │   └── index.html    # Questionnaire screen (shown after home submit)
+│   │   ├── doctor/
+│   │   │   └── index.html    # Doctor screen (shown after questionnaire submit; placeholder body for now)
 │   │   └── diagnoses-room/
 │   │       └── index.html    # Diagnoses Room chat screen (orphan — not reachable from app)
 │   ├── scripts/
-│   │   ├── constants.js      # APP_TITLE, SCREEN_QUESTIONNAIRE, SCREEN_DIAGNOSES_ROOM, labels
+│   │   ├── constants.js      # APP_TITLE, SCREEN_QUESTIONNAIRE, SCREEN_DOCTOR, SCREEN_DIAGNOSES_ROOM, labels
 │   │   ├── app.js            # Home screen: populates UI, navigates to questionnaire with issue/gender/age params
-│   │   ├── questionnaire.js  # Questionnaire screen: calls startReportCollection on load, renders per-type controls, collects answers on submit
+│   │   ├── questionnaire.js  # Questionnaire screen: calls startReportCollection on load, renders per-type controls, on Submit calls submitQuestionnaire IPC and navigates to doctor screen
+│   │   ├── doctor.js         # Doctor screen: sets titles, renders summary from URL params
 │   │   └── diagnoses-room.js # Diagnoses Room screen: sets titles only (chat logic removed)
 │   ├── styles/
 │   │   ├── app.css           # Home screen pastel theme
-│   │   ├── questionnaire.css # Questionnaire dark theme + responsive grid
+│   │   ├── questionnaire.css # Questionnaire pastel theme + responsive grid + centered spinner overlay
+│   │   ├── doctor.css        # Doctor screen pastel theme + centered glass card
 │   │   └── diagnoses-room.css # Chat screen dark theme
 │   └── assets/
 │       ├── images/
@@ -106,7 +110,16 @@ src/
    - **Tier 3 — `jsonrepair` then `JSON.parse`** (handles broader structural damage)
    On any tier failure the parser logs an 80-char window around the bad character; if all three tiers fail the full raw response is logged and an error propagates. On success the middleware returns `{ ok: true, issue, gender, age, questions }`; on failure it returns `{ ok: false, error }`
 6. `questionnaire.js` hides the status box, reveals `#q-form`, and renders one `<section class="q-card q-card--{type}">` per question with type-specific controls; reveals the Submit button
-7. Submit click collects all answers (`{ question, type, value }[]`) and currently just `console.log`s them — next destination/middleware is TBD
+7. Submit click collects all answers (`{ question, type, value }[]`), then proceeds to the next workflow
+
+### Questionnaire submit → Doctor screen
+
+1. User clicks Submit on the questionnaire; `questionnaire.js` collects answers via `collectAnswers(formEl)` and disables the button (label switches to `Submitting…`)
+2. Renderer calls `window.electronAPI.submitQuestionnaire({ issue, gender, age, questions, answers })` → IPC `SUBMIT_QUESTIONNAIRE`
+3. Main process: `register.js` invokes `SubmitQuestionnaire()` in `collector-middleware.js`
+4. The middleware logs a structured Q&A dump to the main-process console (one `Q{n} [type] text` line and one `A{n}: value` line per question, framed by `=== Q&A dump ===` markers) and returns `{ ok: true }`
+5. On success the renderer navigates to `screens/doctor/index.html?issue=…&gender=…&age=…`; on failure the Submit button re-enables and the centered error card appears
+6. `doctor.js` reads the URL params and renders the patient summary; the body is a placeholder card ("We're consulting the doctor") pending the next step (e.g. diagnostic report generation)
 
 ### Chat streaming (Diagnoses Room ↔ OpenRouter) — **CURRENTLY DISABLED**
 
@@ -161,6 +174,7 @@ Builds the prompt that asks an LLM to generate medical intake follow-up question
 - Include duration, frequency, pain level, mood, sleep, stress where relevant
 - No duplicates, no padding — only medically meaningful questions
 - Adapt dynamically to the reported issue
+- Injects the current request date/time ("For awareness, the current date and time of this request is …") right after the patient line, formatted via `toLocaleString('en-US', …)` with weekday, full date, hour/minute and short timezone — gives the model temporal context for symptom recency / seasonality without prompting it to confirm the date with the user
 
 **Output contract:** the LLM must return **only** a valid JSON array (no markdown, no comments, no explanations). Example shapes:
 

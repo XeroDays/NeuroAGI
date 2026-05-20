@@ -99,4 +99,28 @@ async function StartReportcollection({ issue, gender, age } = {}) {
   }
 }
 
-module.exports = { StartReportcollection };
+async function SubmitQuestionnaire({ issue, gender, age, questions = [], answers = [] } = {}) {
+  const qList = Array.isArray(questions) ? questions : [];
+  const aList = Array.isArray(answers) ? answers : [];
+
+  console.log("[collector] SubmitQuestionnaire received:", {
+    issue,
+    gender,
+    age,
+    questionCount: qList.length,
+    answerCount: aList.length,
+  });
+
+  const byIndex = new Map(aList.map((a, i) => [i, a]));
+  console.log("[collector] === Q&A dump ===");
+  qList.forEach((q, i) => {
+    const a = byIndex.get(i);
+    console.log(`Q${i + 1} [${q?.type || "?"}] ${q?.question || "(no question text)"}`);
+    console.log(`A${i + 1}:`, a?.value);
+  });
+  console.log("[collector] === end Q&A ===");
+
+  return { ok: true };
+}
+
+module.exports = { StartReportcollection, SubmitQuestionnaire };
