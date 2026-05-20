@@ -25,7 +25,7 @@ body.app-shell {
   flex-direction: column;
   position: relative;
   overflow-x: hidden;
-  background: linear-gradient(145deg, #0f0f1a 0%, #1a1a2e 35%, #16213e 70%, #0e3a4a 100%);
+  background: linear-gradient(135deg, #e8a4c8 0%, #d4b0de 25%, #c4b8e8 50%, #b0cef0 75%, #a0d8f0 100%);
   background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
 }
@@ -37,9 +37,9 @@ body.app-shell::before {
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(ellipse 80% 60% at 15% 25%, var(--glow-pink), transparent 55%),
-    radial-gradient(ellipse 70% 50% at 85% 75%, var(--glow-cyan), transparent 50%);
-  opacity: 0.85;
+    radial-gradient(ellipse 80% 60% at 10% 30%, rgba(232, 160, 200, 0.4), transparent 55%),
+    radial-gradient(ellipse 70% 50% at 90% 70%, rgba(160, 216, 240, 0.4), transparent 50%);
+  opacity: 0.7;
 }
 
 .app-header {
@@ -116,83 +116,83 @@ body.app-shell::before {
   height: 2.5rem;
   padding: 0 2.2rem 0 0.9rem;
   font: inherit;
-  font-size: 0.875rem;
-  color: var(--text-primary);
-  background: var(--glass-bg);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  border: 1px solid var(--glass-border);
-  border-radius: 999px;
-  box-shadow: var(--glass-shadow);
+  font-size: 0.8rem;
+  color: #555;
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   outline: none;
   cursor: pointer;
   appearance: none;
   -webkit-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='rgba(255,255,255,0.7)' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='rgba(100,100,100,0.6)' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 0.85rem center;
+  background-position: right 0.75rem center;
 }
 
 .glass-select:focus {
-  border-color: rgba(34, 211, 238, 0.6);
-  box-shadow: var(--glass-shadow), 0 0 0 3px rgba(34, 211, 238, 0.15);
+  border-color: rgba(180, 140, 210, 0.6);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06), 0 0 0 3px rgba(180, 140, 210, 0.15);
 }
 
 .glass-select option {
-  background: #1a1a2e;
-  color: #ececec;
+  background: #fff;
+  color: #444;
   padding: 0.5rem 0.75rem;
 }
 
 .glass-select option:checked {
-  background: #16213e;
+  background: #f0e6f6;
 }
 
 .glass-input {
   width: 100%;
-  height: 3rem;
-  padding: 0 3.5rem 0 1.1rem;
+  height: 3.25rem;
+  padding: 0 3.5rem 0 1.25rem;
   font: inherit;
   font-size: 0.95rem;
-  color: #1a1a2e;
+  color: #333;
   background: #fff;
   border: none;
-  border-radius: 999px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  border-radius: 14px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   outline: none;
   transition: box-shadow 0.2s ease;
 }
 
 .glass-input::placeholder {
-  color: #999;
+  color: #aaa;
 }
 
 .glass-input:focus {
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.12);
 }
 
 .home-input-wrap .glass-button {
   position: absolute;
-  right: 0.35rem;
+  right: 0.45rem;
   top: 50%;
   transform: translateY(-50%);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 2.35rem;
+  height: 2.35rem;
   padding: 0;
-  border-radius: 50%;
+  border-radius: 10px;
   border: none;
-  background: #1a1a2e;
+  background: #555;
   color: #fff;
   box-shadow: none;
   transition: background 0.2s ease;
 }
 
 .home-input-wrap .glass-button:hover {
-  background: #1a1a2e;
+  background: #555;
   border-color: transparent;
   transform: translateY(-50%);
   box-shadow: none;

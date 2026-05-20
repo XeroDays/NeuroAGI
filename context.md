@@ -10,8 +10,8 @@ This file is the **handoff / memory** for AI assistants and developers working o
 
 **NeuroAGI** is a desktop app (Electron + JavaScript). Current state: **one window**, **two HTML screens**:
 
-- **Home** (`renderer/index.html`) — glass-style UI; entry to the Diagnoses Room.
-- **Diagnoses Room** (`renderer/diagnoses-room.html`) — dark, ChatGPT-like **chat UI**: message list, bottom composer, **streaming assistant replies** via **[OpenRouter](https://openrouter.ai/)** (see **Diagnoses Room and OpenRouter**).
+- **Home** (`src/renderer/index.html`) — pastel gradient UI with health issue input, gender/age selectors; entry to the Diagnoses Room.
+- **Diagnoses Room** (`src/renderer/screens/diagnoses-room/index.html`) — dark, ChatGPT-like **chat UI**: message list, bottom composer, **streaming assistant replies** via **[OpenRouter](https://openrouter.ai/)** (see **Diagnoses Room and OpenRouter**).
 
 There is **no separate backend service** in-repo; the main process calls OpenRouter over HTTPS. No database or clinical data pipeline yet.
 
@@ -28,6 +28,30 @@ There is **no separate backend service** in-repo; the main process calls OpenRou
 
 ---
 
+## Design language
+
+### Home screen (`app.css`)
+
+| Element | Style |
+|---------|-------|
+| **Background** | Soft pastel gradient (pink → lavender → light blue, `135deg`); subtle radial glow overlay |
+| **Title** | White, centered, `clamp(1.85rem, 6vw, 2.75rem)`, text-shadow for depth |
+| **Text input** | Solid white, rounded rectangle (`border-radius: 14px`), soft shadow, dark text; 80% viewport width |
+| **Submit button** | Dark rounded square (`border-radius: 10px`) inside input, right-aligned; white arrow icon; no hover animation |
+| **Dropdowns** | Frosted translucent white (`rgba(255,255,255,0.65)`), rounded (`10px`), subtle shadow, grey text; custom SVG chevron; right-aligned below input |
+| **Dropdown options** | White background, light purple highlight on selected |
+
+### Diagnoses Room (`diagnoses-room.css`)
+
+| Element | Style |
+|---------|-------|
+| **Background** | Solid dark (`#0a0a0a`) |
+| **Chat bubbles** | User: `#2f2f2f`, right-aligned; Assistant: `#1e1e1e` bordered, left-aligned |
+| **Composer** | Dark `#212121` bar with `#3d3d3d` border, rounded pill shape |
+| **Send button** | Light pill (`#e5e5e5`), dark text |
+
+---
+
 ## Project layout (source tree)
 
 ```
@@ -36,7 +60,7 @@ NeuroAGI/
 ├── package-lock.json
 ├── .gitignore
 ├── README.md
-├── CLAUDE.md
+├── context.md
 ├── run.bat
 ├── install-deps.bat
 ├── .vscode/
@@ -56,17 +80,17 @@ NeuroAGI/
     ├── preload/
     │   └── index.js              # contextBridge → window.electronAPI (incl. openRouterChatStream)
     ├── renderer/
-    │   ├── index.html            # Home screen (glass UI)
+    │   ├── index.html            # Home screen (pastel gradient UI)
     │   ├── screens/
     │   │   └── diagnoses-room/
-    │   │       └── index.html    # Diagnoses Room chat screen (dark theme)
+    │   │       └── index.html    # Diagnoses Room chat screen (dark chat theme)
     │   ├── scripts/
     │   │   ├── constants.js      # APP_TITLE, screen names, labels
     │   │   ├── app.js            # Home: title + navigate to diagnoses room
     │   │   ├── diagnoses-room.js # Diagnoses Room UI wiring (composer, send)
     │   │   └── ai-helper.js      # Chat orchestration: history + stream → DOM
     │   ├── styles/
-    │   │   ├── app.css           # Home / glass theme
+    │   │   ├── app.css           # Home / pastel gradient theme
     │   │   └── diagnoses-room.css # Diagnoses Room dark chat theme
     │   └── assets/
     │       ├── images/
@@ -88,12 +112,12 @@ NeuroAGI/
 | `src/main/services/api-helper.js` | `streamChat(messages, onDelta, onDone, onError)` — OpenRouter HTTPS stream; reads `OPENROUTER_API_KEY` |
 | `src/preload/index.js` | `contextBridge.exposeInMainWorld('electronAPI', { ping, openRouterChatStream })` |
 | `src/shared/ipc/channels.js` | Shared IPC channel name constants |
-| `src/renderer/index.html` | Home screen; glass UI; `type="module"` → `scripts/app.js` |
+| `src/renderer/index.html` | Home screen; pastel gradient UI with input + dropdowns; `type="module"` → `scripts/app.js` |
 | `src/renderer/screens/diagnoses-room/index.html` | Diagnoses Room: dark chat layout; loads `diagnoses-room.css`; link back to `../../index.html` |
 | `src/renderer/scripts/constants.js` | Shared strings: **`APP_TITLE`**, **`SCREEN_DIAGNOSES_ROOM`**, button label |
 | `src/renderer/scripts/ai-helper.js` | `createAiChat({ messagesEl, onStreamingChange })` — conversation array, calls `electronAPI.openRouterChatStream`, updates assistant bubble from stream |
 | `src/renderer/scripts/diagnoses-room.js` | Diagnoses Room UI wiring: titles, composer, Enter/send, `AiHelper` integration |
-| `src/renderer/styles/app.css` | Home / glass theme |
+| `src/renderer/styles/app.css` | Home / pastel gradient theme |
 | `src/renderer/styles/diagnoses-room.css` | Diagnoses Room dark chat theme (bubbles, composer) |
 | `src/renderer/scripts/*.js` | ES modules (`import` from `constants.js`); no Node in renderer |
 | `src/renderer/assets/images/` | Images; **`logo.png`** is the window / taskbar / Dock icon via `main-window.js` |
@@ -104,7 +128,7 @@ NeuroAGI/
 | `install-deps.bat` | Windows: `npm.cmd install` + `pause` |
 | `.gitignore` | `node_modules/`, `dist/`, `out/`, `*.log`, `.DS_Store` |
 | `README.md` | Public repo overview, install, troubleshooting |
-| `CLAUDE.md` | This file |
+| `context.md` | This file |
 
 ---
 
@@ -333,6 +357,6 @@ Current **`window.electronAPI`**: `ping` + `openRouterChatStream` in `src/preloa
 - **App icon and branding:** `logo.png` wired in `main-window.js`.
 - **Two renderer screens:** home (`index.html`) → `screens/diagnoses-room/index.html`; shared `constants.js`.
 - **Git / Windows:** `.gitignore`, `install-deps.bat`, `run.bat`, `npm.cmd` pattern.
-- **README.md** for GitHub onboarding; **CLAUDE.md** for project context.
+- **README.md** for GitHub onboarding; **context.md** for project context.
 - **Project rename:** product and UI title **NeuroAGI**; npm package name **`neuro-agi`**.
 - **Restructured to `src/` layout** (following Flowter template): `src/main/` (index, ipc, windows, middleware, services), `src/preload/`, `src/renderer/` (with `screens/` for additional pages), `src/shared/` (IPC channels). Added `scripts/start-electron.js`, `.vscode/launch.json`. Electron moved to `devDependencies`.

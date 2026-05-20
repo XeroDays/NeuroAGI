@@ -99,7 +99,7 @@ If PowerShell shows **"running scripts is disabled"** when you run `npm`:
 │   └── launch.json              # Debug Main Process
 ├── run.bat
 ├── install-deps.bat
-├── CLAUDE.md
+├── context.md
 └── README.md
 ```
 
