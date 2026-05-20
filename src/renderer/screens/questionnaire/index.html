@@ -5,19 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'">
   <title>NeuroAGI</title>
-  <link rel="stylesheet" href="../../styles/app.css">
+  <link rel="stylesheet" href="../../styles/questionnaire.css">
 </head>
-<body class="app-shell">
-  <header class="app-header glass-bar">
-    <a class="glass-button-link" href="../../index.html">Back</a>
-    <h1 id="app-title" class="app-title"></h1>
+<body class="q-shell">
+  <header class="q-header">
+    <a class="q-back" href="../../index.html">Back</a>
+    <div class="q-header-titles">
+      <h1 id="app-title" class="q-brand"></h1>
+      <span id="screen-title" class="q-screen"></span>
+    </div>
   </header>
-  <main class="app-main">
-    <section class="glass-panel" aria-labelledby="screen-title">
-      <h2 id="screen-title"></h2>
-      <p id="summary" class="muted"></p>
-      <div id="questions" class="questionnaire-list"></div>
-    </section>
+  <main class="q-main">
+    <p id="summary" class="q-summary"></p>
+    <div id="q-status" class="q-status">Loading questions...</div>
+    <form id="q-form" class="q-grid" hidden></form>
+    <div id="q-actions" class="q-actions" hidden>
+      <button type="button" id="q-submit" class="q-submit">Submit</button>
+    </div>
   </main>
   <script type="module" src="../../scripts/questionnaire.js"></script>
 </body>

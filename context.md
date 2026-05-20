@@ -39,9 +39,9 @@ src/
 │   ├── middlewares/
 │   │   └── collector-middleware.js # StartReportcollection({ issue, gender, age }) — entry from home screen
 │   ├── helpers/
-│   │   └── query-generator-helper.js # GenerateQuestionnaireLlmQuery({ issue, gender, age }) — builds LLM prompts
+│   │   └── query-generator-helper.js # GenerateQuestionnaireLLMQuery({ issue, gender, age }) — builds intake-doctor prompt that returns a JSON array of questions
 │   ├── services/
-│   │   └── api-helper.js     # streamChat() → OpenRouter HTTPS SSE; reads process.env.OPENROUTER_API_KEY (orphan — not wired)
+│   │   └── api-helper.js     # streamChat() (SSE) + chatCompletion() (non-streaming JSON); reads process.env.OPENROUTER_API_KEY
 │   └── windows/
 │       └── main-window.js    # BrowserWindow: 800x600, hidden until ready, preload + contextIsolation
 ├── preload/
@@ -56,10 +56,11 @@ src/
 │   ├── scripts/
 │   │   ├── constants.js      # APP_TITLE, SCREEN_QUESTIONNAIRE, SCREEN_DIAGNOSES_ROOM, labels
 │   │   ├── app.js            # Home screen: populates UI, navigates to questionnaire with issue/gender/age params
-│   │   ├── questionnaire.js  # Questionnaire screen: reads query params, shows summary
+│   │   ├── questionnaire.js  # Questionnaire screen: calls startReportCollection on load, renders per-type controls, collects answers on submit
 │   │   └── diagnoses-room.js # Diagnoses Room screen: sets titles only (chat logic removed)
 │   ├── styles/
 │   │   ├── app.css           # Home screen pastel theme
+│   │   ├── questionnaire.css # Questionnaire dark theme + responsive grid
 │   │   └── diagnoses-room.css # Chat screen dark theme
 │   └── assets/
 │       ├── images/
@@ -84,10 +85,17 @@ src/
 
 1. User types health issue in text input, selects gender and age from dropdowns
 2. Clicks submit button (arrow icon)
-3. `app.js` calls `window.electronAPI.startReportCollection({ issue, gender, age })` → IPC `START_REPORT_COLLECTION`
-4. Main process: `register.js` invokes `StartReportcollection()` in `collector-middleware.js`
-5. After the call resolves, `app.js` builds query string (`?issue=...&gender=...&age=...`) and navigates to `screens/questionnaire/index.html`
-6. `questionnaire.js` reads the query params and renders a summary (questions list is currently a placeholder)
+3. `app.js` builds query string (`?issue=...&gender=...&age=...`) and navigates to `screens/questionnaire/index.html` (no IPC call from home — avoids freezing while LLM responds)
+
+### Questionnaire screen → LLM question generation
+
+1. `questionnaire.js` on `DOMContentLoaded` reads `issue`, `gender`, `age` from URL params, fills the summary, and shows a `Loading questions…` status
+2. It calls `window.electronAPI.startReportCollection({ issue, gender, age })` → IPC `START_REPORT_COLLECTION`
+3. Main process: `register.js` invokes `StartReportcollection()` in `collector-middleware.js`
+4. The middleware builds the prompt via `GenerateQuestionnaireLLMQuery()` and calls `chatCompletion()` in `api-helper.js` (non-streaming OpenRouter request)
+5. The raw LLM string is stripped of markdown code fences, sliced from first `[` to last `]`, and `JSON.parse`d. On success the middleware returns `{ ok: true, issue, gender, age, questions }`; on failure it returns `{ ok: false, error }`
+6. `questionnaire.js` hides the status box, reveals `#q-form`, and renders one `<section class="q-card q-card--{type}">` per question with type-specific controls; reveals the Submit button
+7. Submit click collects all answers (`{ question, type, value }[]`) and currently just `console.log`s them — next destination/middleware is TBD
 
 ### Chat streaming (Diagnoses Room ↔ OpenRouter) — **CURRENTLY DISABLED**
 
@@ -121,6 +129,52 @@ To re-enable: re-add the channels, re-expose `openRouterChatStream` in preload, 
 
 ---
 
+## LLM prompts
+
+### `GenerateQuestionnaireLLMQuery({ issue, gender, age })`
+
+**File:** `src/main/helpers/query-generator-helper.js`
+
+Builds the prompt that asks an LLM to generate medical intake follow-up questions based on the user's initial issue, age, and gender. Inputs are sanitized: missing/empty `issue` falls back to `"an unspecified health issue"`, `gender` defaults to `"male"`, `age` defaults to `"30"`.
+
+**Persona:** highly experienced medical doctor, licensed physician, PhD-level clinical specialist.
+
+**Task:** generate intelligent, medically relevant follow-up questions covering symptoms, history, severity, triggers, duration, lifestyle, medications, and risk indicators.
+
+**Allowed question types:** `single_select`, `multi_select`, `slider`, `range`, `text`.
+
+**Rules baked into the prompt:**
+- Selectable questions must include an `"Other"` option
+- Some questions should use sliders for severity / emotional state
+- Some should allow multi-symptom selection
+- Include duration, frequency, pain level, mood, sleep, stress where relevant
+- No duplicates, no padding — only medically meaningful questions
+- Adapt dynamically to the reported issue
+
+**Output contract:** the LLM must return **only** a valid JSON array (no markdown, no comments, no explanations). Example shapes:
+
+```json
+[
+  {
+    "question": "How severe is your pain currently?",
+    "type": "slider",
+    "min": 0,
+    "max": 10,
+    "step": 1,
+    "labels": { "min": "No pain", "max": "Worst pain" }
+  },
+  {
+    "question": "Which symptoms are you experiencing?",
+    "type": "multi_select",
+    "options": ["Fever", "Headache", "Fatigue", "Nausea", "Other"]
+  }
+]
+```
+
+**Consumers:** wired through `src/main/middlewares/collector-middleware.js`. `StartReportcollection({ issue, gender, age })` builds the prompt with this helper, sends it to OpenRouter via `chatCompletion()` (non-streaming) in `src/main/services/api-helper.js`, strips any markdown code fences from the response, slices from the first `[` to the last `]`, and `JSON.parse`s the result. The parsed array is returned over IPC to `src/renderer/scripts/questionnaire.js` which renders one card per question.
+
+---
+
 ## Design
 
 ### Home screen (`app.css`)
@@ -133,6 +187,28 @@ To re-enable: re-add the channels, re-expose `openRouterChatStream` in preload, 
 | **Submit button** | Dark rounded square (`10px`) inside input, right-aligned; white arrow SVG icon; no hover animation |
 | **Dropdowns (gender/age)** | Frosted translucent white (`rgba(255,255,255,0.65)`), rounded (`10px`), grey text, custom SVG chevron; right-aligned below input, auto-width |
 | **Dropdown options** | White background, light purple highlight on selected |
+
+### Questionnaire screen (`questionnaire.css`)
+
+Pastel-gradient theme aligned with the **Home screen** (`app.css`) — same background, glassmorphism, and accent purple. The form is a **responsive CSS Grid** that auto-arranges question cards of varying widths, edge-to-edge across the full window width.
+
+| Element | Style |
+|---------|-------|
+| **Background** | Same pastel gradient as home (pink → lavender → light blue, `135deg`); subtle radial glow overlay |
+| **Text color** | White primary (`rgba(255,255,255,0.96)`), white-muted secondary; text shadows for readability over the gradient |
+| **Header** | Glass bar (`rgba(255,255,255,0.1)` + 18px blur), Back link as a glass pill on the left, centered brand + screen subtitle |
+| **Layout** | Edge-to-edge — no `max-width` cap, `1rem` horizontal padding only |
+| **Grid** | `display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); grid-auto-flow: dense; gap: 1rem;` |
+| **Card width per type** | `single_select` → `span 1`; `multi_select`, `slider`, `range`, `text` → `span 2`; below `520px` all collapse to full width |
+| **Card** | Glass: `rgba(255,255,255,0.14)` background + 18px blur, white border, soft shadow + inner highlight, `14px` radius |
+| **Question heading** | `0.95rem`, semibold, white with subtle text shadow |
+| **Option row (radio/checkbox)** | Solid white-translucent (`rgba(255,255,255,0.55)`) pill, dark-grey label text, `10px` radius; hover brightens; native control uses purple accent (`#b48cd2`) |
+| **"Other" option (single_select only)** | Replaces the visible label with a dashed-underline text input; typing in it auto-checks the paired hidden radio and uses the typed text as the value |
+| **Text input / textarea** | Solid white, no border, `12px` radius, soft shadow; focus ring uses purple accent |
+| **Slider** | Native `<input type="range">` with purple accent, live numeric value on the right (white), optional `labels.min` / `labels.max` under the track |
+| **Range (two thumbs)** | Two separate range rows labelled `Min` / `Max`; final value normalized to `{ min, max }` on collect |
+| **Submit** | Dark pill button (`#555`, white text), right-aligned at the end of the grid; lifts on hover; disables itself after click |
+| **Status / error** | Centered glass card; error state tinted soft red |
 
 ### Diagnoses Room (`diagnoses-room.css`)
 
