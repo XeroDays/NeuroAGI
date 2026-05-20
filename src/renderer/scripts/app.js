@@ -27,10 +27,17 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (btn) {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
       const issue = input?.value?.trim() || '';
       const gender = genderSelect?.value || 'male';
       const age = ageSelect?.value || '30';
+
+      try {
+        await window.electronAPI?.startReportCollection?.({ issue, gender, age });
+      } catch (err) {
+        console.error('startReportCollection failed:', err);
+      }
+
       const query = new URLSearchParams();
       if (issue) query.set('issue', issue);
       query.set('gender', gender);

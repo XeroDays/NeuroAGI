@@ -4,12 +4,16 @@ const CH = {
   PING: "neuroagi:ping",
   OPENROUTER_STREAM_START: "openrouter-stream-start",
   OPENROUTER_STREAM_EVENT: "openrouter-stream-event",
+  START_REPORT_COLLECTION: "neuroagi:start-report-collection",
 };
 
 let streamCounter = 0;
 
 contextBridge.exposeInMainWorld("electronAPI", {
   ping: () => ipcRenderer.invoke(CH.PING),
+
+  startReportCollection: (payload) =>
+    ipcRenderer.invoke(CH.START_REPORT_COLLECTION, payload),
 
   openRouterChatStream({ messages, onChunk, onDone, onError }) {
     const requestId = `stream-${++streamCounter}-${Date.now()}`;

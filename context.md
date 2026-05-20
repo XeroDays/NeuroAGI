@@ -35,8 +35,9 @@ src/
 ├── main/
 │   ├── index.js              # Bootstrap: dotenv config, hide menu, register IPC, create window
 │   ├── ipc/
-│   │   └── register.js       # IPC handlers: ping (handle) + OpenRouter stream (on/send)
-│   ├── middleware/            # Business logic modules (add here as features grow)
+│   │   └── register.js       # IPC handlers: ping, startReportCollection, OpenRouter stream
+│   ├── middlewares/
+│   │   └── collector-middleware.js # StartReportcollection({ issue, gender, age }) — entry from home screen
 │   ├── services/
 │   │   └── api-helper.js     # streamChat() → OpenRouter HTTPS SSE; reads process.env.OPENROUTER_API_KEY
 │   └── windows/
@@ -79,7 +80,9 @@ src/
 
 1. User types health issue in text input, selects gender and age from dropdowns
 2. Clicks submit button (arrow icon)
-3. `app.js` builds query string (`?issue=...&gender=...&age=...`) and navigates to `screens/diagnoses-room/index.html`
+3. `app.js` calls `window.electronAPI.startReportCollection({ issue, gender, age })` → IPC `START_REPORT_COLLECTION`
+4. Main process: `register.js` invokes `StartReportcollection()` in `collector-middleware.js`
+5. After the call resolves, `app.js` builds query string (`?issue=...&gender=...&age=...`) and navigates to `screens/diagnoses-room/index.html`
 
 ### Chat streaming (Diagnoses Room ↔ OpenRouter)
 
