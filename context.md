@@ -24,7 +24,7 @@
 | Start | `npm start` → `scripts/start-electron.js` |
 | API | OpenRouter (streaming chat completions via SSE) |
 | Env | `.env` file at project root (git-ignored); loads via `dotenv` at top of `src/main/index.js` |
-| Dependencies | `electron` (devDep), `dotenv` (dep) |
+| Dependencies | `electron` (devDep), `dotenv` (dep), `jsonrepair` (dep) |
 
 ---
 
@@ -37,7 +37,7 @@ src/
 │   ├── ipc/
 │   │   └── register.js       # IPC handlers: ping, startReportCollection, openDevTools
 │   ├── middlewares/
-│   │   └── collector-middleware.js # StartReportcollection({ issue, gender, age }) — entry from home screen
+│   │   └── collector-middleware.js # StartReportcollection({ issue, gender, age }) — entry from home screen; tiered JSON parser (strict → normalize → jsonrepair)
 │   ├── helpers/
 │   │   └── query-generator-helper.js # GenerateQuestionnaireLLMQuery({ issue, gender, age }) — builds intake-doctor prompt that returns a JSON array of questions
 │   ├── services/
@@ -100,7 +100,11 @@ src/
 2. It calls `window.electronAPI.startReportCollection({ issue, gender, age })` → IPC `START_REPORT_COLLECTION`
 3. Main process: `register.js` invokes `StartReportcollection()` in `collector-middleware.js`
 4. The middleware builds the prompt via `GenerateQuestionnaireLLMQuery()` and calls `chatCompletion()` in `api-helper.js` (non-streaming OpenRouter request)
-5. The raw LLM string is stripped of markdown code fences, sliced from first `[` to last `]`, and `JSON.parse`d. On success the middleware returns `{ ok: true, issue, gender, age, questions }`; on failure it returns `{ ok: false, error }`
+5. The raw LLM string is stripped of markdown code fences and sliced from first `[` to last `]`. It is then passed through a **three-tier parser**:
+   - **Tier 1 — strict `JSON.parse`** (happy path; no extra cost when the model returns clean JSON)
+   - **Tier 2 — normalize then `JSON.parse`** (replaces smart quotes with ASCII, strips `//` and `/* */` comments, removes trailing commas)
+   - **Tier 3 — `jsonrepair` then `JSON.parse`** (handles broader structural damage)
+   On any tier failure the parser logs an 80-char window around the bad character; if all three tiers fail the full raw response is logged and an error propagates. On success the middleware returns `{ ok: true, issue, gender, age, questions }`; on failure it returns `{ ok: false, error }`
 6. `questionnaire.js` hides the status box, reveals `#q-form`, and renders one `<section class="q-card q-card--{type}">` per question with type-specific controls; reveals the Submit button
 7. Submit click collects all answers (`{ question, type, value }[]`) and currently just `console.log`s them — next destination/middleware is TBD
 
