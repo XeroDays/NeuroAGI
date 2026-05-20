@@ -52,8 +52,7 @@ src/
 │   ├── scripts/
 │   │   ├── constants.js      # APP_TITLE, SCREEN_DIAGNOSES_ROOM, labels
 │   │   ├── app.js            # Home screen: populates UI, navigates with issue/gender/age params
-│   │   ├── diagnoses-room.js # Chat screen: composer, send, AiHelper integration
-│   │   └── ai-helper.js      # createAiChat(): conversation history, streaming bubbles via IPC
+│   │   └── diagnoses-room.js # Diagnoses Room screen: sets titles only (chat logic removed)
 │   ├── styles/
 │   │   ├── app.css           # Home screen pastel theme
 │   │   └── diagnoses-room.css # Chat screen dark theme
@@ -84,15 +83,21 @@ src/
 4. Main process: `register.js` invokes `StartReportcollection()` in `collector-middleware.js`
 5. After the call resolves, `app.js` builds query string (`?issue=...&gender=...&age=...`) and navigates to `screens/diagnoses-room/index.html`
 
-### Chat streaming (Diagnoses Room ↔ OpenRouter)
+### Chat streaming (Diagnoses Room ↔ OpenRouter) — **CURRENTLY DISABLED**
 
-1. User types message → `diagnoses-room.js` calls `chat.sendUserMessage(text)`
-2. `ai-helper.js` appends user bubble, calls `window.electronAPI.openRouterChatStream({ messages, onChunk, onDone, onError })`
-3. Preload generates `requestId`, listens for `openrouter-stream-event`, sends `openrouter-stream-start` to main
-4. `src/main/ipc/register.js` receives, calls `api-helper.js` `streamChat()`
-5. `api-helper.js` reads `process.env.OPENROUTER_API_KEY`, streams from OpenRouter SSE
-6. Chunks sent back via `event.sender.send('openrouter-stream-event', { requestId, type, text })`
-7. Preload forwards to `onChunk`/`onDone`/`onError` callbacks → `ai-helper.js` updates assistant bubble
+The chat feature has been removed from the renderer:
+- `src/renderer/scripts/ai-helper.js` was **deleted**
+- `src/renderer/scripts/diagnoses-room.js` no longer wires the composer/send (only sets the titles)
+- Preload no longer exposes `openRouterChatStream`
+- `register.js` no longer handles `OPENROUTER_STREAM_START`
+- Channels `OPENROUTER_STREAM_*` removed from `src/shared/ipc/channels.js`
+
+Still present (orphan, ready to reuse):
+- `src/main/services/api-helper.js` — `streamChat()` + `OPENROUTER_MODEL`
+- `src/renderer/screens/diagnoses-room/index.html` — chat DOM (`#chat-messages`, `#chat-input`, `#chat-send`) still present but inert
+- `src/renderer/styles/diagnoses-room.css` — full dark chat theme
+
+To re-enable: re-add the channels, re-expose `openRouterChatStream` in preload, re-register the handler in `register.js`, and re-add a renderer module that wires the DOM to it.
 
 ### Adding a new IPC channel
 

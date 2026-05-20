@@ -1,13 +1,6 @@
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const OPENROUTER_MODEL = 'qwen/qwen3.6-plus-preview:free';
+const OPENROUTER_MODEL = 'baidu/cobuddy:free';
 
-/**
- * Stream chat completions from OpenRouter (SSE).
- * @param {Array<{ role: string, content: string }>} messages
- * @param {(text: string) => void} onDelta
- * @param {() => void} onDone
- * @param {(err: Error) => void} onError
- */
 async function streamChat(messages, onDelta, onDone, onError) {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
@@ -32,7 +25,7 @@ async function streamChat(messages, onDelta, onDone, onError) {
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`,
-        'HTTP-Referer': 'https://github.com/neuroagi',
+        'HTTP-Referer': 'https://github.com/xerodays/neuroAGI',
         'X-Title': 'NeuroAGI'
       },
       body: JSON.stringify({
@@ -85,7 +78,6 @@ async function streamChat(messages, onDelta, onDone, onError) {
             onDelta(delta);
           }
         } catch {
-          // ignore non-JSON SSE lines
         }
       }
     }
@@ -100,7 +92,6 @@ async function streamChat(messages, onDelta, onDone, onError) {
             const delta = json.choices?.[0]?.delta?.content;
             if (typeof delta === 'string' && delta.length > 0) onDelta(delta);
           } catch {
-            /* ignore */
           }
         }
       }
