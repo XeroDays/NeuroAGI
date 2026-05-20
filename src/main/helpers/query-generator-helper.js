@@ -24,6 +24,7 @@ function GenerateQuestionnaireLLMQuery ({ issue, gender, age } = {}) {
   
   Requirements:
   - Ask concise, professional, patient-friendly questions.
+  - Ask questions as many as possible but should be relavant.
   - Dynamically adapt questions based on the reported issue.
   - Include a mix of question types when appropriate:
     - single_select

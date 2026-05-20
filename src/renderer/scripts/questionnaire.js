@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     actionsEl.hidden = false;
   } catch (err) {
     console.error('Failed to load questionnaire:', err);
-    showError(err?.message || String(err));
+    showError(humanizeError(err));
   }
 
   submitBtn?.addEventListener('click', async () => {
@@ -73,19 +73,46 @@ document.addEventListener('DOMContentLoaded', async () => {
       console.error('SubmitQuestionnaire failed:', err);
       submitBtn.disabled = false;
       submitBtn.textContent = 'Submit';
-      showError(err?.message || String(err));
+      showError(humanizeError(err));
     }
   });
 
   function showError(msg) {
     if (!statusEl) return;
-    statusEl.textContent = msg;
     statusEl.classList.add('q-status--error');
+    statusEl.innerHTML = '';
+
+    const card = document.createElement('div');
+    card.className = 'q-error-card';
+
+    const p = document.createElement('p');
+    p.className = 'q-error-message';
+    p.textContent = msg;
+
+    const retry = document.createElement('button');
+    retry.type = 'button';
+    retry.className = 'q-retry';
+    retry.textContent = 'Retry';
+    retry.addEventListener('click', () => window.location.reload());
+
+    card.append(p, retry);
+    statusEl.append(card);
     statusEl.hidden = false;
     formEl.hidden = true;
     actionsEl.hidden = true;
   }
 });
+
+function humanizeError(err) {
+  const msg = err?.message || String(err);
+  if (/\b429\b/.test(msg) || /rate-?limit/i.test(msg)) {
+    return 'The AI service is temporarily rate-limited. Please retry in a moment.';
+  }
+  if (/network|fetch failed|ENOTFOUND|ETIMEDOUT/i.test(msg)) {
+    return 'Network error reaching the AI service. Check your connection and retry.';
+  }
+  return msg;
+}
 
 function renderQuestions(questions) {
   const formEl = document.getElementById('q-form');

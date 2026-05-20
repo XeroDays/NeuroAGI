@@ -84,9 +84,10 @@ src/
 
 ### Home screen → Questionnaire navigation
 
-1. User types health issue in text input, selects gender and age from dropdowns
-2. Clicks the submit button (arrow icon) **or** presses **Ctrl+Enter** / **Cmd+Enter** while the health input has focus — `app.js` listens for the shortcut on the input and synthesises a click on the submit button
-3. `app.js` builds query string (`?issue=...&gender=...&age=...`) and navigates to `screens/questionnaire/index.html` (no IPC call from home — avoids freezing while LLM responds)
+1. On load, `app.js` auto-focuses the health input (`input.focus()` after age dropdown is populated; the input also has the `autofocus` attribute as a fallback)
+2. User types health issue in text input, selects gender and age from dropdowns
+3. Clicks the submit button (arrow icon) **or** presses **Ctrl+Enter** / **Cmd+Enter** while the health input has focus — `app.js` listens for the shortcut on the input and synthesises a click on the submit button
+4. `app.js` builds query string (`?issue=...&gender=...&age=...`) and navigates to `screens/questionnaire/index.html` (no IPC call from home — avoids freezing while LLM responds)
 
 ### Settings (gear icon) → DevTools toggle
 
@@ -106,6 +107,7 @@ src/
    - **Tier 2 — normalize then `JSON.parse`** (replaces smart quotes with ASCII, strips `//` and `/* */` comments, removes trailing commas)
    - **Tier 3 — `jsonrepair` then `JSON.parse`** (handles broader structural damage)
    On any tier failure the parser logs an 80-char window around the bad character; if all three tiers fail the full raw response is logged and an error propagates. On success the middleware returns `{ ok: true, issue, gender, age, questions }`; on failure it returns `{ ok: false, error }`
+6a. **Failure → Retry**: when the IPC returns `{ ok: false }` (e.g. 429 from OpenRouter, network error, parser exhaustion), the questionnaire screen swaps the centered status overlay to a friendly message (translated by `humanizeError()` — 429 → "The AI service is temporarily rate-limited…", network errors → "Network error reaching the AI service…") plus a **red Retry button**. The button just calls `window.location.reload()`, which restarts the whole flow from scratch (re-fires `DOMContentLoaded`, re-spawns the spinner, re-invokes IPC)
 6. `questionnaire.js` hides the status box, reveals `#q-form`, and renders one `<section class="q-card q-card--{type}">` per question with type-specific controls; reveals the Submit button
 7. Submit click collects all answers (`{ question, type, value }[]`), then proceeds to the next workflow
 

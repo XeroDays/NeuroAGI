@@ -1,5 +1,5 @@
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const OPENROUTER_MODEL = 'baidu/cobuddy:free';
+const OPENROUTER_MODEL = 'minimax/minimax-m2.5:free';
 
 async function streamChat(messages, onDelta, onDone, onError) {
   const apiKey = process.env.OPENROUTER_API_KEY;
