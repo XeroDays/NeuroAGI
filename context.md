@@ -85,7 +85,7 @@ src/
 ### Home screen → Questionnaire navigation
 
 1. User types health issue in text input, selects gender and age from dropdowns
-2. Clicks submit button (arrow icon)
+2. Clicks the submit button (arrow icon) **or** presses **Ctrl+Enter** / **Cmd+Enter** while the health input has focus — `app.js` listens for the shortcut on the input and synthesises a click on the submit button
 3. `app.js` builds query string (`?issue=...&gender=...&age=...`) and navigates to `screens/questionnaire/index.html` (no IPC call from home — avoids freezing while LLM responds)
 
 ### Settings (gear icon) → DevTools toggle
@@ -116,7 +116,7 @@ src/
 3. Main process: `register.js` invokes `SubmitQuestionnaire()` in `collector-middleware.js`
 4. The middleware logs a structured Q&A dump to the main-process console (one `Q{n} [type] text` line and one `A{n}: value` line per question, framed by `=== Q&A dump ===` markers) and returns `{ ok: true }`
 5. On success the renderer navigates to `screens/doctor/index.html?issue=…&gender=…&age=…`; on failure the Submit button re-enables and the centered error card appears
-6. `doctor.js` reads the URL params and renders the patient summary; the body is a placeholder card ("We're consulting the doctor") pending the next step (e.g. diagnostic report generation)
+6. `doctor.js` reads the URL params and renders the patient summary; the body is a placeholder card ("We're consulting the doctor") pending the next step (e.g. diagnostic report generation). The Back link in the doctor header points to the **home screen** (`../../index.html`), not back to the questionnaire — going back to a stale questionnaire after a submit would re-trigger the LLM and confuse the user
 
 ### Chat streaming (Diagnoses Room ↔ OpenRouter) — **CURRENTLY DISABLED**
 

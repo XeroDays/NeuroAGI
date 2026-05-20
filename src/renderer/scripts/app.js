@@ -40,6 +40,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  if (input && btn) {
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+        event.preventDefault();
+        btn.click();
+      }
+    });
+  }
+
   const settingsBtn = document.getElementById('btn-settings');
   if (settingsBtn) {
     settingsBtn.addEventListener('click', () => {
