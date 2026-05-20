@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'">
+  <title>NeuroAGI</title>
+  <link rel="stylesheet" href="../../styles/app.css">
+</head>
+<body class="app-shell">
+  <header class="app-header glass-bar">
+    <a class="glass-button-link" href="../../index.html">Back</a>
+    <h1 id="app-title" class="app-title"></h1>
+  </header>
+  <main class="app-main">
+    <section class="glass-panel" aria-labelledby="screen-title">
+      <h2 id="screen-title"></h2>
+      <p id="summary" class="muted"></p>
+      <div id="questions" class="questionnaire-list"></div>
+    </section>
+  </main>
+  <script type="module" src="../../scripts/questionnaire.js"></script>
+</body>
+</html>

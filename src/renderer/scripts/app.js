@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (issue) query.set('issue', issue);
       query.set('gender', gender);
       query.set('age', age);
-      window.location.href = `screens/diagnoses-room/index.html?${query}`;
+      window.location.href = `screens/questionnaire/index.html?${query}`;
     });
   }
 });

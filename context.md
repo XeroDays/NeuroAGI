@@ -35,11 +35,13 @@ src/
 ├── main/
 │   ├── index.js              # Bootstrap: dotenv config, hide menu, register IPC, create window
 │   ├── ipc/
-│   │   └── register.js       # IPC handlers: ping, startReportCollection, OpenRouter stream
+│   │   └── register.js       # IPC handlers: ping, startReportCollection
 │   ├── middlewares/
 │   │   └── collector-middleware.js # StartReportcollection({ issue, gender, age }) — entry from home screen
+│   ├── helpers/
+│   │   └── query-generator-helper.js # GenerateQuestionnaireLlmQuery({ issue, gender, age }) — builds LLM prompts
 │   ├── services/
-│   │   └── api-helper.js     # streamChat() → OpenRouter HTTPS SSE; reads process.env.OPENROUTER_API_KEY
+│   │   └── api-helper.js     # streamChat() → OpenRouter HTTPS SSE; reads process.env.OPENROUTER_API_KEY (orphan — not wired)
 │   └── windows/
 │       └── main-window.js    # BrowserWindow: 800x600, hidden until ready, preload + contextIsolation
 ├── preload/
@@ -47,11 +49,14 @@ src/
 ├── renderer/
 │   ├── index.html            # Home screen
 │   ├── screens/
+│   │   ├── questionnaire/
+│   │   │   └── index.html    # Questionnaire screen (shown after home submit)
 │   │   └── diagnoses-room/
-│   │       └── index.html    # Diagnoses Room chat screen
+│   │       └── index.html    # Diagnoses Room chat screen (orphan — not reachable from app)
 │   ├── scripts/
-│   │   ├── constants.js      # APP_TITLE, SCREEN_DIAGNOSES_ROOM, labels
-│   │   ├── app.js            # Home screen: populates UI, navigates with issue/gender/age params
+│   │   ├── constants.js      # APP_TITLE, SCREEN_QUESTIONNAIRE, SCREEN_DIAGNOSES_ROOM, labels
+│   │   ├── app.js            # Home screen: populates UI, navigates to questionnaire with issue/gender/age params
+│   │   ├── questionnaire.js  # Questionnaire screen: reads query params, shows summary
 │   │   └── diagnoses-room.js # Diagnoses Room screen: sets titles only (chat logic removed)
 │   ├── styles/
 │   │   ├── app.css           # Home screen pastel theme
@@ -75,13 +80,14 @@ src/
 2. `src/main/index.js` runs: loads `.env` via `dotenv`, hides menu, registers IPC handlers, creates main window
 3. `main-window.js` creates BrowserWindow (hidden), loads `src/renderer/index.html`, shows on `ready-to-show`
 
-### Home screen → Diagnoses Room navigation
+### Home screen → Questionnaire navigation
 
 1. User types health issue in text input, selects gender and age from dropdowns
 2. Clicks submit button (arrow icon)
 3. `app.js` calls `window.electronAPI.startReportCollection({ issue, gender, age })` → IPC `START_REPORT_COLLECTION`
 4. Main process: `register.js` invokes `StartReportcollection()` in `collector-middleware.js`
-5. After the call resolves, `app.js` builds query string (`?issue=...&gender=...&age=...`) and navigates to `screens/diagnoses-room/index.html`
+5. After the call resolves, `app.js` builds query string (`?issue=...&gender=...&age=...`) and navigates to `screens/questionnaire/index.html`
+6. `questionnaire.js` reads the query params and renders a summary (questions list is currently a placeholder)
 
 ### Chat streaming (Diagnoses Room ↔ OpenRouter) — **CURRENTLY DISABLED**
 

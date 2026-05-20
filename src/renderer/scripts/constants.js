@@ -7,6 +7,9 @@ export const APP_TITLE = 'NeuroAGI';
 /** Second screen name (Diagnoses Room). */
 export const SCREEN_DIAGNOSES_ROOM = 'Diagnoses Room';
 
+/** Questionnaire screen (shown after submit from home). */
+export const SCREEN_QUESTIONNAIRE = 'Questionnaire';
+
 /** Home screen primary action. */
 export const LABEL_START_HUMAN_DIAGNOSTICS = 'Diagnose me';
 
