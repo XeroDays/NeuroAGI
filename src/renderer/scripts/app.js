@@ -39,4 +39,11 @@ document.addEventListener('DOMContentLoaded', () => {
       window.location.href = `screens/questionnaire/index.html?${query}`;
     });
   }
+
+  const settingsBtn = document.getElementById('btn-settings');
+  if (settingsBtn) {
+    settingsBtn.addEventListener('click', () => {
+      window.electronAPI?.openDevTools?.();
+    });
+  }
 });

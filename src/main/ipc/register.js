@@ -1,4 +1,4 @@
-const { ipcMain } = require("electron");
+const { ipcMain, BrowserWindow } = require("electron");
 const channels = require("../../shared/ipc/channels");
 const { StartReportcollection } = require("../middlewares/collector-middleware");
 
@@ -7,6 +7,12 @@ function registerIpcHandlers() {
 
   ipcMain.handle(channels.START_REPORT_COLLECTION, async (_event, payload) => {
     return StartReportcollection(payload || {});
+  });
+
+  ipcMain.handle(channels.OPEN_DEV_TOOLS, (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win) win.webContents.toggleDevTools();
+    return { ok: true };
   });
 }
 

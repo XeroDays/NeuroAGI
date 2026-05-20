@@ -35,7 +35,7 @@ src/
 ├── main/
 │   ├── index.js              # Bootstrap: dotenv config, hide menu, register IPC, create window
 │   ├── ipc/
-│   │   └── register.js       # IPC handlers: ping, startReportCollection
+│   │   └── register.js       # IPC handlers: ping, startReportCollection, openDevTools
 │   ├── middlewares/
 │   │   └── collector-middleware.js # StartReportcollection({ issue, gender, age }) — entry from home screen
 │   ├── helpers/
@@ -45,7 +45,7 @@ src/
 │   └── windows/
 │       └── main-window.js    # BrowserWindow: 800x600, hidden until ready, preload + contextIsolation
 ├── preload/
-│   └── index.js              # contextBridge → window.electronAPI { ping, openRouterChatStream }
+│   └── index.js              # contextBridge → window.electronAPI { ping, startReportCollection, openDevTools }
 ├── renderer/
 │   ├── index.html            # Home screen
 │   ├── screens/
@@ -86,6 +86,13 @@ src/
 1. User types health issue in text input, selects gender and age from dropdowns
 2. Clicks submit button (arrow icon)
 3. `app.js` builds query string (`?issue=...&gender=...&age=...`) and navigates to `screens/questionnaire/index.html` (no IPC call from home — avoids freezing while LLM responds)
+
+### Settings (gear icon) → DevTools toggle
+
+1. Home screen renders a fixed glass gear icon in the top-right (`#btn-settings` in `src/renderer/index.html`)
+2. Click handler in `app.js` calls `window.electronAPI.openDevTools()`
+3. Preload invokes IPC channel `OPEN_DEV_TOOLS`
+4. `register.js` handler resolves the calling `BrowserWindow` via `BrowserWindow.fromWebContents(event.sender)` and calls `win.webContents.toggleDevTools()` — clicking again hides DevTools
 
 ### Questionnaire screen → LLM question generation
 
@@ -187,6 +194,7 @@ Builds the prompt that asks an LLM to generate medical intake follow-up question
 | **Submit button** | Dark rounded square (`10px`) inside input, right-aligned; white arrow SVG icon; no hover animation |
 | **Dropdowns (gender/age)** | Frosted translucent white (`rgba(255,255,255,0.65)`), rounded (`10px`), grey text, custom SVG chevron; right-aligned below input, auto-width |
 | **Dropdown options** | White background, light purple highlight on selected |
+| **Settings (gear) icon** | Fixed `top: 1rem; right: 1rem`, `2.5rem` glass circle (`var(--glass-bg-strong)` + 18px blur, white border, soft shadow); rotates 30deg on hover; click toggles DevTools via IPC `OPEN_DEV_TOOLS` |
 
 ### Questionnaire screen (`questionnaire.css`)
 
