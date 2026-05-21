@@ -38,6 +38,9 @@ function GenerateQuestionnaireLLMQuery ({ issue, gender, age } = {}) {
   - Some questions should ask about duration, frequency, pain level, mood level, sleep quality, stress level, etc.
   - Avoid duplicate or unnecessary questions.
   - Prioritize medically meaningful questions that can improve diagnostic understanding.
+  - **Always state the unit of measurement in the question text whenever the answer is a quantity** — duration, frequency, length, weight, distance, temperature, count, etc. For example, write "How long does each episode typically last (in minutes)?" instead of "How long does each episode typically last?"; write "How much water do you drink per day (in liters)?" instead of "How much water do you drink per day?". A user reading the question in isolation must know exactly what unit to answer in.
+    - For "slider" and "range" types, the unit must be present in EITHER the question text OR both of "labels.min" / "labels.max" (preferred: in the question text). Bounds must be clinically reasonable for the chosen unit — do not pick arbitrarily large or small "min" / "max". For example, an episode duration that maxes out at 1440 should be phrased as "How long does each episode typically last (in minutes)?" with min: 0, max: 1440, labels.min: "0 min", labels.max: "24 h". A pain or severity scale should typically be 0-10, not 0-100.
+    - For "single_select" and "multi_select", if the options are numeric tokens (e.g. "30", "60", "90"), include the unit on each option ("30 minutes", "60 minutes", "90 minutes"). Numeric options without units are forbidden.
   
   Return ONLY valid JSON.
   
@@ -52,6 +55,17 @@ function GenerateQuestionnaireLLMQuery ({ issue, gender, age } = {}) {
       "labels": {
         "min": "No pain",
         "max": "Worst pain"
+      }
+    },
+    {
+      "question": "How long does each headache episode typically last (in minutes)?",
+      "type": "slider",
+      "min": 0,
+      "max": 1440,
+      "step": 5,
+      "labels": {
+        "min": "0 min",
+        "max": "24 h"
       }
     },
     {
@@ -105,6 +119,17 @@ function GenerateMergeQuestionnaireLLMQuery(questionnaireSets = []) {
   - Drop low-value, redundant, or trivially similar questions; keep only medically meaningful ones.
   - Maintain a healthy mix of question types where appropriate (single_select, multi_select, slider, range, text).
   - Do NOT invent new clinical territory the sources did not cover.
+
+  After producing the merged list, run a FINAL VALIDATION PASS over every question and apply the rules below before emitting. Output only the post-validation list.
+
+  Validation checklist (apply to each question one-by-one):
+  - **Clarity.** Every question must be self-contained and unambiguous. A user reading it in isolation must know exactly what is being asked, with no missing context.
+  - **Units (MANDATORY for any measurable quantity).** If the answer is a quantity (duration, frequency, length, weight, distance, temperature, count, dose, etc.), the unit MUST be stated in the question text (preferred) or in BOTH "labels.min" and "labels.max". If a sourced question lacks a unit, ADD the most clinically reasonable unit (headache-duration sliders → minutes; water intake → liters; weight → kg; temperature → Celsius; heart rate → bpm; pain → 0-10 scale with the labels naming the endpoints). Never leave a measurable question unit-less.
+  - **Sensible bounds.** For "slider" and "range", "min" and "max" must reflect realistic clinical values for the chosen unit. Cap nonsense bounds (e.g. a pain-level slider at 0-100 should be tightened to 0-10; a heart-rate slider at 0-1000 should be tightened to 30-220; an episode duration in minutes should not exceed 1440). "step" should be a sensible granularity for the unit (e.g. step: 5 for minutes-bound durations, step: 1 for 0-10 pain scales).
+  - **Option coherence.** For "single_select", options must be mutually exclusive. For "multi_select", options should be non-redundant findings. In both, "Other" MUST be the last option. Numeric options must carry a unit ("30 minutes", not "30").
+  - **Single intent.** Reject double-barreled questions (e.g. "How severe and how frequent are your episodes?") — split them into two questions or drop one half.
+  - **Type fit.** Verify the chosen "type" matches the answer shape. If a sourced question's "type" is wrong (e.g. a yes/no question typed as "text"), correct it to "single_select" with ["Yes", "No", "Other"]. If a frequency question is typed "text" but only has a discrete set of answers, convert it to "single_select".
+  - **Fix before dropping.** If a question fails one of the above and CAN be fixed by rewording, retyping, or adjusting bounds/units/options, fix it. Drop a question only if it is truly unfixable (e.g. nonsensical or no longer clinically relevant). Prefer fixing over dropping — the sources already paid the cost of generating it.
 
   Output contract:
   Return ONLY a valid JSON array using the exact schema above. Do not include explanations, markdown, comments, code fences, or any text outside the JSON array.`;

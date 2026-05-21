@@ -190,6 +190,7 @@ Builds the prompt that asks an LLM to generate medical intake follow-up question
 - No duplicates, no padding — only medically meaningful questions
 - Adapt dynamically to the reported issue
 - Injects the current request date/time ("For awareness, the current date and time of this request is …") right after the patient line, formatted via `toLocaleString('en-US', …)` with weekday, full date, hour/minute and short timezone — gives the model temporal context for symptom recency / seasonality without prompting it to confirm the date with the user
+- **Units are mandatory on any measurable question.** Quantitative answers (duration, frequency, length, weight, distance, temperature, count, dose, etc.) must state the unit in the question text (preferred) or in both `labels.min` / `labels.max` for slider/range types. Slider/range bounds must be clinically reasonable for the chosen unit (e.g. pain 0–10 not 0–100; heart rate 30–220 not 0–1000). Numeric `single_select` / `multi_select` options must carry units (`"30 minutes"`, not `"30"`). A second worked JSON example was added to the prompt body — a headache-duration slider with `min: 0, max: 1440, step: 5, labels.min: "0 min", labels.max: "24 h"` — so the model anchors on a unit-bearing slider shape
 
 **Output contract:** the LLM must return **only** a valid JSON array (no markdown, no comments, no explanations). Example shapes:
 
@@ -234,6 +235,7 @@ Builds the prompt the **master model** (`OPENROUTER_MASTER_MODEL` in `agi-servic
 - Drop low-value, redundant, or trivially similar questions; keep only medically meaningful ones.
 - Maintain a healthy mix of question types where appropriate.
 - Do NOT invent new clinical territory the sources didn't cover.
+- **Final validation pass** over every merged question before emitting. Checklist baked into the prompt body: clarity (self-contained, unambiguous); units mandatory on every measurable quantity, auto-add the most clinically reasonable unit if a sourced question is missing one; clinically sensible slider/range bounds (e.g. pain capped to 0–10, heart rate capped to 30–220, episode duration in minutes capped to 1440) with a sensible `step` for the unit; option coherence (mutually exclusive for `single_select`, non-redundant for `multi_select`, `"Other"` last, numeric options carry units); single intent (split or drop double-barreled questions); type-fit (e.g. yes/no questions typed as `text` get rewritten to `single_select` with `["Yes", "No", "Other"]`). Model is told to **fix before dropping** — rewording, retyping, and bound/unit adjustment are preferred to discarding a question outright.
 
 **Output contract:** the master model must return **only** a valid JSON array in the exact same schema as the worker outputs — no markdown fences, comments, explanations, or surrounding text. The same tiered `parseJsonArray` recovers from minor formatting issues.
 
