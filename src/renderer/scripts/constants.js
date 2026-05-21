@@ -4,9 +4,6 @@
  */
 export const APP_TITLE = 'Neuro AGI';
 
-/** Second screen name (Diagnoses Room). */
-export const SCREEN_DIAGNOSES_ROOM = 'Diagnoses Room';
-
 /** Questionnaire screen (shown after submit from home). */
 export const SCREEN_QUESTIONNAIRE = 'Questionnaire';
 

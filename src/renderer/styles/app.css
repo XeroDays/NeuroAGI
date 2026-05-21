@@ -67,13 +67,13 @@ body.app-shell::before {
   border-radius: 0;
 }
 
-.app-title {
-  margin: 0; 
-  font-size: clamp(1.85rem, 6vw, 2.75rem);
-  font-weight: 600;
-  letter-spacing: -0.03em;
-  text-align: center;
-  text-shadow: 0 1px 24px rgba(0, 0, 0, 0.35);
+.app-logo {
+  display: block;
+  width: clamp(180px, 32vw, 320px);
+  height: auto;
+  margin: 0 auto 0.25rem;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
 .app-main {
@@ -95,9 +95,6 @@ body.app-shell::before {
   width: 80%;
 }
 
-.home-stack .app-title {
-  line-height: 1.2;
-}
 
 .home-input-wrap {
   width: 100%;

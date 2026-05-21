@@ -1,6 +1,6 @@
 # NeuroAGI
 
-Desktop app built with [Electron](https://www.electronjs.org/) and JavaScript. Two screens: a cyan glass-style home view and a **Diagnoses Room** workspace.
+Desktop app built with [Electron](https://www.electronjs.org/) and JavaScript. A pastel glassmorphism flow: **Home** (issue + gender + age) → **Questionnaire** (LLM-generated intake) → **Laboratory** (LLM-generated lab-result inputs) → **Doctor** (summary).
 <img width="968" height="660" alt="image" src="https://github.com/user-attachments/assets/5b08d4f1-bd1d-4874-b628-e49985040343" />
 
 ## Requirements
@@ -19,20 +19,17 @@ npm start
 
 If the project folder path contains spaces, quote it, e.g. `cd "C:\path\to\NeuroAGI"`.
 
-### OpenRouter (Diagnoses Room chat)
+### OpenRouter API key
 
-The **Diagnoses Room** screen streams replies from [OpenRouter](https://openrouter.ai/).
+The Questionnaire and Laboratory screens call [OpenRouter](https://openrouter.ai/) from the main process via a multi-model fanout + master merge (see `src/main/services/agi-service.js`).
 
-Set your API key either as an environment variable **`OPENROUTER_API_KEY`** or by creating `OPENROUTER_API_KEY.txt` in the repo root (this file is git-ignored; never commit real keys):
+Create a **`.env`** file in the repo root (it is git-ignored — never commit real keys) with a single line:
 
-- **Windows (cmd):** `set OPENROUTER_API_KEY=sk-or-...` then `npm start`
-- **Windows (PowerShell):** `$env:OPENROUTER_API_KEY="sk-or-..."; npm start`
-- **macOS / Linux:** `export OPENROUTER_API_KEY=sk-or-...` then `npm start`
+```
+OPENROUTER_API_KEY=sk-or-...
+```
 
-File option:
-- Put the key as a single line inside `OPENROUTER_API_KEY.txt` (repo root).
-
-The default model is configured in **`api-helper.js`** (`OPENROUTER_MODEL`).
+The file is loaded via `dotenv` at the top of `src/main/index.js`. The worker model list (`OPENROUTER_WORKER_MODELS`) and the master model (`OPENROUTER_MASTER_MODEL`) are configured in `src/main/services/agi-service.js`.
 
 > **Note:** If the GitHub repository is still named differently (e.g. `Open-Health`), use that URL and `cd` into the folder name you get after clone.
 
@@ -64,42 +61,53 @@ If PowerShell shows **"running scripts is disabled"** when you run `npm`:
 
 ```
 ├── package.json
+├── .env                              # OPENROUTER_API_KEY (git-ignored)
 ├── scripts/
-│   └── start-electron.js       # Spawns Electron cleanly
+│   └── start-electron.js             # Spawns Electron cleanly
 ├── src/
 │   ├── main/
-│   │   ├── index.js             # App bootstrap (lifecycle, IPC, window)
+│   │   ├── index.js                  # App bootstrap (dotenv, IPC, window)
 │   │   ├── ipc/
-│   │   │   └── register.js      # IPC handler registration
+│   │   │   └── register.js           # IPC handler registration
+│   │   ├── middlewares/
+│   │   │   └── collector-middleware.js # StartReportcollection / SubmitQuestionnaire / GotoLaboratory / SubmitLaboratory + tiered JSON parser
+│   │   ├── helpers/
+│   │   │   └── query-generator-helper.js # LLM prompt builders (intake, merge, laboratory)
+│   │   ├── services/
+│   │   │   ├── api-helper.js         # OpenRouter transport: chatCompletion / streamChat
+│   │   │   └── agi-service.js        # Multi-model fanout + master Nemotron merge
 │   │   └── windows/
-│   │       └── main-window.js   # BrowserWindow creation
+│   │       └── main-window.js        # BrowserWindow creation
 │   ├── preload/
-│   │   └── index.js             # contextBridge → window.electronAPI
+│   │   └── index.js                  # contextBridge → window.electronAPI
 │   ├── renderer/
-│   │   ├── index.html           # Home screen (glass UI)
+│   │   ├── index.html                # Home screen (glass UI)
 │   │   ├── screens/
 │   │   │   ├── questionnaire/
-│   │   │   │   └── index.html   # Questionnaire screen
+│   │   │   │   └── index.html        # Questionnaire screen
+│   │   │   ├── laboratory/
+│   │   │   │   └── index.html        # Laboratory screen
 │   │   │   └── doctor/
-│   │   │       └── index.html   # Doctor screen
+│   │   │       └── index.html        # Doctor screen
 │   │   ├── scripts/
-│   │   │   ├── constants.js     # Shared display strings
-│   │   │   ├── app.js           # Home screen logic
-│   │   │   ├── questionnaire.js # Questionnaire screen logic
-│   │   │   └── doctor.js        # Doctor screen logic
+│   │   │   ├── constants.js          # Shared display strings
+│   │   │   ├── app.js                # Home screen logic
+│   │   │   ├── questionnaire.js      # Questionnaire screen logic
+│   │   │   ├── laboratory.js         # Laboratory screen logic
+│   │   │   └── doctor.js             # Doctor screen logic
 │   │   ├── styles/
-│   │   │   ├── app.css          # Home / glass theme
-│   │   │   ├── questionnaire.css # Questionnaire pastel theme
-│   │   │   └── doctor.css       # Doctor pastel theme
+│   │   │   ├── app.css               # Home pastel theme
+│   │   │   ├── questionnaire.css     # Questionnaire + Laboratory pastel theme
+│   │   │   └── doctor.css            # Doctor pastel theme
 │   │   └── assets/
 │   │       ├── images/
 │   │       ├── fonts/
 │   │       └── icons/
 │   └── shared/
 │       └── ipc/
-│           └── channels.js      # IPC channel name constants
+│           └── channels.js           # IPC channel name constants
 ├── .vscode/
-│   └── launch.json              # Debug Main Process
+│   └── launch.json                   # Debug Main Process
 ├── run.bat
 ├── install-deps.bat
 ├── context.md
@@ -115,7 +123,7 @@ The on-screen app title and shared labels live in **`src/renderer/scripts/consta
 | **`electron` is not recognized** | Run `npm install`, then `npm start` (the repo's script calls Electron via Node). |
 | **`npm` fails in PowerShell** | Use **`npm.cmd`** or **`install-deps.bat`** / **`run.bat`**. |
 | **Blank or no window** | `node ./node_modules/electron/cli.js . --disable-gpu` from the project root. |
-| **Diagnoses Room: “OPENROUTER_API_KEY is not set”** | Set the env var or `OPENROUTER_API_KEY.txt` (see **OpenRouter** above) and restart the app. |
+| **“OPENROUTER_API_KEY is not set”** | Create a `.env` file in the repo root with `OPENROUTER_API_KEY=sk-or-...` (see **OpenRouter API key** above) and restart the app. |
 | **Push rejected (large file)** | Do not commit **`node_modules/`**. It is listed in **`.gitignore`**. |
 
 ## License

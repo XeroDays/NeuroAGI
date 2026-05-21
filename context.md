@@ -57,7 +57,7 @@ src/
 │   │   └── doctor/
 │   │       └── index.html    # Doctor screen (shown after laboratory submit; placeholder body for now)
 │   ├── scripts/
-│   │   ├── constants.js      # APP_TITLE, SCREEN_QUESTIONNAIRE, SCREEN_LABORATORY, SCREEN_DOCTOR, SCREEN_DIAGNOSES_ROOM, labels
+│   │   ├── constants.js      # APP_TITLE, SCREEN_QUESTIONNAIRE, SCREEN_LABORATORY, SCREEN_DOCTOR, labels
 │   │   ├── app.js            # Home screen: populates UI, navigates to questionnaire with issue/gender/age params
 │   │   ├── questionnaire.js  # Questionnaire screen: calls startReportCollection on load, renders per-type controls, on Submit calls submitQuestionnaire IPC, stashes Q&A in sessionStorage['neuroagi:questionnaire'], navigates to laboratory screen
 │   │   ├── laboratory.js     # Laboratory screen: reads intake Q&A from sessionStorage, calls gotoLaboratory on load, renders per-type controls (duplicated buildCard helpers identical to questionnaire.js), on Submit calls submitLaboratory IPC and navigates to doctor screen
@@ -65,8 +65,7 @@ src/
 │   ├── styles/
 │   │   ├── app.css           # Home screen pastel theme
 │   │   ├── questionnaire.css # Questionnaire + Laboratory pastel theme + responsive grid + centered spinner overlay (laboratory/index.html links this same stylesheet)
-│   │   ├── doctor.css        # Doctor screen pastel theme + centered glass card
-│   │   └── diagnoses-room.css # Chat screen dark theme (orphan — no HTML consumer)
+│   │   └── doctor.css        # Doctor screen pastel theme + centered glass card
 │   └── assets/
 │       ├── images/
 │       ├── fonts/
@@ -150,21 +149,6 @@ src/
 3. Main process: `register.js` invokes `SubmitLaboratory()` in `collector-middleware.js`, which logs a structured lab Q&A dump (one `Q{n} [type] text` / `A{n}: value` per question, framed by `=== Lab Q&A dump ===` markers, tagged `[collector/lab]`) and returns `{ ok: true }`
 4. On success the renderer navigates to `screens/doctor/index.html?issue=…&gender=…&age=…`; on failure the Submit button re-enables and the centered error card appears
 5. `doctor.js` reads the URL params and renders the patient summary; the body is a placeholder card ("We're consulting the doctor") pending the next step (e.g. diagnostic report generation). The Back link in the doctor header points to the **home screen** (`../../index.html`), not back to the laboratory — going back to a stale lab page would re-trigger the LLM and confuse the user
-
-### Chat streaming (Diagnoses Room ↔ OpenRouter) — **CURRENTLY DISABLED**
-
-The chat feature has been removed from the renderer:
-- `src/renderer/scripts/ai-helper.js` was **deleted**
-- `src/renderer/scripts/diagnoses-room.js` was **deleted** (its only job was to set titles; the screen itself is orphan)
-- Preload no longer exposes `openRouterChatStream`
-- `register.js` no longer handles `OPENROUTER_STREAM_START`
-- Channels `OPENROUTER_STREAM_*` removed from `src/shared/ipc/channels.js`
-
-Still present (orphan, ready to reuse):
-- `src/main/services/api-helper.js` — `streamChat()` + `OPENROUTER_MODEL`
-- `src/renderer/styles/diagnoses-room.css` — full dark chat theme (no HTML consumer; remove when no longer wanted as a style reference)
-
-The screen HTML (`src/renderer/screens/diagnoses-room/index.html`) was deleted along with its script. To re-enable: re-add the channels, re-expose `openRouterChatStream` in preload, re-register the handler in `register.js`, recreate the screen HTML, and add a renderer module that wires the DOM to it.
 
 ### Adding a new IPC channel
 
@@ -329,16 +313,6 @@ Pastel-gradient theme aligned with the **Home screen** (`app.css`) — same back
 | **Range (two thumbs)** | **Dual-thumb single-track slider** — two overlapping `<input type="range">` sharing one visual track with a purple fill between the thumbs; each thumb is clamped so it can't cross the other (with a z-index nudge so neither thumb gets stuck when they collide at the upper bound); bound labels below the track show the absolute `min`/`max` from the model, a second row below shows live `Min: X` / `Max: Y`; final value still emitted as `{ min, max }` on collect via the unchanged `q_{i}_min` / `q_{i}_max` input names |
 | **Submit** | Dark pill button (`#555`, white text), right-aligned at the end of the grid; lifts on hover; disables itself after click |
 | **Status / error** | Centered glass card; error state tinted soft red |
-
-### Diagnoses Room (`diagnoses-room.css`)
-
-| Element | Style |
-|---------|-------|
-| **Background** | Solid dark `#0a0a0a` |
-| **Header** | Dark with back link, centered brand + screen title |
-| **Chat bubbles** | User: `#2f2f2f`, right-aligned; Assistant: `#1e1e1e` bordered, left-aligned; Error: red tint |
-| **Composer** | Dark `#212121` bar, `#3d3d3d` border, rounded pill |
-| **Send button** | Light pill `#e5e5e5`, dark text |
 
 ---
 

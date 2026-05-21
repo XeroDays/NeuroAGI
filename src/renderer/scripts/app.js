@@ -6,15 +6,10 @@ import {
 document.addEventListener('DOMContentLoaded', () => {
   document.title = APP_TITLE;
 
-  const titleEl = document.getElementById('app-title');
   const input = document.getElementById('health-input');
   const btn = document.getElementById('btn-start-diagnostics');
   const genderSelect = document.getElementById('select-gender');
   const ageSelect = document.getElementById('select-age');
-
-  if (titleEl) {
-    titleEl.textContent = APP_TITLE;
-  }
 
   if (ageSelect) {
     for (let i = 1; i <= 100; i++) {
