@@ -110,4 +110,93 @@ function GenerateMergeQuestionnaireLLMQuery(questionnaireSets = []) {
   Return ONLY a valid JSON array using the exact schema above. Do not include explanations, markdown, comments, code fences, or any text outside the JSON array.`;
 }
 
-module.exports = { GenerateQuestionnaireLLMQuery, GenerateMergeQuestionnaireLLMQuery };
+function GenerateLaboratoryLLMQuery({ issue, gender, age, questions = [], answers = [] } = {}) {
+  const safeIssue = String(issue || "").trim() || "an unspecified health issue";
+  const safeGender = String(gender || "male").toLowerCase();
+  const safeAge = String(age || "30");
+
+  const now = new Date();
+  const dateTimeStr = now.toLocaleString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZoneName: "short",
+  });
+
+  const qList = Array.isArray(questions) ? questions : [];
+  const aList = Array.isArray(answers) ? answers : [];
+
+  const intake = qList
+    .map((q, i) => {
+      const a = aList[i];
+      const qText = q?.question || `(question ${i + 1})`;
+      const qType = q?.type || "?";
+      let aText;
+      if (a == null || a.value == null) {
+        aText = "(no answer)";
+      } else if (Array.isArray(a.value)) {
+        aText = a.value.length ? a.value.join(", ") : "(none selected)";
+      } else if (typeof a.value === "object") {
+        aText = JSON.stringify(a.value);
+      } else {
+        aText = String(a.value);
+      }
+      return `Q${i + 1} [${qType}] ${qText}\nA${i + 1}: ${aText}`;
+    })
+    .join("\n\n");
+
+  return `You are a highly experienced licensed physician and clinical pathologist (lab medicine specialist) designing the laboratory workup for a patient case.
+
+  The user is a ${safeAge}-year-old ${safeGender} reporting the following issue: "${safeIssue}".
+
+  For awareness, the current date and time of this request is ${dateTimeStr}.
+
+  Below are the patient's intake questionnaire answers:
+
+  ${intake || "(no intake answers were captured)"}
+
+  Your task:
+  - Based on the patient profile (age, gender, primary issue) and the intake answers above, determine which laboratory tests and/or imaging studies a competent clinician would reasonably order to investigate this case.
+  - For EACH suggested test, emit exactly ONE question representing the RESULT VALUE the user will enter from their report. The question stem must clearly name the test, including units where relevant (e.g. "Total testosterone (ng/dL)", "Ultrasound varicocele grade", "Fasting blood glucose (mg/dL)").
+  - Choose the input type that best matches how the result is reported:
+    - Continuous numeric result with a clinical range -> "slider" with clinically sensible min, max, step, and labels.min / labels.max such as "Low" / "High".
+    - A result reported as a numeric pair (low-high band) -> "range".
+    - Categorical / graded / staged result -> "single_select". Always include "Other" as the last option.
+    - Imaging finding checklist (multiple findings can co-occur) -> "multi_select". Always include "Other" as the last option.
+    - Free-form descriptive finding -> "text".
+  - Prioritise medically meaningful, first-line tests for this case. Do not invent obscure or irrelevant tests. Do not duplicate questions.
+  - It is fine to return a small focused panel rather than an exhaustive list.
+
+  Examples of the expected shape (do NOT include these literal questions unless clinically appropriate — they only illustrate the schema):
+
+  Low-libido case example:
+  {
+    "question": "Total testosterone (ng/dL)",
+    "type": "slider",
+    "min": 0,
+    "max": 1500,
+    "step": 10,
+    "labels": { "min": "Very low", "max": "Very high" }
+  }
+
+  Varicocele case example:
+  {
+    "question": "Ultrasound varicocele grade",
+    "type": "single_select",
+    "options": ["Grade I", "Grade II", "Grade III", "Grade IV", "Other"]
+  }
+
+  Return ONLY a valid JSON array using this exact schema:
+  { "question": string, "type": "single_select" | "multi_select" | "slider" | "range" | "text", "options"?: string[], "min"?: number, "max"?: number, "step"?: number, "labels"?: { "min": string, "max": string } }
+
+  Do not include explanations, markdown, comments, code fences, or any text outside the JSON array.`;
+}
+
+module.exports = {
+  GenerateQuestionnaireLLMQuery,
+  GenerateMergeQuestionnaireLLMQuery,
+  GenerateLaboratoryLLMQuery,
+};

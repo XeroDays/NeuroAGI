@@ -35,33 +35,36 @@ src/
 ├── main/
 │   ├── index.js              # Bootstrap: dotenv config, hide menu, register IPC, create window
 │   ├── ipc/
-│   │   └── register.js       # IPC handlers: ping, startReportCollection, submitQuestionnaire, openDevTools
+│   │   └── register.js       # IPC handlers: ping, startReportCollection, submitQuestionnaire, gotoLaboratory, submitLaboratory, openDevTools
 │   ├── middlewares/
-│   │   └── collector-middleware.js # StartReportcollection({ issue, gender, age }) — entry from home screen, tiered JSON parser (strict → normalize → jsonrepair). SubmitQuestionnaire({ issue, gender, age, questions, answers }) — logs the full Q&A dump on questionnaire submit
+│   │   └── collector-middleware.js # StartReportcollection({ issue, gender, age }) — entry from home screen, tiered JSON parser (strict → normalize → jsonrepair). SubmitQuestionnaire({ issue, gender, age, questions, answers }) — logs the full Q&A dump on questionnaire submit. GotoLaboratory({ issue, gender, age, questions, answers }) — same two-stage fanout+merge as StartReportcollection, but builds the lab prompt from intake Q&A. SubmitLaboratory({ issue, gender, age, questions, answers }) — logs the lab Q&A dump
 │   ├── helpers/
-│   │   └── query-generator-helper.js # GenerateQuestionnaireLLMQuery({ issue, gender, age }) — builds intake-doctor prompt that returns a JSON array of questions. GenerateMergeQuestionnaireLLMQuery(questionnaireSets) — builds the prompt the master model uses to consolidate multiple worker questionnaires into one deduplicated list
+│   │   └── query-generator-helper.js # GenerateQuestionnaireLLMQuery({ issue, gender, age }) — builds intake-doctor prompt that returns a JSON array of questions. GenerateMergeQuestionnaireLLMQuery(questionnaireSets) — builds the prompt the master model uses to consolidate multiple worker questionnaires into one deduplicated list. GenerateLaboratoryLLMQuery({ issue, gender, age, questions, answers }) — builds the prompt the workers use to propose lab tests/imaging, each emitted as a question of the standard schema with the expected result as the input control
 │   ├── services/
 │   │   ├── api-helper.js     # Pure OpenRouter transport: streamChat(messages, model, …) + chatCompletion(messages, model); reads process.env.OPENROUTER_API_KEY; model is passed in by the caller
 │   │   └── agi-service.js    # Multi-model fanout (parallel worker calls) + master Nemotron merge; owns OPENROUTER_WORKER_MODELS list + OPENROUTER_MASTER_MODEL; exports AskAllWorkerAgis(prompt) and AskMasterAgi(prompt)
 │   └── windows/
 │       └── main-window.js    # BrowserWindow: 800x600, hidden until ready, preload + contextIsolation
 ├── preload/
-│   └── index.js              # contextBridge → window.electronAPI { ping, startReportCollection, submitQuestionnaire, openDevTools }
+│   └── index.js              # contextBridge → window.electronAPI { ping, startReportCollection, submitQuestionnaire, gotoLaboratory, submitLaboratory, openDevTools }
 ├── renderer/
 │   ├── index.html            # Home screen
 │   ├── screens/
 │   │   ├── questionnaire/
 │   │   │   └── index.html    # Questionnaire screen (shown after home submit)
+│   │   ├── laboratory/
+│   │   │   └── index.html    # Laboratory screen (shown after questionnaire submit; reuses questionnaire.css — identical .q-* class structure)
 │   │   └── doctor/
-│   │       └── index.html    # Doctor screen (shown after questionnaire submit; placeholder body for now)
+│   │       └── index.html    # Doctor screen (shown after laboratory submit; placeholder body for now)
 │   ├── scripts/
-│   │   ├── constants.js      # APP_TITLE, SCREEN_QUESTIONNAIRE, SCREEN_DOCTOR, SCREEN_DIAGNOSES_ROOM, labels
+│   │   ├── constants.js      # APP_TITLE, SCREEN_QUESTIONNAIRE, SCREEN_LABORATORY, SCREEN_DOCTOR, SCREEN_DIAGNOSES_ROOM, labels
 │   │   ├── app.js            # Home screen: populates UI, navigates to questionnaire with issue/gender/age params
-│   │   ├── questionnaire.js  # Questionnaire screen: calls startReportCollection on load, renders per-type controls, on Submit calls submitQuestionnaire IPC and navigates to doctor screen
+│   │   ├── questionnaire.js  # Questionnaire screen: calls startReportCollection on load, renders per-type controls, on Submit calls submitQuestionnaire IPC, stashes Q&A in sessionStorage['neuroagi:questionnaire'], navigates to laboratory screen
+│   │   ├── laboratory.js     # Laboratory screen: reads intake Q&A from sessionStorage, calls gotoLaboratory on load, renders per-type controls (duplicated buildCard helpers identical to questionnaire.js), on Submit calls submitLaboratory IPC and navigates to doctor screen
 │   │   └── doctor.js         # Doctor screen: sets titles, renders summary from URL params
 │   ├── styles/
 │   │   ├── app.css           # Home screen pastel theme
-│   │   ├── questionnaire.css # Questionnaire pastel theme + responsive grid + centered spinner overlay
+│   │   ├── questionnaire.css # Questionnaire + Laboratory pastel theme + responsive grid + centered spinner overlay (laboratory/index.html links this same stylesheet)
 │   │   ├── doctor.css        # Doctor screen pastel theme + centered glass card
 │   │   └── diagnoses-room.css # Chat screen dark theme (orphan — no HTML consumer)
 │   └── assets/
@@ -116,14 +119,37 @@ src/
 6. `questionnaire.js` hides the status box, reveals `#q-form`, and renders one `<section class="q-card q-card--{type}">` per question with type-specific controls; reveals the Submit button
 7. Submit click collects all answers (`{ question, type, value }[]`), then proceeds to the next workflow
 
-### Questionnaire submit → Doctor screen
+### Questionnaire submit → Laboratory screen
 
 1. User clicks Submit on the questionnaire; `questionnaire.js` collects answers via `collectAnswers(formEl)` and disables the button (label switches to `Submitting…`)
 2. Renderer calls `window.electronAPI.submitQuestionnaire({ issue, gender, age, questions, answers })` → IPC `SUBMIT_QUESTIONNAIRE`
 3. Main process: `register.js` invokes `SubmitQuestionnaire()` in `collector-middleware.js`
 4. The middleware logs a structured Q&A dump to the main-process console (one `Q{n} [type] text` line and one `A{n}: value` line per question, framed by `=== Q&A dump ===` markers) and returns `{ ok: true }`
-5. On success the renderer navigates to `screens/doctor/index.html?issue=…&gender=…&age=…`; on failure the Submit button re-enables and the centered error card appears
-6. `doctor.js` reads the URL params and renders the patient summary; the body is a placeholder card ("We're consulting the doctor") pending the next step (e.g. diagnostic report generation). The Back link in the doctor header points to the **home screen** (`../../index.html`), not back to the questionnaire — going back to a stale questionnaire after a submit would re-trigger the LLM and confuse the user
+5. The renderer stashes `{ issue, gender, age, questions, answers }` into `sessionStorage['neuroagi:questionnaire']` (per-tab; cleared when the Electron window closes) — this is the handoff channel for the bulky Q&A payload, which is too large for a URL query string
+6. The renderer navigates to `screens/laboratory/index.html?issue=…&gender=…&age=…` (only `issue/gender/age` ride in the URL so a refresh still has the basics); on failure the Submit button re-enables and the centered error card appears
+
+### Laboratory screen → LLM lab-test generation
+
+1. `laboratory.js` on `DOMContentLoaded` reads `issue/gender/age` from URL params, then reads `sessionStorage['neuroagi:questionnaire']` and JSON-parses it for the intake `questions`/`answers`
+2. If the sessionStorage payload is missing or malformed (e.g. user opened the URL directly), `laboratory.js` shows the same centered red-card error as the questionnaire with the message `Missing questionnaire data. Please restart from the home screen.` (Retry just reloads; user can click the header Back link to return home)
+3. It calls `window.electronAPI.gotoLaboratory({ issue, gender, age, questions, answers })` → IPC `GOTO_LABORATORY`
+4. Main process: `register.js` invokes `GotoLaboratory()` in `collector-middleware.js`, which mirrors `StartReportcollection`'s **two-stage AGI pipeline** but with a different initial prompt:
+   - **Initial prompt**: `GenerateLaboratoryLLMQuery({ issue, gender, age, questions, answers })` builds a clinical-pathologist persona prompt that serializes the intake Q&A and asks the worker models to propose lab tests / imaging studies, emitting one question per test (using the same `single_select` / `multi_select` / `slider` / `range` / `text` schema) so the patient can fill in the result they got from their report
+   - **Fanout**: identical to questionnaire — `AskAllWorkerAgis` across `OPENROUTER_WORKER_MODELS` with `Promise.allSettled`
+   - **Per-worker tiered parse**: identical (strict → normalize → jsonrepair), failures logged and dropped
+   - **All-fail guard**: if zero workers succeed, throws → renderer shows centered red Retry button
+   - **Master merge**: reuses the existing `GenerateMergeQuestionnaireLLMQuery` prompt (it is generic over question arrays of the standard schema, no laboratory-specific variant needed). `AskMasterAgi` against `OPENROUTER_MASTER_MODEL` produces the final consolidated list of result-input questions
+5. The master response is parsed with the same tiered `parseJsonArray`; success returns `{ ok: true, issue, gender, age, questions }`, failure returns `{ ok: false, error }`
+6. `laboratory.js` renders the returned lab questions through duplicated `buildCard` / `renderSingleSelect` / `renderMultiSelect` / `renderSlider` / `renderRange` / `renderText` / `collectAnswers` helpers (verbatim copies from `questionnaire.js`, kept duplicated by design so the questionnaire screen isn't affected) — class names stay `.q-*` so `questionnaire.css` styles apply unchanged
+7. The same `showError` / `humanizeError` retry path is reused: on `{ ok: false }` or any thrown error the centered red Retry button reloads the page and re-runs the lab fanout-merge
+
+### Laboratory submit → Doctor screen
+
+1. User clicks Submit on the laboratory; `laboratory.js` collects answers via the duplicated `collectAnswers` and disables the button (label switches to `Submitting…`)
+2. Renderer calls `window.electronAPI.submitLaboratory({ issue, gender, age, questions, answers })` → IPC `SUBMIT_LABORATORY`
+3. Main process: `register.js` invokes `SubmitLaboratory()` in `collector-middleware.js`, which logs a structured lab Q&A dump (one `Q{n} [type] text` / `A{n}: value` per question, framed by `=== Lab Q&A dump ===` markers, tagged `[collector/lab]`) and returns `{ ok: true }`
+4. On success the renderer navigates to `screens/doctor/index.html?issue=…&gender=…&age=…`; on failure the Submit button re-enables and the centered error card appears
+5. `doctor.js` reads the URL params and renders the patient summary; the body is a placeholder card ("We're consulting the doctor") pending the next step (e.g. diagnostic report generation). The Back link in the doctor header points to the **home screen** (`../../index.html`), not back to the laboratory — going back to a stale lab page would re-trigger the LLM and confuse the user
 
 ### Chat streaming (Diagnoses Room ↔ OpenRouter) — **CURRENTLY DISABLED**
 
@@ -225,6 +251,47 @@ Builds the prompt the **master model** (`OPENROUTER_MASTER_MODEL` in `agi-servic
 
 **Output contract:** the master model must return **only** a valid JSON array in the exact same schema as the worker outputs — no markdown fences, comments, explanations, or surrounding text. The same tiered `parseJsonArray` recovers from minor formatting issues.
 
+### `GenerateLaboratoryLLMQuery({ issue, gender, age, questions, answers })`
+
+**File:** `src/main/helpers/query-generator-helper.js`
+
+Builds the prompt that asks the **worker models** to propose laboratory tests / imaging studies for the patient case, then emit ONE question per test using the **same schema** as the intake questionnaire so the patient can enter the value they got from their report. Inputs are sanitized the same way as the intake prompt (`issue` falls back to `"an unspecified health issue"`, `gender` defaults to `"male"`, `age` defaults to `"30"`).
+
+**Persona:** highly experienced licensed physician + clinical pathologist (lab medicine specialist).
+
+**Inputs serialized into the prompt:**
+- Patient summary line (`${age}-year-old ${gender}` + reported issue).
+- Current request date/time (same `toLocaleString` format as the other helpers, for awareness only).
+- Intake Q&A block — for each `questions[i]` / `answers[i]` pair, one stanza of the form:
+
+  ```
+  Q{n} [type] {question text}
+  A{n}: {value}
+  ```
+
+  Array values are joined with `, `, object values are `JSON.stringify`-ed, missing answers render as `(no answer)`, empty multi-selects render as `(none selected)`.
+
+**Type-selection rules baked into the prompt:**
+- Continuous numeric result with a clinical range → `slider` with sensible `min`/`max`/`step` and `labels.min` / `labels.max` like `"Low"` / `"High"`.
+- Numeric pair (reference-range style) → `range`.
+- Categorical / graded / staged result → `single_select` (always end with `"Other"`).
+- Imaging checklist (multiple findings can co-occur) → `multi_select` (always end with `"Other"`).
+- Free-form descriptive finding → `text`.
+
+**Worked examples baked into the prompt body** (to anchor the model on shape, with explicit instruction to only use them if clinically appropriate):
+- Low-libido case → `{ "question": "Total testosterone (ng/dL)", "type": "slider", "min": 0, "max": 1500, "step": 10, "labels": { "min": "Very low", "max": "Very high" } }`
+- Varicocele case → `{ "question": "Ultrasound varicocele grade", "type": "single_select", "options": ["Grade I", "Grade II", "Grade III", "Grade IV", "Other"] }`
+
+**Other rules:**
+- Prioritise medically meaningful, first-line tests for this case.
+- Do not invent obscure or irrelevant tests.
+- No duplicate questions.
+- A small focused panel is acceptable — do not pad.
+
+**Output contract:** must return **only** a valid JSON array in the exact same schema as `GenerateQuestionnaireLLMQuery` — no markdown fences, comments, explanations, or surrounding text. The same tiered `parseJsonArray` recovers from minor formatting issues.
+
+**Consumers:** wired through `src/main/middlewares/collector-middleware.js#GotoLaboratory`. Runs through the same two-stage AGI pipeline as the intake (worker fanout → per-worker tiered parse → drop failures → reuse `GenerateMergeQuestionnaireLLMQuery` → master merge → final parse). The resulting JSON array is returned over IPC to `src/renderer/scripts/laboratory.js`, which renders it with the same `.q-*` card UI as the questionnaire.
+
 ---
 
 ## Design
@@ -241,9 +308,9 @@ Builds the prompt the **master model** (`OPENROUTER_MASTER_MODEL` in `agi-servic
 | **Dropdown options** | White background, light purple highlight on selected |
 | **Settings (gear) icon** | Fixed `top: 1rem; right: 1rem`, `2.5rem` glass circle (`var(--glass-bg-strong)` + 18px blur, white border, soft shadow); rotates 30deg on hover; click toggles DevTools via IPC `OPEN_DEV_TOOLS` |
 
-### Questionnaire screen (`questionnaire.css`)
+### Questionnaire + Laboratory screen (`questionnaire.css`)
 
-Pastel-gradient theme aligned with the **Home screen** (`app.css`) — same background, glassmorphism, and accent purple. The form is a **responsive CSS Grid** that auto-arranges question cards of varying widths, edge-to-edge across the full window width.
+Pastel-gradient theme aligned with the **Home screen** (`app.css`) — same background, glassmorphism, and accent purple. The form is a **responsive CSS Grid** that auto-arranges question cards of varying widths, edge-to-edge across the full window width. The Laboratory screen (`screens/laboratory/index.html`) links this same stylesheet and uses the same `.q-*` class structure — only the loading copy differs (`Loading laboratory tests…` instead of `Loading questions…`).
 
 | Element | Style |
 |---------|-------|

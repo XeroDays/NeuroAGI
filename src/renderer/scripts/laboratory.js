@@ -1,7 +1,7 @@
-import { APP_TITLE, SCREEN_QUESTIONNAIRE } from './constants.js';
+import { APP_TITLE, SCREEN_LABORATORY } from './constants.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
-  document.title = `${SCREEN_QUESTIONNAIRE} — ${APP_TITLE}`;
+  document.title = `${SCREEN_LABORATORY} — ${APP_TITLE}`;
 
   const titleEl = document.getElementById('app-title');
   const screenTitleEl = document.getElementById('screen-title');
@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const submitBtn = document.getElementById('q-submit');
 
   if (titleEl) titleEl.textContent = APP_TITLE;
-  if (screenTitleEl) screenTitleEl.textContent = SCREEN_QUESTIONNAIRE;
+  if (screenTitleEl) screenTitleEl.textContent = SCREEN_LABORATORY;
 
   const params = new URLSearchParams(window.location.search);
   const issue = params.get('issue') || '';
@@ -25,21 +25,40 @@ document.addEventListener('DOMContentLoaded', async () => {
       : `${age}-year-old ${gender}`;
   }
 
-  if (!window.electronAPI?.startReportCollection) {
-    showError('Internal error: report collector not available.');
+  if (!window.electronAPI?.gotoLaboratory) {
+    showError('Internal error: laboratory service not available.');
+    return;
+  }
+
+  let intake = null;
+  try {
+    const raw = sessionStorage.getItem('neuroagi:questionnaire');
+    if (raw) intake = JSON.parse(raw);
+  } catch (e) {
+    console.warn('Failed to read questionnaire from sessionStorage:', e);
+  }
+
+  if (!intake || !Array.isArray(intake.questions) || !Array.isArray(intake.answers)) {
+    showError('Missing questionnaire data. Please restart from the home screen.');
     return;
   }
 
   let loadedQuestions = [];
 
   try {
-    const result = await window.electronAPI.startReportCollection({ issue, gender, age });
+    const result = await window.electronAPI.gotoLaboratory({
+      issue,
+      gender,
+      age,
+      questions: intake.questions,
+      answers: intake.answers,
+    });
     if (!result || !result.ok) {
-      throw new Error(result?.error || 'Failed to load questions.');
+      throw new Error(result?.error || 'Failed to load laboratory tests.');
     }
     const questions = Array.isArray(result.questions) ? result.questions : [];
     if (questions.length === 0) {
-      showError('No questions were returned. Please try again.');
+      showError('No laboratory tests were returned. Please try again.');
       return;
     }
     loadedQuestions = questions;
@@ -48,7 +67,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     formEl.hidden = false;
     actionsEl.hidden = false;
   } catch (err) {
-    console.error('Failed to load questionnaire:', err);
+    console.error('Failed to load laboratory:', err);
     showError(humanizeError(err));
   }
 
@@ -57,28 +76,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     submitBtn.disabled = true;
     submitBtn.textContent = 'Submitting…';
     try {
-      await window.electronAPI?.submitQuestionnaire?.({
+      await window.electronAPI?.submitLaboratory?.({
         issue,
         gender,
         age,
         questions: loadedQuestions,
         answers,
       });
-      try {
-        sessionStorage.setItem(
-          'neuroagi:questionnaire',
-          JSON.stringify({ issue, gender, age, questions: loadedQuestions, answers })
-        );
-      } catch (storageErr) {
-        console.warn('Failed to stash questionnaire in sessionStorage:', storageErr);
-      }
       const q = new URLSearchParams();
       if (issue) q.set('issue', issue);
       q.set('gender', gender);
       q.set('age', age);
-      window.location.href = `../laboratory/index.html?${q}`;
+      window.location.href = `../doctor/index.html?${q}`;
     } catch (err) {
-      console.error('SubmitQuestionnaire failed:', err);
+      console.error('SubmitLaboratory failed:', err);
       submitBtn.disabled = false;
       submitBtn.textContent = 'Submit';
       showError(humanizeError(err));

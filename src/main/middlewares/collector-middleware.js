@@ -1,6 +1,7 @@
 const {
   GenerateQuestionnaireLLMQuery,
   GenerateMergeQuestionnaireLLMQuery,
+  GenerateLaboratoryLLMQuery,
 } = require("../helpers/query-generator-helper");
 const { AskAllWorkerAgis, AskMasterAgi } = require("../services/agi-service");
 const { jsonrepair } = require("jsonrepair");
@@ -150,4 +151,95 @@ async function SubmitQuestionnaire({ issue, gender, age, questions = [], answers
   return { ok: true };
 }
 
-module.exports = { StartReportcollection, SubmitQuestionnaire };
+async function GotoLaboratory({ issue, gender, age, questions = [], answers = [] } = {}) {
+  const qList = Array.isArray(questions) ? questions : [];
+  const aList = Array.isArray(answers) ? answers : [];
+
+  console.log("[collector] GotoLaboratory:", {
+    issue,
+    gender,
+    age,
+    questionCount: qList.length,
+    answerCount: aList.length,
+  });
+
+  try {
+    const initialPrompt = GenerateLaboratoryLLMQuery({
+      issue,
+      gender,
+      age,
+      questions: qList,
+      answers: aList,
+    });
+
+    const workerResults = await AskAllWorkerAgis(initialPrompt);
+
+    const parsedSets = [];
+    for (const r of workerResults) {
+      if (!r.ok) {
+        console.warn(`[collector/lab] worker ${r.model} failed:`, r.error);
+        continue;
+      }
+      try {
+        parsedSets.push(parseJsonArray(r.content));
+        console.log(`[collector/lab] worker ${r.model} parsed OK`);
+      } catch (e) {
+        console.warn(`[collector/lab] worker ${r.model} unparsable JSON:`, e.message);
+      }
+    }
+
+    if (parsedSets.length === 0) {
+      throw new Error("All worker models failed or returned unparsable JSON");
+    }
+    console.log(`[collector/lab] ${parsedSets.length} clean worker set(s) → master merge`);
+
+    const mergePrompt = GenerateMergeQuestionnaireLLMQuery(parsedSets);
+    const mergedRaw = await AskMasterAgi(mergePrompt);
+    const labQuestions = parseJsonArray(mergedRaw);
+
+    return {
+      ok: true,
+      issue: String(issue || ""),
+      gender: String(gender || "male"),
+      age: String(age || "30"),
+      questions: labQuestions,
+    };
+  } catch (err) {
+    console.error("[collector] GotoLaboratory failed:", err);
+    return {
+      ok: false,
+      error: err?.message || String(err),
+    };
+  }
+}
+
+async function SubmitLaboratory({ issue, gender, age, questions = [], answers = [] } = {}) {
+  const qList = Array.isArray(questions) ? questions : [];
+  const aList = Array.isArray(answers) ? answers : [];
+
+  console.log("[collector/lab] SubmitLaboratory received:", {
+    issue,
+    gender,
+    age,
+    questionCount: qList.length,
+    answerCount: aList.length,
+  });
+
+  const byIndex = new Map(aList.map((a, i) => [i, a]));
+  console.log("[collector/lab] === Lab Q&A dump ===");
+  qList.forEach((q, i) => {
+    const a = byIndex.get(i);
+    console.log(`Q${i + 1} [${q?.type || "?"}] ${q?.question || "(no question text)"}`);
+    console.log(`A${i + 1}:`, a?.value);
+  });
+  console.log("[collector/lab] === end Lab Q&A ===");
+
+  return { ok: true };
+}
+
+module.exports = {
+  StartReportcollection,
+  SubmitQuestionnaire,
+  GotoLaboratory,
+  SubmitLaboratory,
+};

@@ -3,6 +3,8 @@ const channels = require("../../shared/ipc/channels");
 const {
   StartReportcollection,
   SubmitQuestionnaire,
+  GotoLaboratory,
+  SubmitLaboratory,
 } = require("../middlewares/collector-middleware");
 
 function registerIpcHandlers() {
@@ -14,6 +16,14 @@ function registerIpcHandlers() {
 
   ipcMain.handle(channels.SUBMIT_QUESTIONNAIRE, async (_event, payload) => {
     return SubmitQuestionnaire(payload || {});
+  });
+
+  ipcMain.handle(channels.GOTO_LABORATORY, async (_event, payload) => {
+    return GotoLaboratory(payload || {});
+  });
+
+  ipcMain.handle(channels.SUBMIT_LABORATORY, async (_event, payload) => {
+    return SubmitLaboratory(payload || {});
   });
 
   ipcMain.handle(channels.OPEN_DEV_TOOLS, (event) => {
