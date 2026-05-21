@@ -1,7 +1,6 @@
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const OPENROUTER_MODEL = 'nvidia/nemotron-3-nano-30b-a3b:free';
 
-async function streamChat(messages, onDelta, onDone, onError) {
+async function streamChat(messages, model, onDelta, onDone, onError) {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
     console.error('[api-helper] streamChat: OPENROUTER_API_KEY is not set');
@@ -10,6 +9,11 @@ async function streamChat(messages, onDelta, onDone, onError) {
         'OPENROUTER_API_KEY is not set. Add it to the .env file in the project root.'
       )
     );
+    return;
+  }
+  if (!model) {
+    console.error('[api-helper] streamChat: missing model id');
+    onError(new Error('streamChat requires a model id'));
     return;
   }
 
@@ -23,7 +27,7 @@ async function streamChat(messages, onDelta, onDone, onError) {
 
   console.log('[api-helper] streamChat → request', {
     url: OPENROUTER_URL,
-    model: OPENROUTER_MODEL,
+    model,
     stream: true,
     messageCount,
     promptChars,
@@ -34,6 +38,7 @@ async function streamChat(messages, onDelta, onDone, onError) {
     if (doneCalled) return;
     doneCalled = true;
     console.log('[api-helper] streamChat ✓ done', {
+      model,
       deltaCount,
       deltaChars,
       totalElapsedMs: Date.now() - startedAt,
@@ -51,13 +56,14 @@ async function streamChat(messages, onDelta, onDone, onError) {
         'X-Title': 'NeuroAGI'
       },
       body: JSON.stringify({
-        model: OPENROUTER_MODEL,
+        model,
         messages,
         stream: true
       })
     });
 
     console.log('[api-helper] streamChat ← response', {
+      model,
       status: res.status,
       ok: res.ok,
       elapsedMs: Date.now() - startedAt,
@@ -66,6 +72,7 @@ async function streamChat(messages, onDelta, onDone, onError) {
     if (!res.ok) {
       const errText = await res.text();
       console.error('[api-helper] streamChat ✗ HTTP error', {
+        model,
         status: res.status,
         bodyPreview: errText.slice(0, 400),
       });
@@ -74,7 +81,7 @@ async function streamChat(messages, onDelta, onDone, onError) {
     }
 
     if (!res.body) {
-      console.error('[api-helper] streamChat ✗ no response body');
+      console.error('[api-helper] streamChat ✗ no response body', { model });
       onError(new Error('OpenRouter response has no body'));
       return;
     }
@@ -139,6 +146,7 @@ async function streamChat(messages, onDelta, onDone, onError) {
     finish();
   } catch (err) {
     console.error('[api-helper] streamChat ✗ exception', {
+      model,
       elapsedMs: Date.now() - startedAt,
       error: err?.message || String(err),
     });
@@ -146,11 +154,14 @@ async function streamChat(messages, onDelta, onDone, onError) {
   }
 }
 
-async function chatCompletion(messages) {
+async function chatCompletion(messages, model) {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
     console.error('[api-helper] chatCompletion: OPENROUTER_API_KEY is not set');
     throw new Error('OPENROUTER_API_KEY is not set. Add it to the .env file in the project root.');
+  }
+  if (!model) {
+    throw new Error('chatCompletion requires a model id');
   }
 
   const startedAt = Date.now();
@@ -161,7 +172,7 @@ async function chatCompletion(messages) {
 
   console.log('[api-helper] chatCompletion → request', {
     url: OPENROUTER_URL,
-    model: OPENROUTER_MODEL,
+    model,
     stream: false,
     messageCount,
     promptChars,
@@ -178,13 +189,14 @@ async function chatCompletion(messages) {
         'X-Title': 'NeuroAGI'
       },
       body: JSON.stringify({
-        model: OPENROUTER_MODEL,
+        model,
         messages,
         stream: false
       })
     });
   } catch (err) {
     console.error('[api-helper] chatCompletion ✗ network error', {
+      model,
       elapsedMs: Date.now() - startedAt,
       error: err?.message || String(err),
     });
@@ -193,6 +205,7 @@ async function chatCompletion(messages) {
 
   const elapsedMs = Date.now() - startedAt;
   console.log('[api-helper] chatCompletion ← response', {
+    model,
     status: res.status,
     ok: res.ok,
     elapsedMs,
@@ -201,6 +214,7 @@ async function chatCompletion(messages) {
   if (!res.ok) {
     const errText = await res.text();
     console.error('[api-helper] chatCompletion ✗ HTTP error', {
+      model,
       status: res.status,
       bodyPreview: errText.slice(0, 400),
     });
@@ -209,13 +223,14 @@ async function chatCompletion(messages) {
 
   const json = await res.json();
   if (json?.error) {
-    console.error('[api-helper] chatCompletion ✗ API error payload', json.error);
+    console.error('[api-helper] chatCompletion ✗ API error payload', { model, error: json.error });
     throw new Error(json.error.message || String(json.error));
   }
 
   const content = json?.choices?.[0]?.message?.content ?? '';
   const usage = json?.usage || null;
   console.log('[api-helper] chatCompletion ✓ done', {
+    model,
     contentChars: content.length,
     finishReason: json?.choices?.[0]?.finish_reason || null,
     usage,
@@ -228,5 +243,4 @@ async function chatCompletion(messages) {
 module.exports = {
   streamChat,
   chatCompletion,
-  OPENROUTER_MODEL
 };

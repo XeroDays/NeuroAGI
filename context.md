@@ -39,9 +39,10 @@ src/
 │   ├── middlewares/
 │   │   └── collector-middleware.js # StartReportcollection({ issue, gender, age }) — entry from home screen, tiered JSON parser (strict → normalize → jsonrepair). SubmitQuestionnaire({ issue, gender, age, questions, answers }) — logs the full Q&A dump on questionnaire submit
 │   ├── helpers/
-│   │   └── query-generator-helper.js # GenerateQuestionnaireLLMQuery({ issue, gender, age }) — builds intake-doctor prompt that returns a JSON array of questions
+│   │   └── query-generator-helper.js # GenerateQuestionnaireLLMQuery({ issue, gender, age }) — builds intake-doctor prompt that returns a JSON array of questions. GenerateMergeQuestionnaireLLMQuery(questionnaireSets) — builds the prompt the master model uses to consolidate multiple worker questionnaires into one deduplicated list
 │   ├── services/
-│   │   └── api-helper.js     # streamChat() (SSE) + chatCompletion() (non-streaming JSON); reads process.env.OPENROUTER_API_KEY
+│   │   ├── api-helper.js     # Pure OpenRouter transport: streamChat(messages, model, …) + chatCompletion(messages, model); reads process.env.OPENROUTER_API_KEY; model is passed in by the caller
+│   │   └── agi-service.js    # Multi-model fanout (parallel worker calls) + master Nemotron merge; owns OPENROUTER_WORKER_MODELS list + OPENROUTER_MASTER_MODEL; exports AskAllWorkerAgis(prompt) and AskMasterAgi(prompt)
 │   └── windows/
 │       └── main-window.js    # BrowserWindow: 800x600, hidden until ready, preload + contextIsolation
 ├── preload/
@@ -101,13 +102,17 @@ src/
 1. `questionnaire.js` on `DOMContentLoaded` reads `issue`, `gender`, `age` from URL params, fills the summary, and shows a `Loading questions…` status
 2. It calls `window.electronAPI.startReportCollection({ issue, gender, age })` → IPC `START_REPORT_COLLECTION`
 3. Main process: `register.js` invokes `StartReportcollection()` in `collector-middleware.js`
-4. The middleware builds the prompt via `GenerateQuestionnaireLLMQuery()` and calls `chatCompletion()` in `api-helper.js` (non-streaming OpenRouter request)
-5. The raw LLM string is stripped of markdown code fences and sliced from first `[` to last `]`. It is then passed through a **three-tier parser**:
+4. The middleware builds the initial intake prompt via `GenerateQuestionnaireLLMQuery()`. It then runs a **two-stage AGI pipeline** instead of a single LLM call:
+   - **Stage 1 — Fanout**: `AskAllWorkerAgis(prompt)` in `agi-service.js` issues `chatCompletion(messages, model)` calls in parallel (`Promise.allSettled`) to every model in `OPENROUTER_WORKER_MODELS`. Each result is shaped uniformly: `{ model, ok, content?, error? }` — a single worker 429/network/HTTP failure doesn't abort the others.
+   - **Per-worker parse**: each `ok: true` worker response goes through the tiered `parseJsonArray` (see below). Workers that fail to parse are logged and dropped; workers that succeeded are collected into an array of parsed questionnaire arrays.
+   - **All-fail guard**: if zero workers succeeded (no parseable JSON from anyone), the middleware throws → renderer shows the centered red Retry button.
+   - **Stage 2 — Master merge**: `GenerateMergeQuestionnaireLLMQuery(parsedSets)` builds a prompt that asks the master model to consolidate the worker outputs (dedupe by intent, union MCQ options keeping "Other" last, prefer the clearer slider/range labels, drop low-value questions, never invent new clinical territory). `AskMasterAgi(prompt)` calls `chatCompletion` against `OPENROUTER_MASTER_MODEL` (`nvidia/nemotron-3-nano-30b-a3b:free`).
+5. The master's raw response is run through the same **three-tier parser** as the worker responses:
    - **Tier 1 — strict `JSON.parse`** (happy path; no extra cost when the model returns clean JSON)
    - **Tier 2 — normalize then `JSON.parse`** (replaces smart quotes with ASCII, strips `//` and `/* */` comments, removes trailing commas)
    - **Tier 3 — `jsonrepair` then `JSON.parse`** (handles broader structural damage)
    On any tier failure the parser logs an 80-char window around the bad character; if all three tiers fail the full raw response is logged and an error propagates. On success the middleware returns `{ ok: true, issue, gender, age, questions }`; on failure it returns `{ ok: false, error }`
-6a. **Failure → Retry**: when the IPC returns `{ ok: false }` (e.g. 429 from OpenRouter, network error, parser exhaustion), the questionnaire screen swaps the centered status overlay to a friendly message (translated by `humanizeError()` — 429 → "The AI service is temporarily rate-limited…", network errors → "Network error reaching the AI service…") plus a **red Retry button**. The button just calls `window.location.reload()`, which restarts the whole flow from scratch (re-fires `DOMContentLoaded`, re-spawns the spinner, re-invokes IPC)
+6a. **Failure → Retry**: when the IPC returns `{ ok: false }` (e.g. all workers 429'd, master parsing exhausted, network error), the questionnaire screen swaps the centered status overlay to a friendly message (translated by `humanizeError()` — 429 → "The AI service is temporarily rate-limited…", network errors → "Network error reaching the AI service…") plus a **red Retry button**. The button just calls `window.location.reload()`, which restarts the whole flow from scratch (re-fires `DOMContentLoaded`, re-spawns the spinner, re-invokes IPC, and re-runs the full fanout-merge pipeline)
 6. `questionnaire.js` hides the status box, reveals `#q-form`, and renders one `<section class="q-card q-card--{type}">` per question with type-specific controls; reveals the Submit button
 7. Submit click collects all answers (`{ question, type, value }[]`), then proceeds to the next workflow
 
@@ -194,7 +199,31 @@ Builds the prompt that asks an LLM to generate medical intake follow-up question
 ]
 ```
 
-**Consumers:** wired through `src/main/middlewares/collector-middleware.js`. `StartReportcollection({ issue, gender, age })` builds the prompt with this helper, sends it to OpenRouter via `chatCompletion()` (non-streaming) in `src/main/services/api-helper.js`, strips any markdown code fences from the response, slices from the first `[` to the last `]`, and `JSON.parse`s the result. The parsed array is returned over IPC to `src/renderer/scripts/questionnaire.js` which renders one card per question.
+**Consumers:** wired through `src/main/middlewares/collector-middleware.js`. `StartReportcollection({ issue, gender, age })` builds this prompt and sends it to **all worker models in parallel** via `AskAllWorkerAgis()` in `src/main/services/agi-service.js` (which uses `chatCompletion(messages, model)` from `api-helper.js`). Each worker response is parsed through the tiered parser; the surviving parsed arrays are then fed into `GenerateMergeQuestionnaireLLMQuery(...)` and sent to the master model via `AskMasterAgi()`. The final master JSON is parsed and returned over IPC to `src/renderer/scripts/questionnaire.js` which renders one card per question.
+
+### `GenerateMergeQuestionnaireLLMQuery({ questionnaireSets })`
+
+**File:** `src/main/helpers/query-generator-helper.js`
+
+Builds the prompt the **master model** (`OPENROUTER_MASTER_MODEL` in `agi-service.js`, currently `nvidia/nemotron-3-nano-30b-a3b:free`) uses to consolidate the per-worker questionnaires into a single deduplicated set.
+
+**Persona:** experienced medical doctor + clinical assessment designer (kept consistent with the intake prompt).
+
+**Inputs serialized into the prompt:**
+- The current request date/time (same `toLocaleString` format as the intake prompt, for awareness only).
+- All worker questionnaires, each labelled `Source 1`, `Source 2`, … with `JSON.stringify(set, null, 2)` of the parsed JSON array.
+- A repeat of the schema reference: `{ question, type, options?, min?, max?, step?, labels? }` with allowed `type` values.
+
+**Rules baked into the prompt:**
+- Combine into ONE consolidated, deduplicated questionnaire.
+- Treat questions with the same clinical intent as duplicates even if worded differently — merge them.
+- Selectable types (single_select, multi_select): take the union of options, remove near-duplicates (case- and punctuation-insensitive). Always keep `"Other"` as the last option.
+- Slider / range: prefer the most clinically reasonable `min`/`max`/`step`, reuse the clearer label text.
+- Drop low-value, redundant, or trivially similar questions; keep only medically meaningful ones.
+- Maintain a healthy mix of question types where appropriate.
+- Do NOT invent new clinical territory the sources didn't cover.
+
+**Output contract:** the master model must return **only** a valid JSON array in the exact same schema as the worker outputs — no markdown fences, comments, explanations, or surrounding text. The same tiered `parseJsonArray` recovers from minor formatting issues.
 
 ---
 

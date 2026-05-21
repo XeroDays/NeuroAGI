@@ -1,5 +1,8 @@
-const { GenerateQuestionnaireLLMQuery } = require("../helpers/query-generator-helper");
-const { chatCompletion } = require("../services/api-helper");
+const {
+  GenerateQuestionnaireLLMQuery,
+  GenerateMergeQuestionnaireLLMQuery,
+} = require("../helpers/query-generator-helper");
+const { AskAllWorkerAgis, AskMasterAgi } = require("../services/agi-service");
 const { jsonrepair } = require("jsonrepair");
 
 function logBadChunk(slice, err) {
@@ -80,9 +83,33 @@ function parseJsonArray(raw) {
 async function StartReportcollection({ issue, gender, age } = {}) {
   console.log("[collector] StartReportcollection:", { issue, gender, age });
   try {
-    const prompt = GenerateQuestionnaireLLMQuery({ issue, gender, age });
-    const raw = await chatCompletion([{ role: "user", content: prompt }]);
-    const questions = parseJsonArray(raw);
+    const initialPrompt = GenerateQuestionnaireLLMQuery({ issue, gender, age });
+
+    const workerResults = await AskAllWorkerAgis(initialPrompt);
+
+    const parsedSets = [];
+    for (const r of workerResults) {
+      if (!r.ok) {
+        console.warn(`[collector] worker ${r.model} failed:`, r.error);
+        continue;
+      }
+      try {
+        parsedSets.push(parseJsonArray(r.content));
+        console.log(`[collector] worker ${r.model} parsed OK`);
+      } catch (e) {
+        console.warn(`[collector] worker ${r.model} unparsable JSON:`, e.message);
+      }
+    }
+
+    if (parsedSets.length === 0) {
+      throw new Error("All worker models failed or returned unparsable JSON");
+    }
+    console.log(`[collector] ${parsedSets.length} clean worker set(s) → master merge`);
+
+    const mergePrompt = GenerateMergeQuestionnaireLLMQuery(parsedSets);
+    const mergedRaw = await AskMasterAgi(mergePrompt);
+    const questions = parseJsonArray(mergedRaw);
+
     return {
       ok: true,
       issue: String(issue || ""),
