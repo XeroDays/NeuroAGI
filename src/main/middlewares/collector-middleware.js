@@ -2,9 +2,58 @@ const {
   GenerateQuestionnaireLLMQuery,
   GenerateMergeQuestionnaireLLMQuery,
   GenerateLaboratoryLLMQuery,
+  GenerateDoctorAnalysisLLMQuery,
 } = require("../helpers/query-generator-helper");
-const { AskAllWorkerAgis, AskMasterAgi } = require("../services/agi-service");
+const {
+  AskAllWorkerAgis,
+  AskMasterAgi,
+  StreamFromAllWorkerAgis,
+} = require("../services/agi-service");
+const channels = require("../../shared/ipc/channels");
 const { jsonrepair } = require("jsonrepair");
+
+const JSON_LLM_OPTIONS = {
+  maxTokens: 4096,
+  reasoning: { effort: "none" },
+};
+
+const PROSE_LLM_OPTIONS = {
+  maxTokens: 8192,
+  reasoning: { effort: "low" },
+};
+
+function pickBestWorkerSet(sets) {
+  const arrays = (Array.isArray(sets) ? sets : []).filter(Array.isArray);
+  if (arrays.length === 0) return [];
+  return arrays.reduce((best, s) => (s.length > best.length ? s : best));
+}
+
+function logRawLLMOutput(tag, label, raw) {
+  const safe =
+    typeof raw === "string" ? raw : raw == null ? "(null)" : String(raw);
+  console.log(
+    `[${tag}] === ${label} raw output (${safe.length} chars) ===`
+  );
+  console.log(safe.length > 0 ? safe : "(empty)");
+  console.log(`[${tag}] === end ${label} raw output ===`);
+}
+
+function logParsedJson(tag, label, parsed) {
+  const count = Array.isArray(parsed) ? parsed.length : 0;
+  console.log(
+    `[${tag}] === ${label} parsed JSON (${count} items) ===`
+  );
+  try {
+    console.log(JSON.stringify(parsed, null, 2));
+  } catch (err) {
+    console.warn(
+      `[${tag}] ${label} parsed JSON not stringifiable:`,
+      err?.message || String(err)
+    );
+    console.log(parsed);
+  }
+  console.log(`[${tag}] === end ${label} parsed JSON ===`);
+}
 
 function logBadChunk(slice, err) {
   const match = /position (\d+)/i.exec(err?.message || "");
@@ -35,6 +84,15 @@ function parseJsonArray(raw) {
     .replace(/^```(?:json)?\s*/i, "")
     .replace(/```\s*$/i, "")
     .trim();
+
+  if (text.length === 0) {
+    console.error(
+      "[collector] LLM returned empty content (raw input was empty after trim/fence-strip)."
+    );
+    throw new Error(
+      "LLM returned empty content. The model likely spent its output budget on internal reasoning — raise maxTokens or set reasoning.effort to 'none'."
+    );
+  }
 
   const start = text.indexOf("[");
   const end = text.lastIndexOf("]");
@@ -86,7 +144,7 @@ async function StartReportcollection({ issue, gender, age } = {}) {
   try {
     const initialPrompt = GenerateQuestionnaireLLMQuery({ issue, gender, age });
 
-    const workerResults = await AskAllWorkerAgis(initialPrompt);
+    const workerResults = await AskAllWorkerAgis(initialPrompt, JSON_LLM_OPTIONS);
 
     const parsedSets = [];
     for (const r of workerResults) {
@@ -94,9 +152,14 @@ async function StartReportcollection({ issue, gender, age } = {}) {
         console.warn(`[collector] worker ${r.model} failed:`, r.error);
         continue;
       }
+      logRawLLMOutput("collector", `worker ${r.model}`, r.content);
       try {
-        parsedSets.push(parseJsonArray(r.content));
-        console.log(`[collector] worker ${r.model} parsed OK`);
+        const parsed = parseJsonArray(r.content);
+        parsedSets.push(parsed);
+        console.log(
+          `[collector] worker ${r.model} parsed OK (${parsed.length} questions)`
+        );
+        logParsedJson("collector", `worker ${r.model}`, parsed);
       } catch (e) {
         console.warn(`[collector] worker ${r.model} unparsable JSON:`, e.message);
       }
@@ -108,8 +171,26 @@ async function StartReportcollection({ issue, gender, age } = {}) {
     console.log(`[collector] ${parsedSets.length} clean worker set(s) → master merge`);
 
     const mergePrompt = GenerateMergeQuestionnaireLLMQuery(parsedSets);
-    const mergedRaw = await AskMasterAgi(mergePrompt);
-    const questions = parseJsonArray(mergedRaw);
+    const mergedRaw = await AskMasterAgi(mergePrompt, JSON_LLM_OPTIONS);
+    logRawLLMOutput("collector", "master merge", mergedRaw);
+
+    let questions;
+    try {
+      questions = parseJsonArray(mergedRaw);
+      console.log(
+        `[collector] master merge parsed OK (${questions.length} questions)`
+      );
+    } catch (mergeErr) {
+      console.warn(
+        "[collector] Master merge unusable, falling back to best worker set:",
+        mergeErr.message
+      );
+      questions = pickBestWorkerSet(parsedSets);
+      console.log(
+        `[collector] Master merge fallback: using worker set with ${questions.length} questions`
+      );
+    }
+    logParsedJson("collector", "final questionnaire", questions);
 
     return {
       ok: true,
@@ -172,7 +253,7 @@ async function GotoLaboratory({ issue, gender, age, questions = [], answers = []
       answers: aList,
     });
 
-    const workerResults = await AskAllWorkerAgis(initialPrompt);
+    const workerResults = await AskAllWorkerAgis(initialPrompt, JSON_LLM_OPTIONS);
 
     const parsedSets = [];
     for (const r of workerResults) {
@@ -180,9 +261,14 @@ async function GotoLaboratory({ issue, gender, age, questions = [], answers = []
         console.warn(`[collector/lab] worker ${r.model} failed:`, r.error);
         continue;
       }
+      logRawLLMOutput("collector/lab", `worker ${r.model}`, r.content);
       try {
-        parsedSets.push(parseJsonArray(r.content));
-        console.log(`[collector/lab] worker ${r.model} parsed OK`);
+        const parsed = parseJsonArray(r.content);
+        parsedSets.push(parsed);
+        console.log(
+          `[collector/lab] worker ${r.model} parsed OK (${parsed.length} questions)`
+        );
+        logParsedJson("collector/lab", `worker ${r.model}`, parsed);
       } catch (e) {
         console.warn(`[collector/lab] worker ${r.model} unparsable JSON:`, e.message);
       }
@@ -194,8 +280,26 @@ async function GotoLaboratory({ issue, gender, age, questions = [], answers = []
     console.log(`[collector/lab] ${parsedSets.length} clean worker set(s) → master merge`);
 
     const mergePrompt = GenerateMergeQuestionnaireLLMQuery(parsedSets);
-    const mergedRaw = await AskMasterAgi(mergePrompt);
-    const labQuestions = parseJsonArray(mergedRaw);
+    const mergedRaw = await AskMasterAgi(mergePrompt, JSON_LLM_OPTIONS);
+    logRawLLMOutput("collector/lab", "master merge", mergedRaw);
+
+    let labQuestions;
+    try {
+      labQuestions = parseJsonArray(mergedRaw);
+      console.log(
+        `[collector/lab] master merge parsed OK (${labQuestions.length} questions)`
+      );
+    } catch (mergeErr) {
+      console.warn(
+        "[collector/lab] Master merge unusable, falling back to best worker set:",
+        mergeErr.message
+      );
+      labQuestions = pickBestWorkerSet(parsedSets);
+      console.log(
+        `[collector/lab] Master merge fallback: using worker set with ${labQuestions.length} questions`
+      );
+    }
+    logParsedJson("collector/lab", "final laboratory", labQuestions);
 
     return {
       ok: true,
@@ -237,9 +341,105 @@ async function SubmitLaboratory({ issue, gender, age, questions = [], answers = 
   return { ok: true };
 }
 
+function StartDoctor(
+  { issue, gender, age, questionnaire = {}, laboratory = {} } = {},
+  sender
+) {
+  const intakeQs = Array.isArray(questionnaire?.questions) ? questionnaire.questions : [];
+  const intakeAs = Array.isArray(questionnaire?.answers) ? questionnaire.answers : [];
+  const labQs = Array.isArray(laboratory?.questions) ? laboratory.questions : [];
+  const labAs = Array.isArray(laboratory?.answers) ? laboratory.answers : [];
+
+  console.log("[collector/doctor] StartDoctor:", {
+    issue,
+    gender,
+    age,
+    intakeQuestionCount: intakeQs.length,
+    intakeAnswerCount: intakeAs.length,
+    labQuestionCount: labQs.length,
+    labAnswerCount: labAs.length,
+  });
+
+  const safeSend = (channel, payload) => {
+    if (!sender) return;
+    try {
+      if (sender.isDestroyed && sender.isDestroyed()) return;
+      sender.send(channel, payload);
+    } catch (err) {
+      console.warn(
+        `[collector/doctor] safeSend ${channel} failed:`,
+        err?.message || String(err)
+      );
+    }
+  };
+
+  let prompt;
+  try {
+    prompt = GenerateDoctorAnalysisLLMQuery({
+      issue,
+      gender,
+      age,
+      questionnaire: { questions: intakeQs, answers: intakeAs },
+      laboratory: { questions: labQs, answers: labAs },
+    });
+  } catch (err) {
+    console.error("[collector/doctor] prompt build failed:", err);
+    return { ok: false, error: err?.message || String(err), models: [] };
+  }
+
+  const streamBuffers = new Map();
+
+  const models = StreamFromAllWorkerAgis(
+    prompt,
+    {
+      onModelDelta: (model, delta) => {
+        const prev = streamBuffers.get(model) || "";
+        streamBuffers.set(model, prev + (typeof delta === "string" ? delta : ""));
+        safeSend(channels.DOCTOR_STREAM_DELTA, { model, delta });
+      },
+      onModelDone: (model) => {
+        const buf = streamBuffers.get(model) || "";
+        console.log(
+          `[collector/doctor] stream done for ${model} (${buf.length} chars)`
+        );
+        logRawLLMOutput(
+          "collector/doctor",
+          `doctor ${model} final response`,
+          buf
+        );
+        safeSend(channels.DOCTOR_STREAM_DONE, { model });
+      },
+      onModelError: (model, error) => {
+        const buf = streamBuffers.get(model) || "";
+        console.warn(
+          `[collector/doctor] stream error for ${model} (after ${buf.length} chars):`,
+          error
+        );
+        if (buf.length > 0) {
+          logRawLLMOutput(
+            "collector/doctor",
+            `doctor ${model} partial response before error`,
+            buf
+          );
+        }
+        safeSend(channels.DOCTOR_STREAM_ERROR, { model, error });
+      },
+      onAllDone: ({ okModels, errorModels, elapsedMs }) => {
+        console.log(
+          `[collector/doctor] all doctor streams settled in ${elapsedMs}ms — ok: ${okModels.length}, err: ${errorModels.length}`
+        );
+      },
+    },
+    PROSE_LLM_OPTIONS
+  );
+
+  return { ok: true, models };
+}
+
 module.exports = {
   StartReportcollection,
   SubmitQuestionnaire,
   GotoLaboratory,
   SubmitLaboratory,
+  StartDoctor,
 };

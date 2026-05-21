@@ -96,43 +96,363 @@ body.doc-shell::before {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 1.5rem 1rem 2rem;
+  align-items: stretch;
+  padding: 1.25rem 1rem 2rem;
   width: 100%;
+  gap: 1rem;
 }
 
 .doc-summary {
-  margin: 0 0 1.25rem;
+  margin: 0 0 0.25rem;
   font-size: 0.9rem;
   color: rgba(255, 255, 255, 0.85);
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.15);
   text-align: center;
 }
 
-.doc-card {
-  max-width: 480px;
-  width: 100%;
+.doc-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.85rem;
+  padding: 3rem 1rem;
+  text-align: center;
+}
+
+.doc-spinner {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top-color: rgba(255, 255, 255, 0.95);
+  animation: doc-spin 0.8s linear infinite;
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.15);
+}
+
+@keyframes doc-spin {
+  to { transform: rotate(360deg); }
+}
+
+.doc-loading-label {
+  margin: 0;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.85);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.15);
+}
+
+.doc-error {
+  display: flex;
+  justify-content: center;
+  padding: 1rem 0;
+}
+
+.doc-error-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.25rem 1.5rem;
+  text-align: center;
+  color: #fff;
+  background: rgba(220, 80, 100, 0.28);
+  border: 1px solid rgba(255, 150, 160, 0.55);
+  border-radius: 14px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+  max-width: min(420px, 90vw);
+}
+
+.doc-error-message {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  color: #fff;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.2);
+}
+
+.doc-retry {
+  cursor: pointer;
+  padding: 0.55rem 1.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #fff;
+  background: #dc2626;
+  border: 1px solid #b91c1c;
+  border-radius: 999px;
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.35);
+  transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.doc-retry:hover {
+  background: #b91c1c;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(220, 38, 38, 0.45);
+}
+
+.doc-retry:active { transform: translateY(0); }
+
+.doc-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0;
+  margin: 0;
+}
+
+.doc-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.9rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+  max-width: 100%;
+}
+
+.doc-tab:hover {
+  background: rgba(255, 255, 255, 0.24);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.doc-tab.is-active {
+  background: rgba(255, 255, 255, 0.32);
+  border-color: rgba(255, 255, 255, 0.6);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+}
+
+.doc-tab.is-complete .doc-tab-spinner { display: none; }
+
+.doc-tab.is-failed {
+  background: rgba(220, 80, 100, 0.32);
+  border-color: rgba(255, 150, 160, 0.6);
+  color: #fff;
+}
+
+.doc-tab.is-failed .doc-tab-spinner { display: none; }
+
+.doc-tab-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 22ch;
+}
+
+.doc-tab-spinner {
+  flex-shrink: 0;
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: rgba(255, 255, 255, 0.95);
+  animation: doc-spin 0.8s linear infinite;
+}
+
+.doc-panes {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: block;
+}
+
+.doc-pane {
+  display: none;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1.25rem 1.5rem;
   background: rgba(255, 255, 255, 0.14);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
   border: 1px solid rgba(255, 255, 255, 0.3);
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.4);
   border-radius: 14px;
-  padding: 1.5rem 1.75rem;
-  text-align: center;
+  color: rgba(255, 255, 255, 0.96);
+  min-height: 40vh;
 }
 
-.doc-card-title {
-  margin: 0 0 0.5rem;
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.98);
-  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.15);
+.doc-pane.is-active { display: flex; }
+
+.doc-pane-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-.doc-card-body {
-  margin: 0;
-  font-size: 0.9rem;
-  line-height: 1.5;
+.doc-model-tag {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.7rem;
+  font-weight: 500;
   color: rgba(255, 255, 255, 0.85);
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  letter-spacing: 0.01em;
+}
+
+.doc-pane-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.doc-pane-status.is-complete { color: rgba(180, 240, 200, 0.95); }
+.doc-pane-status.is-error { color: rgba(255, 180, 180, 0.95); }
+
+.doc-pane-spinner {
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: rgba(255, 255, 255, 0.95);
+  animation: doc-spin 0.8s linear infinite;
+}
+
+.doc-pane-error {
+  margin-top: 0.5rem;
+  padding: 0.85rem 1rem;
+  font-size: 0.88rem;
+  color: #fff;
+  background: rgba(220, 80, 100, 0.28);
+  border: 1px solid rgba(255, 150, 160, 0.55);
+  border-radius: 12px;
+}
+
+.doc-prose {
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.96);
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+.doc-prose > :first-child { margin-top: 0; }
+.doc-prose > :last-child { margin-bottom: 0; }
+
+.doc-prose h1,
+.doc-prose h2,
+.doc-prose h3,
+.doc-prose h4,
+.doc-prose h5,
+.doc-prose h6 {
+  margin: 1.1rem 0 0.5rem;
+  color: #fff;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.18);
+  letter-spacing: -0.01em;
+  font-weight: 700;
+}
+
+.doc-prose h1 { font-size: 1.35rem; }
+.doc-prose h2 { font-size: 1.15rem; }
+.doc-prose h3 { font-size: 1rem; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; color: rgba(255, 255, 255, 0.92); }
+.doc-prose h4 { font-size: 0.95rem; }
+
+.doc-prose p {
+  margin: 0.6rem 0;
+}
+
+.doc-prose strong {
+  color: #fff;
+  font-weight: 700;
+}
+
+.doc-prose em {
+  color: rgba(255, 255, 255, 0.92);
+  font-style: italic;
+}
+
+.doc-prose a {
+  color: #fce8ff;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.doc-prose ul,
+.doc-prose ol {
+  margin: 0.5rem 0;
+  padding-left: 1.4rem;
+}
+
+.doc-prose li {
+  margin: 0.25rem 0;
+}
+
+.doc-prose li::marker {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.doc-prose blockquote {
+  margin: 0.75rem 0;
+  padding: 0.5rem 0.9rem;
+  border-left: 3px solid rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 0 10px 10px 0;
+  color: rgba(255, 255, 255, 0.92);
+  font-style: italic;
+}
+
+.doc-prose code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85em;
+  padding: 0.1em 0.35em;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.25);
+  color: #ffe9f5;
+}
+
+.doc-prose pre {
+  margin: 0.75rem 0;
+  padding: 0.85rem 1rem;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  overflow-x: auto;
+}
+
+.doc-prose pre code {
+  background: transparent;
+  color: #fff;
+  padding: 0;
+  font-size: 0.85rem;
+}
+
+.doc-prose hr {
+  margin: 1rem 0;
+  border: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.doc-prose table {
+  width: 100%;
+  margin: 0.75rem 0;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.doc-prose th,
+.doc-prose td {
+  padding: 0.45rem 0.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  text-align: left;
+}
+
+.doc-prose th {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
 }

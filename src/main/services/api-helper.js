@@ -1,6 +1,6 @@
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
-async function streamChat(messages, model, onDelta, onDone, onError) {
+async function streamChat(messages, model, onDelta, onDone, onError, options = {}) {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
     console.error('[api-helper] streamChat: OPENROUTER_API_KEY is not set');
@@ -25,12 +25,16 @@ async function streamChat(messages, model, onDelta, onDone, onError) {
   let deltaCount = 0;
   let deltaChars = 0;
 
+  const { maxTokens, reasoning } = options || {};
+
   console.log('[api-helper] streamChat → request', {
     url: OPENROUTER_URL,
     model,
     stream: true,
     messageCount,
     promptChars,
+    maxTokens: maxTokens ?? null,
+    reasoning: reasoning ?? null,
   });
 
   let doneCalled = false;
@@ -58,7 +62,9 @@ async function streamChat(messages, model, onDelta, onDone, onError) {
       body: JSON.stringify({
         model,
         messages,
-        stream: true
+        stream: true,
+        ...(typeof maxTokens === 'number' ? { max_tokens: maxTokens } : {}),
+        ...(reasoning ? { reasoning } : {}),
       })
     });
 
@@ -154,7 +160,7 @@ async function streamChat(messages, model, onDelta, onDone, onError) {
   }
 }
 
-async function chatCompletion(messages, model) {
+async function chatCompletion(messages, model, options = {}) {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
     console.error('[api-helper] chatCompletion: OPENROUTER_API_KEY is not set');
@@ -170,12 +176,16 @@ async function chatCompletion(messages, model) {
     ? messages.reduce((sum, m) => sum + (typeof m?.content === 'string' ? m.content.length : 0), 0)
     : 0;
 
+  const { maxTokens, reasoning } = options || {};
+
   console.log('[api-helper] chatCompletion → request', {
     url: OPENROUTER_URL,
     model,
     stream: false,
     messageCount,
     promptChars,
+    maxTokens: maxTokens ?? null,
+    reasoning: reasoning ?? null,
   });
 
   let res;
@@ -191,7 +201,9 @@ async function chatCompletion(messages, model) {
       body: JSON.stringify({
         model,
         messages,
-        stream: false
+        stream: false,
+        ...(typeof maxTokens === 'number' ? { max_tokens: maxTokens } : {}),
+        ...(reasoning ? { reasoning } : {}),
       })
     });
   } catch (err) {

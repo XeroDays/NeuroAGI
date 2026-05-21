@@ -220,8 +220,127 @@ function GenerateLaboratoryLLMQuery({ issue, gender, age, questions = [], answer
   Do not include explanations, markdown, comments, code fences, or any text outside the JSON array.`;
 }
 
+function formatQaBlock(label, questions = [], answers = []) {
+  const qList = Array.isArray(questions) ? questions : [];
+  const aList = Array.isArray(answers) ? answers : [];
+
+  if (qList.length === 0) {
+    return `${label}: (none captured)`;
+  }
+
+  const lines = qList.map((q, i) => {
+    const a = aList[i];
+    const qText = q?.question || `(question ${i + 1})`;
+    const qType = q?.type || "?";
+    let aText;
+    if (a == null || a.value == null) {
+      aText = "(no answer)";
+    } else if (Array.isArray(a.value)) {
+      aText = a.value.length ? a.value.join(", ") : "(none selected)";
+    } else if (typeof a.value === "object") {
+      aText = JSON.stringify(a.value);
+    } else {
+      aText = String(a.value);
+    }
+    return `Q${i + 1} [${qType}] ${qText}\nA${i + 1}: ${aText}`;
+  });
+
+  return `${label}:\n\n${lines.join("\n\n")}`;
+}
+
+function GenerateDoctorAnalysisLLMQuery({
+  issue,
+  gender,
+  age,
+  questionnaire = {},
+  laboratory = {},
+} = {}) {
+  const safeIssue = String(issue || "").trim() || "an unspecified health issue";
+  const safeGender = String(gender || "male").toLowerCase();
+  const safeAge = String(age || "30");
+
+  const now = new Date();
+  const dateTimeStr = now.toLocaleString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZoneName: "short",
+  });
+
+  const intakeBlock = formatQaBlock(
+    "Intake questionnaire",
+    questionnaire?.questions,
+    questionnaire?.answers
+  );
+  const labBlock = formatQaBlock(
+    "Laboratory / imaging report results",
+    laboratory?.questions,
+    laboratory?.answers
+  );
+
+  return `You are an experienced, board-certified clinical physician with deep diagnostic and pharmacological expertise. You are writing a **pre-doctor educational analysis** for a patient who has already completed an intake questionnaire and reported their laboratory / imaging findings. This is NOT a final diagnosis and NOT a prescription — it is structured guidance the patient will read before their real doctor's appointment.
+
+  Patient profile:
+  - Age: ${safeAge}
+  - Gender: ${safeGender}
+  - Presenting complaint: "${safeIssue}"
+  - Date of this analysis: ${dateTimeStr}
+
+  ${intakeBlock}
+
+  ${labBlock}
+
+  Your job:
+  - Analyse the case rigorously. Cross-reference symptoms, demographics, intake answers, and laboratory / imaging findings against current peer-reviewed medical research, standard clinical guidelines, and published case studies.
+  - Address the patient directly in the second person ("you", "your symptoms").
+  - Be honest about uncertainty — say "likely", "possible", or "less likely" rather than asserting a single cause if the picture is mixed.
+  - Reason about whether each likely cause is **natural / physiological**, **lifestyle-driven (self-made)**, **medication-induced or iatrogenic**, or **secondary to another condition** — and explain why for each.
+  - Surface red-flag warning signs that mean the patient should seek urgent / emergency care, not wait for an appointment.
+
+  Your response MUST be a single, fully-formatted Markdown document (no JSON, no code fences around the whole document). Use this exact section structure with these headings in this order:
+
+  # Pre-doctor Analysis
+
+  ## Summary
+  One short paragraph naming the most plausible working explanation(s) in plain language.
+
+  ## Most Likely Causes
+  A ranked Markdown list (highest probability first). For each cause give 1-2 lines explaining *why* the patient's specific intake and lab findings point to it.
+
+  ## Is This Natural, Lifestyle-Driven, Medication-Induced, or Secondary?
+  Explicitly classify each leading cause from the previous section into one of those four buckets and justify the classification.
+
+  ## How to Address This
+  Concrete, prioritised actions the patient can take now (self-care, lifestyle adjustments, diet, sleep, stress, exercise, ergonomic / environmental tweaks). Use a Markdown list.
+
+  ## Medications a Doctor Commonly Prescribes
+  Briefly describe the **classes of medication** a physician would typically consider for this presentation, what each class does, and why it might be chosen. Do **not** instruct the patient to self-medicate. Add a one-line caveat that exact drug, dose, and duration must come from their physician.
+
+  ## Prevention and Long-Term Outlook
+  How the patient can prevent recurrence or progression, plus what the realistic prognosis looks like with and without proper care.
+
+  ## Red Flags — See a Doctor Immediately If
+  A Markdown bullet list of warning signs that warrant urgent or emergency evaluation, not a routine appointment.
+
+  ## What to Bring to the Doctor's Appointment
+  Short list: which symptoms to track between now and the visit, which reports / images / medication lists to bring, and which specific questions to ask the physician.
+
+  ## Disclaimer
+  One short paragraph stating clearly that this is an AI-generated pre-doctor educational summary, not a diagnosis or prescription, and that the patient must consult a licensed clinician for a definitive evaluation.
+
+  Formatting rules:
+  - Output **Markdown only** — use \`#\`, \`##\`, \`**bold**\`, \`*italic*\`, and \`-\` / numbered lists.
+  - Do NOT wrap the entire reply in a code fence and do NOT return JSON.
+  - Do NOT include any text before the first heading or after the Disclaimer section.
+  - Keep paragraphs tight and patient-friendly; avoid raw medical jargon without a quick gloss.`;
+}
+
 module.exports = {
   GenerateQuestionnaireLLMQuery,
   GenerateMergeQuestionnaireLLMQuery,
   GenerateLaboratoryLLMQuery,
+  GenerateDoctorAnalysisLLMQuery,
 };

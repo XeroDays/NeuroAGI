@@ -17,10 +17,21 @@
   </header>
   <main class="doc-main">
     <p id="summary" class="doc-summary"></p>
-    <div class="doc-card">
-      <h2 class="doc-card-title">We're consulting the doctor</h2>
-      <p class="doc-card-body">Your responses have been received. The diagnostic report will appear here in the next step.</p>
+
+    <div id="doc-loading" class="doc-loading">
+      <div class="doc-spinner" aria-hidden="true"></div>
+      <p class="doc-loading-label">Consulting the doctors&hellip;</p>
     </div>
+
+    <div id="doc-error" class="doc-error" hidden>
+      <div class="doc-error-card">
+        <p id="doc-error-message" class="doc-error-message"></p>
+        <button id="doc-error-retry" type="button" class="doc-retry">Retry</button>
+      </div>
+    </div>
+
+    <nav id="doc-tabs" class="doc-tabs" role="tablist" hidden></nav>
+    <section id="doc-panes" class="doc-panes" hidden></section>
   </main>
   <script type="module" src="../../scripts/doctor.js"></script>
 </body>

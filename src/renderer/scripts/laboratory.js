@@ -83,6 +83,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         questions: loadedQuestions,
         answers,
       });
+      try {
+        sessionStorage.setItem(
+          'neuroagi:laboratory',
+          JSON.stringify({
+            issue,
+            gender,
+            age,
+            questions: loadedQuestions,
+            answers,
+          })
+        );
+      } catch (e) {
+        console.warn('Failed to stash laboratory Q&A in sessionStorage:', e);
+      }
       const q = new URLSearchParams();
       if (issue) q.set('issue', issue);
       q.set('gender', gender);
