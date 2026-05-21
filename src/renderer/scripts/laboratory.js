@@ -153,6 +153,8 @@ function buildCard(q, i) {
   card.dataset.type = type;
   card.dataset.question = questionText;
 
+  card.appendChild(renderReportToggle(card, fieldName));
+
   const h = document.createElement('h2');
   h.className = 'q-question';
   h.textContent = questionText;
@@ -178,6 +180,51 @@ function buildCard(q, i) {
       card.appendChild(renderText(q, fieldName));
   }
   return card;
+}
+
+function renderReportToggle(card, name) {
+  const row = document.createElement('label');
+  row.className = 'q-report-toggle';
+  row.htmlFor = `${name}_has_report`;
+
+  const input = document.createElement('input');
+  input.type = 'checkbox';
+  input.setAttribute('role', 'switch');
+  input.className = 'q-report-toggle-input';
+  input.id = `${name}_has_report`;
+  input.dataset.reportToggle = '1';
+  input.checked = true;
+
+  const track = document.createElement('span');
+  track.className = 'q-report-toggle-track';
+  const thumb = document.createElement('span');
+  thumb.className = 'q-report-toggle-thumb';
+  track.appendChild(thumb);
+
+  const text = document.createElement('span');
+  text.className = 'q-report-toggle-text';
+  text.textContent = 'I have this report already';
+
+  input.addEventListener('change', () => {
+    const hasReport = input.checked;
+    text.textContent = hasReport
+      ? 'I have this report already'
+      : "I don't have this report";
+    card.classList.toggle('q-card--no-report', !hasReport);
+    setCardInputsDisabled(card, !hasReport);
+  });
+
+  row.append(input, track, text);
+  return row;
+}
+
+function setCardInputsDisabled(card, disabled) {
+  const controls = card.querySelectorAll(
+    'input:not([data-report-toggle]), textarea, select'
+  );
+  controls.forEach((el) => {
+    el.disabled = disabled;
+  });
 }
 
 function renderSingleSelect(q, name) {
@@ -408,6 +455,19 @@ function collectAnswers(formEl) {
     const question = card.dataset.question;
     const idx = card.dataset.index;
     const name = `q_${idx}`;
+
+    const reportToggle = card.querySelector('input[data-report-toggle="1"]');
+    const hasReport = reportToggle ? reportToggle.checked : true;
+
+    if (!hasReport) {
+      answers.push({
+        question,
+        type,
+        value: 'the user does not have this report currently',
+      });
+      return;
+    }
+
     let value = null;
 
     switch (type) {

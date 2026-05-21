@@ -2,9 +2,9 @@ const { chatCompletion } = require("./api-helper");
 
 const OPENROUTER_WORKER_MODELS = [
   // "poolside/laguna-xs.2:free", 
-  // "openai/gpt-oss-120b:free",
+"openai/gpt-oss-120b:free",
   // "arcee-ai/trinity-large-thinking:free",
-  "nvidia/nemotron-3-super-120b-a12b:free",
+   //  "nvidia/nemotron-3-super-120b-a12b:free",
 ];
 
 const OPENROUTER_MASTER_MODEL = "arcee-ai/trinity-large-thinking:free";
