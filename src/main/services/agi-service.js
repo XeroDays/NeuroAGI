@@ -2,12 +2,14 @@ const { chatCompletion } = require("./api-helper");
 
 const OPENROUTER_WORKER_MODELS = [
   // "poolside/laguna-xs.2:free", 
-"openai/gpt-oss-120b:free",
+//"google/gemini-2.5-flash-lite", // not free
+"deepseek/deepseek-v4-flash", // not free
+//"google/gemini-3-flash-preview", //not free
   // "arcee-ai/trinity-large-thinking:free",
    //  "nvidia/nemotron-3-super-120b-a12b:free",
 ];
 
-const OPENROUTER_MASTER_MODEL = "arcee-ai/trinity-large-thinking:free";
+const OPENROUTER_MASTER_MODEL = "deepseek/deepseek-v4-flash";
 
 async function AskAllWorkerAgis(prompt) {
   const messages = [{ role: "user", content: prompt }];
