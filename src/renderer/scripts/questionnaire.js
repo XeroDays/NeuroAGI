@@ -288,44 +288,83 @@ function renderRange(q, name) {
   const min = numberOr(q?.min, 0);
   const max = numberOr(q?.max, 100);
   const step = numberOr(q?.step, 1);
+  const safeMax = max > min ? max : min + step;
 
   const wrap = document.createElement('div');
-  wrap.className = 'q-range';
+  wrap.className = 'q-range-dual';
   wrap.dataset.rangeFor = name;
 
-  const makeRow = (suffix, initial, label) => {
-    const row = document.createElement('div');
-    row.className = 'q-range-row';
+  const trackWrap = document.createElement('div');
+  trackWrap.className = 'q-range-track-wrap';
 
-    const rowLabel = document.createElement('span');
-    rowLabel.className = 'q-range-row-label';
-    rowLabel.textContent = label;
+  const track = document.createElement('div');
+  track.className = 'q-range-track';
+  const fill = document.createElement('div');
+  fill.className = 'q-range-fill';
+  track.appendChild(fill);
 
+  const makeInput = (suffix, initial, modClass) => {
     const input = document.createElement('input');
     input.type = 'range';
+    input.className = `q-range-input ${modClass}`;
     input.name = `${name}_${suffix}`;
     input.dataset.rangeSuffix = suffix;
     input.min = String(min);
-    input.max = String(max);
+    input.max = String(safeMax);
     input.step = String(step);
     input.value = String(initial);
-
-    const valueEl = document.createElement('span');
-    valueEl.className = 'q-range-row-value';
-    valueEl.textContent = String(initial);
-
-    input.addEventListener('input', () => {
-      valueEl.textContent = input.value;
-    });
-
-    row.appendChild(rowLabel);
-    row.appendChild(input);
-    row.appendChild(valueEl);
-    return row;
+    return input;
   };
 
-  wrap.appendChild(makeRow('min', min, 'Min'));
-  wrap.appendChild(makeRow('max', max, 'Max'));
+  const minInput = makeInput('min', min, 'q-range-input--min');
+  const maxInput = makeInput('max', safeMax, 'q-range-input--max');
+
+  trackWrap.append(track, minInput, maxInput);
+
+  const bounds = document.createElement('div');
+  bounds.className = 'q-range-bounds';
+  const boundMin = document.createElement('span');
+  boundMin.textContent = String(min);
+  const boundMax = document.createElement('span');
+  boundMax.textContent = String(safeMax);
+  bounds.append(boundMin, boundMax);
+
+  const values = document.createElement('div');
+  values.className = 'q-range-values';
+  const valMin = document.createElement('span');
+  valMin.className = 'q-range-value q-range-value--min';
+  const valMax = document.createElement('span');
+  valMax.className = 'q-range-value q-range-value--max';
+  values.append(valMin, valMax);
+
+  function update() {
+    const lo = Number(minInput.value);
+    const hi = Number(maxInput.value);
+    const span = safeMax - min;
+    const leftPct = span === 0 ? 0 : ((lo - min) / span) * 100;
+    const rightPct = span === 0 ? 100 : ((hi - min) / span) * 100;
+    fill.style.left = `${leftPct}%`;
+    fill.style.right = `${100 - rightPct}%`;
+    valMin.textContent = `Min: ${lo}`;
+    valMax.textContent = `Max: ${hi}`;
+    minInput.style.zIndex = lo >= safeMax - step ? '4' : '2';
+  }
+
+  minInput.addEventListener('input', () => {
+    if (Number(minInput.value) > Number(maxInput.value)) {
+      minInput.value = maxInput.value;
+    }
+    update();
+  });
+  maxInput.addEventListener('input', () => {
+    if (Number(maxInput.value) < Number(minInput.value)) {
+      maxInput.value = minInput.value;
+    }
+    update();
+  });
+
+  wrap.append(trackWrap, bounds, values);
+  update();
   return wrap;
 }
 

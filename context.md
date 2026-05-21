@@ -230,7 +230,7 @@ Pastel-gradient theme aligned with the **Home screen** (`app.css`) — same back
 | **"Other" option (single_select only)** | Replaces the visible label with a dashed-underline text input; typing in it auto-checks the paired hidden radio and uses the typed text as the value |
 | **Text input / textarea** | Solid white, no border, `12px` radius, soft shadow; focus ring uses purple accent |
 | **Slider** | Native `<input type="range">` with purple accent, live numeric value on the right (white), optional `labels.min` / `labels.max` under the track |
-| **Range (two thumbs)** | Two separate range rows labelled `Min` / `Max`; final value normalized to `{ min, max }` on collect |
+| **Range (two thumbs)** | **Dual-thumb single-track slider** — two overlapping `<input type="range">` sharing one visual track with a purple fill between the thumbs; each thumb is clamped so it can't cross the other (with a z-index nudge so neither thumb gets stuck when they collide at the upper bound); bound labels below the track show the absolute `min`/`max` from the model, a second row below shows live `Min: X` / `Max: Y`; final value still emitted as `{ min, max }` on collect via the unchanged `q_{i}_min` / `q_{i}_max` input names |
 | **Submit** | Dark pill button (`#555`, white text), right-aligned at the end of the grid; lifts on hover; disables itself after click |
 | **Status / error** | Centered glass card; error state tinted soft red |
 

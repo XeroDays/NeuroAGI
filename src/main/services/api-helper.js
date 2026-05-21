@@ -1,5 +1,5 @@
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const OPENROUTER_MODEL = 'minimax/minimax-m2.5:free';
+const OPENROUTER_MODEL = 'nvidia/nemotron-3-nano-30b-a3b:free';
 
 async function streamChat(messages, onDelta, onDone, onError) {
   const apiKey = process.env.OPENROUTER_API_KEY;
