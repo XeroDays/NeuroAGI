@@ -193,6 +193,9 @@ function buildCard(q, i) {
     default:
       card.appendChild(renderText(q, fieldName));
   }
+
+  setCardInputsDisabled(card, true);
+
   return card;
 }
 
@@ -207,7 +210,7 @@ function renderReportToggle(card, name) {
   input.className = 'q-report-toggle-input';
   input.id = `${name}_has_report`;
   input.dataset.reportToggle = '1';
-  input.checked = true;
+  input.checked = false;
 
   const track = document.createElement('span');
   track.className = 'q-report-toggle-track';
@@ -217,7 +220,9 @@ function renderReportToggle(card, name) {
 
   const text = document.createElement('span');
   text.className = 'q-report-toggle-text';
-  text.textContent = 'I have this report already';
+  text.textContent = "I don't have this report";
+
+  card.classList.add('q-card--no-report');
 
   input.addEventListener('change', () => {
     const hasReport = input.checked;
