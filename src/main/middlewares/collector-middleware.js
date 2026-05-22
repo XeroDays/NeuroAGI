@@ -13,15 +13,19 @@ const {
 const channels = require("../../shared/ipc/channels");
 const { jsonrepair } = require("jsonrepair");
 
-const JSON_LLM_OPTIONS = {
-  maxTokens: 4096,
-  reasoning: { effort: "none" },
-};
+// Structured JSON output (questionnaire, lab, pre-doctor, merge steps) — reasoning off to avoid wasting token budget on thinking.
+const JSON_LLM_OPTIONS   = { maxTokens: 4096,  reasoning: { effort: "none"   } };
+// const JSON_LLM_OPTIONS = { maxTokens: 4096,  reasoning: { effort: "low"    } };
+// const JSON_LLM_OPTIONS = { maxTokens: 4096,  reasoning: { effort: "medium" } };
+// const JSON_LLM_OPTIONS = { maxTokens: 8192,  reasoning: { effort: "none"   } };
+// const JSON_LLM_OPTIONS = { maxTokens: 8192,  reasoning: { effort: "low"    } };
 
-const PROSE_LLM_OPTIONS = {
-  maxTokens: 8192,
-  reasoning: { effort: "low" },
-};
+// Free-form doctor analysis report (streaming prose) — high reasoning for deep clinical thinking.
+// const PROSE_LLM_OPTIONS = { maxTokens: 4096,  reasoning: { effort: "none"   } };
+// const PROSE_LLM_OPTIONS = { maxTokens: 8192,  reasoning: { effort: "low"    } };
+// const PROSE_LLM_OPTIONS = { maxTokens: 16384, reasoning: { effort: "medium" } };
+const PROSE_LLM_OPTIONS   = { maxTokens: 32768, reasoning: { effort: "high"   } };
+// const PROSE_LLM_OPTIONS = { maxTokens: 65536, reasoning: { effort: "high"   } };
 
 function pickBestWorkerSet(sets) {
   const arrays = (Array.isArray(sets) ? sets : []).filter(Array.isArray);
