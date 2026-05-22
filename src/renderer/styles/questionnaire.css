@@ -1,12 +1,15 @@
-@property --gradient-angle {
-  syntax: "<angle>";
-  initial-value: 0deg;
-  inherits: false;
+:root {
+  --grad-1: #ff97ce;
+  --grad-2: #d4afde;
+  --grad-3: #c4b8e8;
+  --grad-4: #98c5f8;
+  --grad-5: #aae2f9;
+  --grad-speed: 6s;
 }
 
 @keyframes gradient-rotate {
-  from { --gradient-angle: 0deg; }
-  to   { --gradient-angle: 360deg; }
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to   { transform: translate(-50%, -50%) rotate(360deg); }
 }
 
 *,
@@ -27,18 +30,30 @@ body.q-shell {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   color: rgba(255, 255, 255, 0.96);
   position: relative;
-  overflow-x: hidden;
-  background: linear-gradient(var(--gradient-angle), #ff97ce 0%, #d4afde 25%, #c4b8e8 50%, #98c5f8 75%, #aae2f9 100%);
-  background-attachment: fixed;
-  animation: gradient-rotate 10s linear infinite;
+  overflow: hidden;
+  background: var(--grad-3);
   -webkit-font-smoothing: antialiased;
+}
+
+body.q-shell::after {
+  content: '';
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 200vmax;
+  height: 200vmax;
+  z-index: -2;
+  pointer-events: none;
+  background: linear-gradient(135deg, var(--grad-1) 0%, var(--grad-2) 25%, var(--grad-3) 50%, var(--grad-4) 75%, var(--grad-5) 100%);
+  animation: gradient-rotate var(--grad-speed) linear infinite;
+  will-change: transform;
 }
 
 body.q-shell::before {
   content: '';
   position: fixed;
   inset: 0;
-  z-index: 0;
+  z-index: -1;
   pointer-events: none;
   background:
     radial-gradient(ellipse 80% 60% at 10% 30%, rgba(232, 160, 200, 0.4), transparent 55%),
