@@ -34,33 +34,6 @@ function pickBestWorkerSet(sets) {
   return arrays.reduce((best, s) => (s.length > best.length ? s : best));
 }
 
-function logRawLLMOutput(tag, label, raw) {
-  const safe =
-    typeof raw === "string" ? raw : raw == null ? "(null)" : String(raw);
-  console.log(
-    `[${tag}] === ${label} raw output (${safe.length} chars) ===`
-  );
-  console.log(safe.length > 0 ? safe : "(empty)");
-  console.log(`[${tag}] === end ${label} raw output ===`);
-}
-
-function logParsedJson(tag, label, parsed) {
-  const count = Array.isArray(parsed) ? parsed.length : 0;
-  console.log(
-    `[${tag}] === ${label} parsed JSON (${count} items) ===`
-  );
-  try {
-    console.log(JSON.stringify(parsed, null, 2));
-  } catch (err) {
-    console.warn(
-      `[${tag}] ${label} parsed JSON not stringifiable:`,
-      err?.message || String(err)
-    );
-    console.log(parsed);
-  }
-  console.log(`[${tag}] === end ${label} parsed JSON ===`);
-}
-
 function logBadChunk(slice, err) {
   const match = /position (\d+)/i.exec(err?.message || "");
   if (!match) return;
@@ -158,14 +131,12 @@ async function StartReportcollection({ issue, gender, age } = {}) {
         console.warn(`[collector] worker ${r.model} failed:`, r.error);
         continue;
       }
-      logRawLLMOutput("collector", `worker ${r.model}`, r.content);
       try {
         const parsed = parseJsonArray(r.content);
         parsedSets.push(parsed);
         console.log(
           `[collector] worker ${r.model} parsed OK (${parsed.length} questions)`
         );
-        logParsedJson("collector", `worker ${r.model}`, parsed);
       } catch (e) {
         console.warn(`[collector] worker ${r.model} unparsable JSON:`, e.message);
       }
@@ -178,7 +149,6 @@ async function StartReportcollection({ issue, gender, age } = {}) {
 
     const mergePrompt = GenerateMergeQuestionnaireLLMQuery(parsedSets);
     const mergedRaw = await AskMasterAgi(mergePrompt, JSON_LLM_OPTIONS);
-    logRawLLMOutput("collector", "master merge", mergedRaw);
 
     let questions;
     try {
@@ -196,7 +166,6 @@ async function StartReportcollection({ issue, gender, age } = {}) {
         `[collector] Master merge fallback: using worker set with ${questions.length} questions`
       );
     }
-    logParsedJson("collector", "final questionnaire", questions);
 
     return {
       ok: true,
@@ -267,14 +236,12 @@ async function GotoLaboratory({ issue, gender, age, questions = [], answers = []
         console.warn(`[collector/lab] worker ${r.model} failed:`, r.error);
         continue;
       }
-      logRawLLMOutput("collector/lab", `worker ${r.model}`, r.content);
       try {
         const parsed = parseJsonArray(r.content);
         parsedSets.push(parsed);
         console.log(
           `[collector/lab] worker ${r.model} parsed OK (${parsed.length} questions)`
         );
-        logParsedJson("collector/lab", `worker ${r.model}`, parsed);
       } catch (e) {
         console.warn(`[collector/lab] worker ${r.model} unparsable JSON:`, e.message);
       }
@@ -287,7 +254,6 @@ async function GotoLaboratory({ issue, gender, age, questions = [], answers = []
 
     const mergePrompt = GenerateMergeQuestionnaireLLMQuery(parsedSets);
     const mergedRaw = await AskMasterAgi(mergePrompt, JSON_LLM_OPTIONS);
-    logRawLLMOutput("collector/lab", "master merge", mergedRaw);
 
     let labQuestions;
     try {
@@ -305,7 +271,6 @@ async function GotoLaboratory({ issue, gender, age, questions = [], answers = []
         `[collector/lab] Master merge fallback: using worker set with ${labQuestions.length} questions`
       );
     }
-    logParsedJson("collector/lab", "final laboratory", labQuestions);
 
     return {
       ok: true,
@@ -382,14 +347,12 @@ async function GotoPreDoctorRoom(
         console.warn(`[collector/predoc] worker ${r.model} failed:`, r.error);
         continue;
       }
-      logRawLLMOutput("collector/predoc", `worker ${r.model}`, r.content);
       try {
         const parsed = parseJsonArray(r.content);
         parsedSets.push(parsed);
         console.log(
           `[collector/predoc] worker ${r.model} parsed OK (${parsed.length} questions)`
         );
-        logParsedJson("collector/predoc", `worker ${r.model}`, parsed);
       } catch (e) {
         console.warn(
           `[collector/predoc] worker ${r.model} unparsable JSON:`,
@@ -407,7 +370,6 @@ async function GotoPreDoctorRoom(
 
     const mergePrompt = GenerateMergeQuestionnaireLLMQuery(parsedSets);
     const mergedRaw = await AskMasterAgi(mergePrompt, JSON_LLM_OPTIONS);
-    logRawLLMOutput("collector/predoc", "master merge", mergedRaw);
 
     let preDocQuestions;
     try {
@@ -425,7 +387,6 @@ async function GotoPreDoctorRoom(
         `[collector/predoc] Master merge fallback: using worker set with ${preDocQuestions.length} questions`
       );
     }
-    logParsedJson("collector/predoc", "final pre-doctor", preDocQuestions);
 
     return {
       ok: true,
@@ -552,11 +513,6 @@ function StartDoctor(
         console.log(
           `[collector/doctor] stream done for ${model} (content: ${buf.length} chars, reasoning: ${reasoningBuf.length} chars)`
         );
-        logRawLLMOutput(
-          "collector/doctor",
-          `doctor ${model} final response`,
-          buf
-        );
         safeSend(channels.DOCTOR_STREAM_DONE, { model });
       },
       onModelError: (model, error) => {
@@ -566,13 +522,6 @@ function StartDoctor(
           `[collector/doctor] stream error for ${model} (after content: ${buf.length} chars, reasoning: ${reasoningBuf.length} chars):`,
           error
         );
-        if (buf.length > 0) {
-          logRawLLMOutput(
-            "collector/doctor",
-            `doctor ${model} partial response before error`,
-            buf
-          );
-        }
         safeSend(channels.DOCTOR_STREAM_ERROR, { model, error });
       },
       onAllDone: ({ okModels, errorModels, elapsedMs }) => {
