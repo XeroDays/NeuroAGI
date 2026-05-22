@@ -1,3 +1,5 @@
+const usageTracker = require('./usage-tracker');
+
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
 async function streamChat(
@@ -47,6 +49,8 @@ async function streamChat(
     reasoning: reasoning ?? null,
   });
 
+  let lastUsage = null;
+
   let doneCalled = false;
   const finish = () => {
     if (doneCalled) return;
@@ -57,8 +61,10 @@ async function streamChat(
       deltaChars,
       reasoningCount,
       reasoningChars,
+      usage: lastUsage,
       totalElapsedMs: Date.now() - startedAt,
     });
+    usageTracker.recordUsage(lastUsage);
     onDone();
   };
 
@@ -75,6 +81,7 @@ async function streamChat(
         model,
         messages,
         stream: true,
+        usage: { include: true },
         ...(typeof maxTokens === 'number' ? { max_tokens: maxTokens } : {}),
         ...(reasoning ? { reasoning } : {}),
       })
@@ -143,6 +150,9 @@ async function streamChat(
             reasoningChars += reasoning.length;
             onReasoningDelta(reasoning);
           }
+          if (json.usage && typeof json.usage === 'object') {
+            lastUsage = json.usage;
+          }
         } catch {
         }
       }
@@ -166,6 +176,9 @@ async function streamChat(
               reasoningCount += 1;
               reasoningChars += reasoning.length;
               onReasoningDelta(reasoning);
+            }
+            if (json.usage && typeof json.usage === 'object') {
+              lastUsage = json.usage;
             }
           } catch {
           }
@@ -272,6 +285,7 @@ async function chatCompletion(messages, model, options = {}) {
     usage,
     totalElapsedMs: Date.now() - startedAt,
   });
+  usageTracker.recordUsage(usage);
 
   return content;
 }

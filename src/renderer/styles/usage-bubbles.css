@@ -1,0 +1,50 @@
+.usage-bubbles {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 11;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+.usage-bubble {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  user-select: none;
+  pointer-events: auto;
+  line-height: 1;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.usage-bubble:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.cost-bubble {
+  background: rgba(120, 200, 140, 0.22);
+  border: 1px solid rgba(180, 230, 195, 0.55);
+  color: #e6ffe9;
+  text-shadow: 0 1px 6px rgba(0, 80, 30, 0.25);
+}
+
+.tokens-bubble {
+  background: rgba(140, 180, 230, 0.22);
+  border: 1px solid rgba(190, 215, 245, 0.55);
+  color: #eaf3ff;
+  text-shadow: 0 1px 6px rgba(20, 50, 110, 0.25);
+}

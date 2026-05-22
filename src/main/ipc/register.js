@@ -9,6 +9,7 @@ const {
   SubmitPreDoctorRoom,
   StartDoctor,
 } = require("../middlewares/collector-middleware");
+const usageTracker = require("../services/usage-tracker");
 
 function registerIpcHandlers() {
   ipcMain.handle(channels.PING, async () => "pong");
@@ -40,6 +41,8 @@ function registerIpcHandlers() {
   ipcMain.handle(channels.START_DOCTOR, (event, payload) => {
     return StartDoctor(payload || {}, event.sender);
   });
+
+  ipcMain.handle(channels.GET_USAGE_TOTALS, () => usageTracker.getTotals());
 
   ipcMain.handle(channels.OPEN_DEV_TOOLS, (event) => {
     const win = BrowserWindow.fromWebContents(event.sender);

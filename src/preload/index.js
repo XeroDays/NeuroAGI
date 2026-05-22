@@ -13,6 +13,8 @@ const CH = {
   DOCTOR_STREAM_REASONING_DELTA: "neuroagi:doctor-stream-reasoning-delta",
   DOCTOR_STREAM_DONE: "neuroagi:doctor-stream-done",
   DOCTOR_STREAM_ERROR: "neuroagi:doctor-stream-error",
+  GET_USAGE_TOTALS: "neuroagi:get-usage-totals",
+  USAGE_UPDATE: "neuroagi:usage-update",
   OPEN_DEV_TOOLS: "neuroagi:open-dev-tools",
 };
 
@@ -50,6 +52,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
     subscribe(CH.DOCTOR_STREAM_REASONING_DELTA, cb),
   onDoctorStreamDone: (cb) => subscribe(CH.DOCTOR_STREAM_DONE, cb),
   onDoctorStreamError: (cb) => subscribe(CH.DOCTOR_STREAM_ERROR, cb),
+
+  getUsageTotals: () => ipcRenderer.invoke(CH.GET_USAGE_TOTALS),
+  onUsageUpdate: (cb) => subscribe(CH.USAGE_UPDATE, cb),
 
   openDevTools: () => ipcRenderer.invoke(CH.OPEN_DEV_TOOLS),
 });

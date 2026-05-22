@@ -297,7 +297,7 @@ body.app-shell::before {
 .glass-icon-btn {
   position: fixed;
   top: 1rem;
-  right: 1rem;
+  left: 1rem;
   z-index: 10;
   width: 2.5rem;
   height: 2.5rem;
