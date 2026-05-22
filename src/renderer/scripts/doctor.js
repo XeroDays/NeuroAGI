@@ -84,6 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const intake = readSession('neuroagi:questionnaire');
   const lab = readSession('neuroagi:laboratory');
+  const preDoc = readSession('neuroagi:preDoctorRoom');
 
   if (
     !intake ||
@@ -91,9 +92,12 @@ document.addEventListener('DOMContentLoaded', () => {
     !Array.isArray(intake.answers) ||
     !lab ||
     !Array.isArray(lab.questions) ||
-    !Array.isArray(lab.answers)
+    !Array.isArray(lab.answers) ||
+    !preDoc ||
+    !Array.isArray(preDoc.questions) ||
+    !Array.isArray(preDoc.answers)
   ) {
-    showError('Missing questionnaire or laboratory data. Please restart from the home screen.');
+    showError('Missing questionnaire, laboratory, or pre-doctor data. Please restart from the home screen.');
     return;
   }
 
@@ -250,6 +254,10 @@ document.addEventListener('DOMContentLoaded', () => {
         laboratory: {
           questions: lab.questions,
           answers: lab.answers,
+        },
+        preDoctorRoom: {
+          questions: preDoc.questions,
+          answers: preDoc.answers,
         },
       });
 

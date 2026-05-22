@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'">
+  <title>NeuroAGI</title>
+  <link rel="stylesheet" href="../../styles/questionnaire.css">
+</head>
+<body class="q-shell">
+  <header class="q-header">
+    <a class="q-back" href="../../index.html">Back</a>
+    <div class="q-header-titles">
+      <h1 id="app-title" class="q-brand"></h1>
+      <span id="screen-title" class="q-screen"></span>
+    </div>
+  </header>
+  <main class="q-main">
+    <p id="summary" class="q-summary"></p>
+    <div id="q-status" class="q-status" role="status" aria-live="polite">
+      <div class="q-spinner" aria-hidden="true"></div>
+      <p class="q-status-label">Preparing final clarifying questions&hellip;</p>
+    </div>
+    <form id="q-form" class="q-grid" hidden></form>
+    <div id="q-actions" class="q-actions" hidden>
+      <button type="button" id="q-submit" class="q-submit">Submit</button>
+    </div>
+  </main>
+  <script type="module" src="../../scripts/pre-doctor-room.js"></script>
+</body>
+</html>

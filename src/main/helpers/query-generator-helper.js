@@ -220,6 +220,109 @@ function GenerateLaboratoryLLMQuery({ issue, gender, age, questions = [], answer
   Do not include explanations, markdown, comments, code fences, or any text outside the JSON array.`;
 }
 
+function GeneratePreDoctorRoomLLMQuery({
+  issue,
+  gender,
+  age,
+  questionnaire = {},
+  laboratory = {},
+} = {}) {
+  const safeIssue = String(issue || "").trim() || "an unspecified health issue";
+  const safeGender = String(gender || "male").toLowerCase();
+  const safeAge = String(age || "30");
+
+  const now = new Date();
+  const dateTimeStr = now.toLocaleString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZoneName: "short",
+  });
+
+  const intakeBlock = formatQaBlock(
+    "Intake questionnaire (already answered)",
+    questionnaire?.questions,
+    questionnaire?.answers
+  );
+  const labBlock = formatQaBlock(
+    "Laboratory / imaging report results (already answered)",
+    laboratory?.questions,
+    laboratory?.answers
+  );
+
+  return `You are a highly experienced, board-certified clinical physician conducting the **final clarifying intake** for a patient case before handing it over for full physician analysis. The patient has already completed (1) an intake symptom questionnaire and (2) a laboratory / imaging report intake. Your job now is to inspect everything you have so far and decide what **additional** clarifying questions a competent doctor would still want to ask before forming a diagnostic impression.
+
+  Patient profile:
+  - Age: ${safeAge}
+  - Gender: ${safeGender}
+  - Presenting complaint: "${safeIssue}"
+  - Current date and time of this request: ${dateTimeStr}
+
+  ${intakeBlock}
+
+  ${labBlock}
+
+  Your task:
+  - Carefully read the presenting complaint, the intake answers, and the lab / imaging results above. Cross-reference them against current clinical knowledge.
+  - Identify the *remaining gaps* in the picture — symptom characteristics that were not yet captured, lifestyle / exposure factors not yet asked, time-course details, response-to-prior-treatment, family history, medication / supplement use, or anything contradictory in the data that needs clarification.
+  - Generate a focused set of additional clarifying questions a physician would ask in person before forming a working diagnosis. Do **not** repeat questions whose answers are already visible above; the patient will not want to answer the same thing twice.
+  - It is fine — even preferred — to return a small, surgical list of high-value questions rather than an exhaustive one. If genuinely no further clarification is needed, return a 1-question list confirming any single most important uncertainty.
+
+  Question authoring requirements (same rules as the intake questionnaire):
+  - Ask concise, professional, patient-friendly questions in the second person.
+  - Mix question types where appropriate: \`single_select\`, \`multi_select\`, \`slider\`, \`range\`, \`text\`.
+  - For selectable questions, always include an "Other" option as the LAST option.
+  - **Always state the unit of measurement in the question text whenever the answer is a quantity** (duration, frequency, length, weight, distance, temperature, count, dose, etc.). For example, write "How long has this issue been worsening (in weeks)?" instead of "How long has this issue been worsening?".
+    - For \`slider\` / \`range\`, the unit must appear in EITHER the question text OR both of \`labels.min\` / \`labels.max\` (preferred: in the question text). Bounds must be clinically reasonable for the chosen unit — do not pick arbitrary min / max. A pain or severity scale should typically be 0-10, not 0-100. \`step\` should be a sensible granularity for the unit.
+    - For \`single_select\` / \`multi_select\`, numeric option tokens MUST carry their unit ("30 minutes", not "30").
+  - No double-barreled questions (no "How long AND how severe…?"). Split or drop.
+  - Verify the chosen \`type\` matches the answer shape. Yes/no questions are \`single_select\` with ["Yes", "No", "Other"], not \`text\`.
+
+  Return ONLY valid JSON.
+
+  Expected JSON format:
+  [
+    {
+      "question": "How severe is your pain currently?",
+      "type": "slider",
+      "min": 0,
+      "max": 10,
+      "step": 1,
+      "labels": {
+        "min": "No pain",
+        "max": "Worst pain"
+      }
+    },
+    {
+      "question": "How long does each headache episode typically last (in minutes)?",
+      "type": "slider",
+      "min": 0,
+      "max": 1440,
+      "step": 5,
+      "labels": {
+        "min": "0 min",
+        "max": "24 h"
+      }
+    },
+    {
+      "question": "Which symptoms are you experiencing?",
+      "type": "multi_select",
+      "options": [
+        "Fever",
+        "Headache",
+        "Fatigue",
+        "Nausea",
+        "Other"
+      ]
+    }
+  ]
+
+  Do not include explanations, markdown, comments, code fences, or any text outside the JSON array.`;
+}
+
 function formatQaBlock(label, questions = [], answers = []) {
   const qList = Array.isArray(questions) ? questions : [];
   const aList = Array.isArray(answers) ? answers : [];
@@ -254,6 +357,7 @@ function GenerateDoctorAnalysisLLMQuery({
   age,
   questionnaire = {},
   laboratory = {},
+  preDoctorRoom = {},
 } = {}) {
   const safeIssue = String(issue || "").trim() || "an unspecified health issue";
   const safeGender = String(gender || "male").toLowerCase();
@@ -280,8 +384,13 @@ function GenerateDoctorAnalysisLLMQuery({
     laboratory?.questions,
     laboratory?.answers
   );
+  const preDocBlock = formatQaBlock(
+    "Pre-doctor clarifying questions (final intake)",
+    preDoctorRoom?.questions,
+    preDoctorRoom?.answers
+  );
 
-  return `You are an experienced, board-certified clinical physician with deep diagnostic and pharmacological expertise. You are writing a **pre-doctor educational analysis** for a patient who has already completed an intake questionnaire and reported their laboratory / imaging findings. This is NOT a final diagnosis and NOT a prescription — it is structured guidance the patient will read before their real doctor's appointment.
+  return `You are an experienced, board-certified clinical physician with deep diagnostic and pharmacological expertise. You are writing a **pre-doctor educational analysis** for a patient who has already completed an intake questionnaire, reported their laboratory / imaging findings, and answered a final round of clarifying questions. This is NOT a final diagnosis and NOT a prescription — it is structured guidance the patient will read before their real doctor's appointment.
 
   Patient profile:
   - Age: ${safeAge}
@@ -292,6 +401,8 @@ function GenerateDoctorAnalysisLLMQuery({
   ${intakeBlock}
 
   ${labBlock}
+
+  ${preDocBlock}
 
   Your job:
   - Analyse the case rigorously. Cross-reference symptoms, demographics, intake answers, and laboratory / imaging findings against current peer-reviewed medical research, standard clinical guidelines, and published case studies.
@@ -342,5 +453,6 @@ module.exports = {
   GenerateQuestionnaireLLMQuery,
   GenerateMergeQuestionnaireLLMQuery,
   GenerateLaboratoryLLMQuery,
+  GeneratePreDoctorRoomLLMQuery,
   GenerateDoctorAnalysisLLMQuery,
 };

@@ -2,6 +2,7 @@ const {
   GenerateQuestionnaireLLMQuery,
   GenerateMergeQuestionnaireLLMQuery,
   GenerateLaboratoryLLMQuery,
+  GeneratePreDoctorRoomLLMQuery,
   GenerateDoctorAnalysisLLMQuery,
 } = require("../helpers/query-generator-helper");
 const {
@@ -341,14 +342,145 @@ async function SubmitLaboratory({ issue, gender, age, questions = [], answers = 
   return { ok: true };
 }
 
+async function GotoPreDoctorRoom(
+  { issue, gender, age, questionnaire = {}, laboratory = {} } = {}
+) {
+  const intakeQs = Array.isArray(questionnaire?.questions) ? questionnaire.questions : [];
+  const intakeAs = Array.isArray(questionnaire?.answers) ? questionnaire.answers : [];
+  const labQs = Array.isArray(laboratory?.questions) ? laboratory.questions : [];
+  const labAs = Array.isArray(laboratory?.answers) ? laboratory.answers : [];
+
+  console.log("[collector/predoc] GotoPreDoctorRoom:", {
+    issue,
+    gender,
+    age,
+    intakeQuestionCount: intakeQs.length,
+    intakeAnswerCount: intakeAs.length,
+    labQuestionCount: labQs.length,
+    labAnswerCount: labAs.length,
+  });
+
+  try {
+    const initialPrompt = GeneratePreDoctorRoomLLMQuery({
+      issue,
+      gender,
+      age,
+      questionnaire: { questions: intakeQs, answers: intakeAs },
+      laboratory: { questions: labQs, answers: labAs },
+    });
+
+    const workerResults = await AskAllWorkerAgis(initialPrompt, JSON_LLM_OPTIONS);
+
+    const parsedSets = [];
+    for (const r of workerResults) {
+      if (!r.ok) {
+        console.warn(`[collector/predoc] worker ${r.model} failed:`, r.error);
+        continue;
+      }
+      logRawLLMOutput("collector/predoc", `worker ${r.model}`, r.content);
+      try {
+        const parsed = parseJsonArray(r.content);
+        parsedSets.push(parsed);
+        console.log(
+          `[collector/predoc] worker ${r.model} parsed OK (${parsed.length} questions)`
+        );
+        logParsedJson("collector/predoc", `worker ${r.model}`, parsed);
+      } catch (e) {
+        console.warn(
+          `[collector/predoc] worker ${r.model} unparsable JSON:`,
+          e.message
+        );
+      }
+    }
+
+    if (parsedSets.length === 0) {
+      throw new Error("All worker models failed or returned unparsable JSON");
+    }
+    console.log(
+      `[collector/predoc] ${parsedSets.length} clean worker set(s) → master merge`
+    );
+
+    const mergePrompt = GenerateMergeQuestionnaireLLMQuery(parsedSets);
+    const mergedRaw = await AskMasterAgi(mergePrompt, JSON_LLM_OPTIONS);
+    logRawLLMOutput("collector/predoc", "master merge", mergedRaw);
+
+    let preDocQuestions;
+    try {
+      preDocQuestions = parseJsonArray(mergedRaw);
+      console.log(
+        `[collector/predoc] master merge parsed OK (${preDocQuestions.length} questions)`
+      );
+    } catch (mergeErr) {
+      console.warn(
+        "[collector/predoc] Master merge unusable, falling back to best worker set:",
+        mergeErr.message
+      );
+      preDocQuestions = pickBestWorkerSet(parsedSets);
+      console.log(
+        `[collector/predoc] Master merge fallback: using worker set with ${preDocQuestions.length} questions`
+      );
+    }
+    logParsedJson("collector/predoc", "final pre-doctor", preDocQuestions);
+
+    return {
+      ok: true,
+      issue: String(issue || ""),
+      gender: String(gender || "male"),
+      age: String(age || "30"),
+      questions: preDocQuestions,
+    };
+  } catch (err) {
+    console.error("[collector/predoc] GotoPreDoctorRoom failed:", err);
+    return {
+      ok: false,
+      error: err?.message || String(err),
+    };
+  }
+}
+
+async function SubmitPreDoctorRoom(
+  { issue, gender, age, questions = [], answers = [] } = {}
+) {
+  const qList = Array.isArray(questions) ? questions : [];
+  const aList = Array.isArray(answers) ? answers : [];
+
+  console.log("[collector/predoc] SubmitPreDoctorRoom received:", {
+    issue,
+    gender,
+    age,
+    questionCount: qList.length,
+    answerCount: aList.length,
+  });
+
+  const byIndex = new Map(aList.map((a, i) => [i, a]));
+  console.log("[collector/predoc] === Pre-doctor Q&A dump ===");
+  qList.forEach((q, i) => {
+    const a = byIndex.get(i);
+    console.log(`Q${i + 1} [${q?.type || "?"}] ${q?.question || "(no question text)"}`);
+    console.log(`A${i + 1}:`, a?.value);
+  });
+  console.log("[collector/predoc] === end Pre-doctor Q&A ===");
+
+  return { ok: true };
+}
+
 function StartDoctor(
-  { issue, gender, age, questionnaire = {}, laboratory = {} } = {},
+  {
+    issue,
+    gender,
+    age,
+    questionnaire = {},
+    laboratory = {},
+    preDoctorRoom = {},
+  } = {},
   sender
 ) {
   const intakeQs = Array.isArray(questionnaire?.questions) ? questionnaire.questions : [];
   const intakeAs = Array.isArray(questionnaire?.answers) ? questionnaire.answers : [];
   const labQs = Array.isArray(laboratory?.questions) ? laboratory.questions : [];
   const labAs = Array.isArray(laboratory?.answers) ? laboratory.answers : [];
+  const preDocQs = Array.isArray(preDoctorRoom?.questions) ? preDoctorRoom.questions : [];
+  const preDocAs = Array.isArray(preDoctorRoom?.answers) ? preDoctorRoom.answers : [];
 
   console.log("[collector/doctor] StartDoctor:", {
     issue,
@@ -358,6 +490,8 @@ function StartDoctor(
     intakeAnswerCount: intakeAs.length,
     labQuestionCount: labQs.length,
     labAnswerCount: labAs.length,
+    preDocQuestionCount: preDocQs.length,
+    preDocAnswerCount: preDocAs.length,
   });
 
   const safeSend = (channel, payload) => {
@@ -381,6 +515,7 @@ function StartDoctor(
       age,
       questionnaire: { questions: intakeQs, answers: intakeAs },
       laboratory: { questions: labQs, answers: labAs },
+      preDoctorRoom: { questions: preDocQs, answers: preDocAs },
     });
   } catch (err) {
     console.error("[collector/doctor] prompt build failed:", err);
@@ -441,5 +576,7 @@ module.exports = {
   SubmitQuestionnaire,
   GotoLaboratory,
   SubmitLaboratory,
+  GotoPreDoctorRoom,
+  SubmitPreDoctorRoom,
   StartDoctor,
 };

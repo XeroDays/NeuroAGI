@@ -5,6 +5,8 @@ const {
   SubmitQuestionnaire,
   GotoLaboratory,
   SubmitLaboratory,
+  GotoPreDoctorRoom,
+  SubmitPreDoctorRoom,
   StartDoctor,
 } = require("../middlewares/collector-middleware");
 
@@ -25,6 +27,14 @@ function registerIpcHandlers() {
 
   ipcMain.handle(channels.SUBMIT_LABORATORY, async (_event, payload) => {
     return SubmitLaboratory(payload || {});
+  });
+
+  ipcMain.handle(channels.GOTO_PRE_DOCTOR_ROOM, async (_event, payload) => {
+    return GotoPreDoctorRoom(payload || {});
+  });
+
+  ipcMain.handle(channels.SUBMIT_PRE_DOCTOR_ROOM, async (_event, payload) => {
+    return SubmitPreDoctorRoom(payload || {});
   });
 
   ipcMain.handle(channels.START_DOCTOR, (event, payload) => {

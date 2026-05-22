@@ -1,7 +1,7 @@
-import { APP_TITLE, SCREEN_LABORATORY } from './constants.js';
+import { APP_TITLE, SCREEN_PRE_DOCTOR_ROOM } from './constants.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
-  document.title = `${SCREEN_LABORATORY} — ${APP_TITLE}`;
+  document.title = `${SCREEN_PRE_DOCTOR_ROOM} — ${APP_TITLE}`;
 
   const titleEl = document.getElementById('app-title');
   const screenTitleEl = document.getElementById('screen-title');
@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const submitBtn = document.getElementById('q-submit');
 
   if (titleEl) titleEl.textContent = APP_TITLE;
-  if (screenTitleEl) screenTitleEl.textContent = SCREEN_LABORATORY;
+  if (screenTitleEl) screenTitleEl.textContent = SCREEN_PRE_DOCTOR_ROOM;
 
   const params = new URLSearchParams(window.location.search);
   const issue = params.get('issue') || '';
@@ -25,40 +25,60 @@ document.addEventListener('DOMContentLoaded', async () => {
       : `${age}-year-old ${gender}`;
   }
 
-  if (!window.electronAPI?.gotoLaboratory) {
-    showError('Internal error: laboratory service not available.');
+  if (!window.electronAPI?.gotoPreDoctorRoom) {
+    showError('Internal error: pre-doctor service not available.');
     return;
   }
 
   let intake = null;
+  let lab = null;
   try {
-    const raw = sessionStorage.getItem('neuroagi:questionnaire');
-    if (raw) intake = JSON.parse(raw);
+    const rawIntake = sessionStorage.getItem('neuroagi:questionnaire');
+    if (rawIntake) intake = JSON.parse(rawIntake);
   } catch (e) {
     console.warn('Failed to read questionnaire from sessionStorage:', e);
   }
+  try {
+    const rawLab = sessionStorage.getItem('neuroagi:laboratory');
+    if (rawLab) lab = JSON.parse(rawLab);
+  } catch (e) {
+    console.warn('Failed to read laboratory from sessionStorage:', e);
+  }
 
-  if (!intake || !Array.isArray(intake.questions) || !Array.isArray(intake.answers)) {
-    showError('Missing questionnaire data. Please restart from the home screen.');
+  if (
+    !intake ||
+    !Array.isArray(intake.questions) ||
+    !Array.isArray(intake.answers) ||
+    !lab ||
+    !Array.isArray(lab.questions) ||
+    !Array.isArray(lab.answers)
+  ) {
+    showError('Missing questionnaire or laboratory data. Please restart from the home screen.');
     return;
   }
 
   let loadedQuestions = [];
 
   try {
-    const result = await window.electronAPI.gotoLaboratory({
+    const result = await window.electronAPI.gotoPreDoctorRoom({
       issue,
       gender,
       age,
-      questions: intake.questions,
-      answers: intake.answers,
+      questionnaire: {
+        questions: intake.questions,
+        answers: intake.answers,
+      },
+      laboratory: {
+        questions: lab.questions,
+        answers: lab.answers,
+      },
     });
     if (!result || !result.ok) {
-      throw new Error(result?.error || 'Failed to load laboratory tests.');
+      throw new Error(result?.error || 'Failed to load pre-doctor questions.');
     }
     const questions = Array.isArray(result.questions) ? result.questions : [];
     if (questions.length === 0) {
-      showError('No laboratory tests were returned. Please try again.');
+      showError('No pre-doctor questions were returned. Please try again.');
       return;
     }
     loadedQuestions = questions;
@@ -67,43 +87,37 @@ document.addEventListener('DOMContentLoaded', async () => {
     formEl.hidden = false;
     actionsEl.hidden = false;
   } catch (err) {
-    console.error('Failed to load laboratory:', err);
+    console.error('Failed to load pre-doctor room:', err);
     showError(humanizeError(err));
   }
 
   submitBtn?.addEventListener('click', async () => {
-    const answers = collectAnswers(formEl);
+    const { questions, answers } = collectSurviving(formEl, loadedQuestions);
     submitBtn.disabled = true;
     submitBtn.textContent = 'Submitting…';
     try {
-      await window.electronAPI?.submitLaboratory?.({
+      await window.electronAPI?.submitPreDoctorRoom?.({
         issue,
         gender,
         age,
-        questions: loadedQuestions,
+        questions,
         answers,
       });
       try {
         sessionStorage.setItem(
-          'neuroagi:laboratory',
-          JSON.stringify({
-            issue,
-            gender,
-            age,
-            questions: loadedQuestions,
-            answers,
-          })
+          'neuroagi:preDoctorRoom',
+          JSON.stringify({ issue, gender, age, questions, answers })
         );
-      } catch (e) {
-        console.warn('Failed to stash laboratory Q&A in sessionStorage:', e);
+      } catch (storageErr) {
+        console.warn('Failed to stash pre-doctor Q&A in sessionStorage:', storageErr);
       }
       const q = new URLSearchParams();
       if (issue) q.set('issue', issue);
       q.set('gender', gender);
       q.set('age', age);
-      window.location.href = `../pre-doctor-room/index.html?${q}`;
+      window.location.href = `../doctor/index.html?${q}`;
     } catch (err) {
-      console.error('SubmitLaboratory failed:', err);
+      console.error('SubmitPreDoctorRoom failed:', err);
       submitBtn.disabled = false;
       submitBtn.textContent = 'Submit';
       showError(humanizeError(err));
@@ -167,7 +181,18 @@ function buildCard(q, i) {
   card.dataset.type = type;
   card.dataset.question = questionText;
 
-  card.appendChild(renderReportToggle(card, fieldName));
+  const del = document.createElement('button');
+  del.type = 'button';
+  del.className = 'q-card-delete';
+  del.setAttribute('aria-label', 'Remove this question');
+  del.title = 'Remove this question';
+  del.innerHTML =
+    '<svg viewBox="0 0 14 14" aria-hidden="true"><path d="M2 2 L12 12 M12 2 L2 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>';
+  del.addEventListener('click', () => {
+    card.classList.add('q-card--removing');
+    setTimeout(() => card.remove(), 160);
+  });
+  card.appendChild(del);
 
   const h = document.createElement('h2');
   h.className = 'q-question';
@@ -193,57 +218,7 @@ function buildCard(q, i) {
     default:
       card.appendChild(renderText(q, fieldName));
   }
-
-  setCardInputsDisabled(card, true);
-
   return card;
-}
-
-function renderReportToggle(card, name) {
-  const row = document.createElement('label');
-  row.className = 'q-report-toggle';
-  row.htmlFor = `${name}_has_report`;
-
-  const input = document.createElement('input');
-  input.type = 'checkbox';
-  input.setAttribute('role', 'switch');
-  input.className = 'q-report-toggle-input';
-  input.id = `${name}_has_report`;
-  input.dataset.reportToggle = '1';
-  input.checked = false;
-
-  const track = document.createElement('span');
-  track.className = 'q-report-toggle-track';
-  const thumb = document.createElement('span');
-  thumb.className = 'q-report-toggle-thumb';
-  track.appendChild(thumb);
-
-  const text = document.createElement('span');
-  text.className = 'q-report-toggle-text';
-  text.textContent = "I don't have this report";
-
-  card.classList.add('q-card--no-report');
-
-  input.addEventListener('change', () => {
-    const hasReport = input.checked;
-    text.textContent = hasReport
-      ? 'I have this report already'
-      : "I don't have this report";
-    card.classList.toggle('q-card--no-report', !hasReport);
-    setCardInputsDisabled(card, !hasReport);
-  });
-
-  row.append(input, track, text);
-  return row;
-}
-
-function setCardInputsDisabled(card, disabled) {
-  const controls = card.querySelectorAll(
-    'input:not([data-report-toggle]), textarea, select'
-  );
-  controls.forEach((el) => {
-    el.disabled = disabled;
-  });
 }
 
 function renderSingleSelect(q, name) {
@@ -466,6 +441,18 @@ function numberOr(v, d) {
   return Number.isFinite(n) ? n : d;
 }
 
+function collectSurviving(formEl, allQuestions) {
+  const cards = formEl.querySelectorAll('.q-card');
+  const answers = collectAnswers(formEl);
+  const questions = Array.from(cards)
+    .map((card) => {
+      const idx = Number(card.dataset.index);
+      return Number.isFinite(idx) ? allQuestions[idx] : undefined;
+    })
+    .filter(Boolean);
+  return { questions, answers };
+}
+
 function collectAnswers(formEl) {
   const cards = formEl.querySelectorAll('.q-card');
   const answers = [];
@@ -474,19 +461,6 @@ function collectAnswers(formEl) {
     const question = card.dataset.question;
     const idx = card.dataset.index;
     const name = `q_${idx}`;
-
-    const reportToggle = card.querySelector('input[data-report-toggle="1"]');
-    const hasReport = reportToggle ? reportToggle.checked : true;
-
-    if (!hasReport) {
-      answers.push({
-        question,
-        type,
-        value: 'the user does not have this report currently',
-      });
-      return;
-    }
-
     let value = null;
 
     switch (type) {

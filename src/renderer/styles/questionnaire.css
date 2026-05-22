@@ -1,3 +1,14 @@
+@property --gradient-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes gradient-rotate {
+  from { --gradient-angle: 0deg; }
+  to   { --gradient-angle: 360deg; }
+}
+
 *,
 *::before,
 *::after {
@@ -17,8 +28,9 @@ body.q-shell {
   color: rgba(255, 255, 255, 0.96);
   position: relative;
   overflow-x: hidden;
-  background: linear-gradient(135deg, #e8a4c8 0%, #d4b0de 25%, #c4b8e8 50%, #b0cef0 75%, #a0d8f0 100%);
+  background: linear-gradient(var(--gradient-angle), #ff97ce 0%, #d4afde 25%, #c4b8e8 50%, #98c5f8 75%, #aae2f9 100%);
   background-attachment: fixed;
+  animation: gradient-rotate 10s linear infinite;
   -webkit-font-smoothing: antialiased;
 }
 

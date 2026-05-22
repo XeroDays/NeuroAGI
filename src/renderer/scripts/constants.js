@@ -10,7 +10,10 @@ export const SCREEN_QUESTIONNAIRE = 'Questionnaire';
 /** Laboratory screen (shown after submitting the questionnaire). */
 export const SCREEN_LABORATORY = 'Laboratory';
 
-/** Doctor screen (shown after submitting the laboratory results). */
+/** Pre-doctor Room screen (shown after submitting the laboratory results, before Doctor). */
+export const SCREEN_PRE_DOCTOR_ROOM = 'Pre-doctor Room';
+
+/** Doctor screen (shown after submitting the pre-doctor room clarifying answers). */
 export const SCREEN_DOCTOR = 'Doctor';
 
 /** Home screen primary action. */

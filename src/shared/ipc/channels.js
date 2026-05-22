@@ -4,6 +4,8 @@ module.exports = {
   SUBMIT_QUESTIONNAIRE: "neuroagi:submit-questionnaire",
   GOTO_LABORATORY: "neuroagi:goto-laboratory",
   SUBMIT_LABORATORY: "neuroagi:submit-laboratory",
+  GOTO_PRE_DOCTOR_ROOM: "neuroagi:goto-pre-doctor-room",
+  SUBMIT_PRE_DOCTOR_ROOM: "neuroagi:submit-pre-doctor-room",
   START_DOCTOR: "neuroagi:start-doctor",
   DOCTOR_STREAM_DELTA: "neuroagi:doctor-stream-delta",
   DOCTOR_STREAM_DONE: "neuroagi:doctor-stream-done",

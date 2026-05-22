@@ -6,6 +6,8 @@ const CH = {
   SUBMIT_QUESTIONNAIRE: "neuroagi:submit-questionnaire",
   GOTO_LABORATORY: "neuroagi:goto-laboratory",
   SUBMIT_LABORATORY: "neuroagi:submit-laboratory",
+  GOTO_PRE_DOCTOR_ROOM: "neuroagi:goto-pre-doctor-room",
+  SUBMIT_PRE_DOCTOR_ROOM: "neuroagi:submit-pre-doctor-room",
   START_DOCTOR: "neuroagi:start-doctor",
   DOCTOR_STREAM_DELTA: "neuroagi:doctor-stream-delta",
   DOCTOR_STREAM_DONE: "neuroagi:doctor-stream-done",
@@ -33,6 +35,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   submitLaboratory: (payload) =>
     ipcRenderer.invoke(CH.SUBMIT_LABORATORY, payload),
+
+  gotoPreDoctorRoom: (payload) =>
+    ipcRenderer.invoke(CH.GOTO_PRE_DOCTOR_ROOM, payload),
+
+  submitPreDoctorRoom: (payload) =>
+    ipcRenderer.invoke(CH.SUBMIT_PRE_DOCTOR_ROOM, payload),
 
   startDoctor: (payload) => ipcRenderer.invoke(CH.START_DOCTOR, payload),
 
