@@ -1,12 +1,3 @@
-:root {
-  --grad-1: #ff97ce;
-  --grad-2: #d4afde;
-  --grad-3: #c4b8e8;
-  --grad-4: #98c5f8;
-  --grad-5: #aae2f9;
-  --grad-speed: 4s;
-}
-
 @keyframes gradient-rotate {
   from { transform: translate(-50%, -50%) rotate(0deg); }
   to   { transform: translate(-50%, -50%) rotate(360deg); }
