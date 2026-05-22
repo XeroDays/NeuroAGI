@@ -16,8 +16,7 @@ const OPENROUTER_WORKER_MODELS = [
 
 const OPENROUTER_DOCTOR_MODELS = [
  // "deepseek/deepseek-v4-flash",
- // "google/gemini-2.5-flash-lite",
- "deepseek/deepseek-v4-flash:free",
+ // "google/gemini-2.5-flash-lite", 
  "nvidia/nemotron-nano-9b-v2:free",
 "openrouter/owl-alpha",
  "google/gemma-4-31b-it:free",
@@ -27,7 +26,7 @@ const OPENROUTER_DOCTOR_MODELS = [
 ];
 
 //const OPENROUTER_MASTER_MODEL = "deepseek/deepseek-v4-flash";
-const OPENROUTER_MASTER_MODEL = "deepseek/deepseek-v4-flash:free";
+const OPENROUTER_MASTER_MODEL = "baidu/cobuddy:free";
 
 async function AskAllWorkerAgis(prompt, options = {}) {
   const messages = [{ role: "user", content: prompt }];
