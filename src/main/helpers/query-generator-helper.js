@@ -14,74 +14,208 @@ function GenerateQuestionnaireLLMQuery ({ issue, gender, age } = {}) {
     timeZoneName: "short",
   });
 
-  return `You are a highly experienced medical doctor, licensed physician, and PhD-level clinical specialist conducting a professional medical intake assessment.
+  return `You are generating the INITIAL structured medical intake questionnaire for a patient.
 
-  The user is a ${safeAge}-year-old ${safeGender} reporting the following issue: "${safeIssue}".
+The patient is:
+- Age: ${safeAge}
+- Gender: ${safeGender}
+- Presenting issue: "${safeIssue}"
 
-  For awareness, the current date and time of this request is ${dateTimeStr}.
+Current date and time:
+${dateTimeStr}
 
-  Your task is to generate intelligent, medically relevant follow-up questions that help gather deeper clinical insights about the user's condition, symptoms, history, severity, triggers, duration, lifestyle factors, medications, and risk indicators.
-  
-  Requirements:
-  - Ask concise, professional, patient-friendly questions.
-  - Ask questions as many as possible but should be relavant.
-  - Dynamically adapt questions based on the reported issue.
-  - Include a mix of question types when appropriate:
-    - single_select
-    - multi_select
-    - slider
-    - range
-    - text
-  - For selectable questions, always include an "Other" option.
-  - Some questions should measure severity or emotional state using sliders.
-  - Some questions should allow selecting multiple symptoms or triggers.
-  - Some questions should ask about duration, frequency, pain level, mood level, sleep quality, stress level, etc.
-  - Avoid duplicate or unnecessary questions.
-  - Prioritize medically meaningful questions that can improve diagnostic understanding.
-  - **Always state the unit of measurement in the question text whenever the answer is a quantity** — duration, frequency, length, weight, distance, temperature, count, etc. For example, write "How long does each episode typically last (in minutes)?" instead of "How long does each episode typically last?"; write "How much water do you drink per day (in liters)?" instead of "How much water do you drink per day?". A user reading the question in isolation must know exactly what unit to answer in.
-    - For "slider" and "range" types, the unit must be present in EITHER the question text OR both of "labels.min" / "labels.max" (preferred: in the question text). Bounds must be clinically reasonable for the chosen unit — do not pick arbitrarily large or small "min" / "max". For example, an episode duration that maxes out at 1440 should be phrased as "How long does each episode typically last (in minutes)?" with min: 0, max: 1440, labels.min: "0 min", labels.max: "24 h". A pain or severity scale should typically be 0-10, not 0-100.
-    - For "single_select" and "multi_select", if the options are numeric tokens (e.g. "30", "60", "90"), include the unit on each option ("30 minutes", "60 minutes", "90 minutes"). Numeric options without units are forbidden.
-  
-  Return ONLY valid JSON.
-  
-  Expected JSON format:
-  [
-    {
-      "question": "How severe is your pain currently?",
-      "type": "slider",
-      "min": 0,
-      "max": 10,
-      "step": 1,
-      "labels": {
-        "min": "No pain",
-        "max": "Worst pain"
-      }
-    },
-    {
-      "question": "How long does each headache episode typically last (in minutes)?",
-      "type": "slider",
-      "min": 0,
-      "max": 1440,
-      "step": 5,
-      "labels": {
-        "min": "0 min",
-        "max": "24 h"
-      }
-    },
-    {
-      "question": "Which symptoms are you experiencing?",
-      "type": "multi_select",
-      "options": [
-        "Fever",
-        "Headache",
-        "Fatigue",
-        "Nausea",
-        "Other"
-      ]
+Your responsibility is to generate medically relevant intake questions that help collect the MOST clinically useful information for understanding the patient's condition before deeper analysis occurs.
+
+Clinical intake objectives:
+- Gather information that improves:
+  - symptom understanding,
+  - severity assessment,
+  - risk stratification,
+  - triage accuracy,
+  - and diagnostic direction.
+- Adapt dynamically to the reported issue.
+- Focus on high-yield clinical questioning.
+- Avoid generic filler questions.
+- Avoid repetitive or semantically overlapping questions.
+- Prefer questions that materially improve clinical understanding.
+
+Clinical reasoning guidance:
+- Silently determine:
+  - likely symptom categories,
+  - possible body systems involved,
+  - common causes,
+  - dangerous causes that should not be missed,
+  - and the most important missing information.
+- Prioritize questions that clarify:
+  - onset,
+  - duration,
+  - progression,
+  - severity,
+  - frequency,
+  - triggers,
+  - relieving factors,
+  - associated symptoms,
+  - functional impact,
+  - prior episodes,
+  - medications,
+  - supplements,
+  - relevant medical history,
+  - exposure risks,
+  - and family history when clinically relevant.
+- If the issue may indicate an urgent condition, prioritize questions about:
+  - chest pain,
+  - breathing difficulty,
+  - neurological symptoms,
+  - bleeding,
+  - loss of consciousness,
+  - suicidality,
+  - severe infection symptoms,
+  - pregnancy-related emergencies,
+  - or rapidly worsening symptoms.
+
+Question count rules:
+- Return between 8 and 20 questions.
+- Prefer quality over quantity.
+- Do NOT ask excessive low-value questions.
+- Do NOT ask multiple questions that gather essentially the same information.
+- Prioritize adaptive relevance over completeness.
+
+Question authoring requirements:
+- Ask concise, professional, patient-friendly questions.
+- Use second-person language.
+- Avoid unnecessary medical jargon.
+- No double-barreled questions.
+- Each question should gather ONE clear piece of information.
+
+Question types:
+Use the MOST appropriate type:
+- \`single_select\`
+- \`multi_select\`
+- \`slider\`
+- \`range\`
+- \`text\`
+
+Question type guidance:
+- Use \`single_select\` for:
+  - yes/no,
+  - severity categories,
+  - frequency categories,
+  - or mutually exclusive answers.
+- Use \`multi_select\` when multiple symptoms, triggers, exposures, or conditions may apply.
+- Use \`slider\` for:
+  - pain,
+  - severity,
+  - stress,
+  - mood,
+  - sleep quality,
+  - or other graded experiences.
+- Use \`text\` only when structured answers are not practical.
+
+Units and measurement rules:
+- ALWAYS include units whenever answers involve:
+  - duration,
+  - frequency,
+  - quantity,
+  - count,
+  - weight,
+  - dose,
+  - temperature,
+  - distance,
+  - or measurable values.
+- A patient reading the question in isolation must immediately understand the expected unit.
+
+Examples:
+- GOOD:
+  - "How long does each episode last (in minutes)?"
+  - "How many times per week does this occur?"
+  - "What is your temperature (in °C)?"
+- BAD:
+  - "How long does it last?"
+  - "How often does it happen?"
+
+Slider and range rules:
+- Bounds must be clinically realistic.
+- Step values must be sensible.
+- Units must appear:
+  - either in the question text,
+  - or in BOTH labels.min and labels.max.
+- Pain/severity scales should usually use 0-10 unless clinically inappropriate.
+
+Selectable question rules:
+- ALL \`single_select\` and \`multi_select\` questions MUST include "Other" as the FINAL option.
+- Numeric selectable options MUST include units.
+  - GOOD:
+    - "30 minutes"
+    - "3 times per week"
+  - BAD:
+    - "30"
+    - "3"
+
+Schema rules:
+- \`text\`:
+  - allowed fields:
+    - \`question\`
+    - \`type\`
+- \`single_select\` and \`multi_select\`:
+  - required fields:
+    - \`question\`
+    - \`type\`
+    - \`options\`
+- \`slider\` and \`range\`:
+  - required fields:
+    - \`question\`
+    - \`type\`
+    - \`min\`
+    - \`max\`
+    - \`step\`
+    - \`labels\`
+
+Output requirements:
+- Return ONLY a valid JSON array.
+- No markdown.
+- No explanations.
+- No comments.
+- No trailing commas.
+- No code fences.
+- Never invent unsupported question types.
+- Never include fields irrelevant to the selected question type.
+
+Expected JSON format:
+[
+  {
+    "question": "How severe is your pain currently?",
+    "type": "slider",
+    "min": 0,
+    "max": 10,
+    "step": 1,
+    "labels": {
+      "min": "No pain",
+      "max": "Worst pain"
     }
-  ]
-  
-  Do not include explanations, markdown, comments, or any text outside the JSON array.`;
+  },
+  {
+    "question": "How long does each headache episode typically last (in minutes)?",
+    "type": "slider",
+    "min": 0,
+    "max": 1440,
+    "step": 5,
+    "labels": {
+      "min": "0 min",
+      "max": "24 h"
+    }
+  },
+  {
+    "question": "Which symptoms are you currently experiencing?",
+    "type": "multi_select",
+    "options": [
+      "Fever",
+      "Headache",
+      "Fatigue",
+      "Nausea",
+      "Other"
+    ]
+  }
+]`;
 }
 
 function GenerateMergeQuestionnaireLLMQuery(questionnaireSets = []) {
@@ -102,38 +236,165 @@ function GenerateMergeQuestionnaireLLMQuery(questionnaireSets = []) {
     .map((set, i) => `Source ${i + 1}:\n${JSON.stringify(set, null, 2)}`)
     .join("\n\n");
 
-  return `You are a highly experienced medical doctor, licensed physician, and clinical assessment designer.
+    return `You are a highly experienced clinical questionnaire normalization engine used in a medical decision-support system.
 
-  For awareness, the current date and time of this request is ${dateTimeStr}.
-
-  Below are ${sets.length} independently generated intake questionnaires for the same patient case. Each is a JSON array of questions in this schema:
-  { "question": string, "type": "single_select" | "multi_select" | "slider" | "range" | "text", "options"?: string[], "min"?: number, "max"?: number, "step"?: number, "labels"?: { "min": string, "max": string } }
-
-  ${sources}
-
-  Your task:
-  - Combine these into ONE consolidated, deduplicated questionnaire.
-  - Treat questions with the same clinical intent as duplicates even if worded differently — merge them into a single question.
-  - When merging selectable questions (single_select, multi_select), take the union of their options and remove near-duplicate options (case-insensitive, punctuation-insensitive). Always keep "Other" as the last option.
-  - When merging slider / range questions, prefer the most clinically reasonable min / max / step values and reuse the clearer label text.
-  - Drop low-value, redundant, or trivially similar questions; keep only medically meaningful ones.
-  - Maintain a healthy mix of question types where appropriate (single_select, multi_select, slider, range, text).
-  - Do NOT invent new clinical territory the sources did not cover.
-
-  After producing the merged list, run a FINAL VALIDATION PASS over every question and apply the rules below before emitting. Output only the post-validation list.
-
-  Validation checklist (apply to each question one-by-one):
-  - **Clarity.** Every question must be self-contained and unambiguous. A user reading it in isolation must know exactly what is being asked, with no missing context.
-  - **Units (MANDATORY for any measurable quantity).** If the answer is a quantity (duration, frequency, length, weight, distance, temperature, count, dose, etc.), the unit MUST be stated in the question text (preferred) or in BOTH "labels.min" and "labels.max". If a sourced question lacks a unit, ADD the most clinically reasonable unit (headache-duration sliders → minutes; water intake → liters; weight → kg; temperature → Celsius; heart rate → bpm; pain → 0-10 scale with the labels naming the endpoints). Never leave a measurable question unit-less.
-  - **Sensible bounds.** For "slider" and "range", "min" and "max" must reflect realistic clinical values for the chosen unit. Cap nonsense bounds (e.g. a pain-level slider at 0-100 should be tightened to 0-10; a heart-rate slider at 0-1000 should be tightened to 30-220; an episode duration in minutes should not exceed 1440). "step" should be a sensible granularity for the unit (e.g. step: 5 for minutes-bound durations, step: 1 for 0-10 pain scales).
-  - **Option coherence.** For "single_select", options must be mutually exclusive. For "multi_select", options should be non-redundant findings. In both, "Other" MUST be the last option. Numeric options must carry a unit ("30 minutes", not "30").
-  - **Single intent.** Reject double-barreled questions (e.g. "How severe and how frequent are your episodes?") — split them into two questions or drop one half.
-  - **Type fit.** Verify the chosen "type" matches the answer shape. If a sourced question's "type" is wrong (e.g. a yes/no question typed as "text"), correct it to "single_select" with ["Yes", "No", "Other"]. If a frequency question is typed "text" but only has a discrete set of answers, convert it to "single_select".
-  - **Fix before dropping.** If a question fails one of the above and CAN be fixed by rewording, retyping, or adjusting bounds/units/options, fix it. Drop a question only if it is truly unfixable (e.g. nonsensical or no longer clinically relevant). Prefer fixing over dropping — the sources already paid the cost of generating it.
-
-  Output contract:
-  Return ONLY a valid JSON array using the exact schema above. Do not include explanations, markdown, comments, code fences, or any text outside the JSON array.`;
-}
+    Your task is to MERGE multiple independently generated patient intake questionnaires into a single, clean, clinically optimized questionnaire.
+    
+    For awareness:
+    Current date/time: ${dateTimeStr}
+    
+    You are given ${sets.length} JSON arrays of questions for the same patient case.
+    
+    Input format:
+    Each item is:
+    { "question": string, "type": "single_select" | "multi_select" | "slider" | "range" | "text", "options"?: string[], "min"?: number, "max"?: number, "step"?: number, "labels"?: { "min": string, "max": string } }
+    
+    ${sources}
+    
+    ────────────────────────────────────────
+    PRIMARY OBJECTIVE
+    ────────────────────────────────────────
+    
+    Produce ONE consolidated questionnaire that is:
+    - deduplicated
+    - clinically consistent
+    - structurally valid
+    - unit-correct
+    - non-redundant
+    - medically meaningful
+    
+    Do NOT optimize for completeness. Optimize for clinical signal quality.
+    
+    ────────────────────────────────────────
+    MERGING PRINCIPLES (STRICT)
+    ────────────────────────────────────────
+    
+    1. Semantic Deduplication (CORE RULE)
+    Treat questions as duplicates if they measure:
+    - the same symptom
+    - same time dimension (duration/frequency/onset)
+    - same severity scale
+    - same trigger set
+    - same clinical domain variable
+    
+    Even if wording differs.
+    
+    Example duplicates:
+    - "How long does pain last?"
+    - "Duration of pain episodes?"
+    → MUST MERGE
+    
+    ---
+    
+    2. Canonical Question Selection
+    When merging duplicates:
+    - Choose the MOST clinically precise, self-contained, and unit-explicit version as the base
+    - Preserve best structure (slider vs text vs select)
+    - Preserve best clinical clarity
+    
+    Do NOT randomly mix wording.
+    
+    ---
+    
+    3. Option Merging Rules
+    For single_select / multi_select:
+    - Merge option sets using union
+    - Remove duplicates (case-insensitive, punctuation-insensitive)
+    - Keep clinically meaningful granularity (avoid near-duplicates like "mild" vs "slightly mild")
+    - ALWAYS place "Other" as last option
+    - Ensure options remain mutually exclusive where required
+    
+    ---
+    
+    4. Numeric / Unit Normalization (MANDATORY)
+    For any measurable concept:
+    - Ensure unit is explicitly stated in question text
+    
+    Standard conversions:
+    - duration → minutes or hours (context dependent)
+    - frequency → per day / per week
+    - temperature → °C
+    - weight → kg
+    - distance → cm or meters
+    - heart rate → bpm
+    - pain → 0–10 scale (preferred)
+    
+    If unit is missing:
+    - infer the most clinically standard unit
+    - inject it into question text safely
+    
+    ---
+    
+    5. Slider / Range Normalization
+    - Ensure bounds are medically realistic
+    - Fix invalid scales:
+      - pain: 0–10
+      - heart rate: 30–220 bpm
+      - duration: do NOT exceed 1440 minutes unless explicitly needed
+    - Step must match clinical resolution (1, 5, or 10 typically)
+    
+    ---
+    
+    6. Type Correction Rules (STRICT)
+    You MUST correct invalid types:
+    
+    - Yes/No → single_select ["Yes","No","Other"]
+    - multi-answer symptom lists → multi_select
+    - numeric continuous → slider or range
+    - categorical severity → single_select
+    
+    Never preserve incorrect types from source blindly.
+    
+    ---
+    
+    7. Atomicity Rule (IMPORTANT)
+    Each question must measure EXACTLY ONE clinical variable.
+    
+    Reject or split:
+    - "severity and frequency"
+    - "pain and duration"
+    - "symptoms and triggers"
+    
+    ---
+    
+    8. Quality Filtering Rule
+    Remove questions ONLY if:
+    - clinically irrelevant to presenting complaint
+    - redundant after merging
+    - nonsensical or uninterpretable
+    - duplicate after normalization
+    
+    Prefer fixing over dropping only when fix does NOT distort meaning.
+    
+    Do NOT inflate questionnaire size unnecessarily.
+    
+    ---
+    
+    9. No Creativity Rule (CRITICAL)
+    Do NOT invent:
+    - new symptoms
+    - new conditions
+    - new clinical domains
+    - new question intent not present in inputs
+    
+    You are a MERGER, not a generator.
+    
+    ────────────────────────────────────────
+    OUTPUT RULES
+    ────────────────────────────────────────
+    
+    Return ONLY a valid JSON array.
+    
+    Do NOT include:
+    - explanations
+    - markdown
+    - comments
+    - code fences
+    - additional text
+    
+    Each output must follow:
+    { "question": string, "type": "single_select" | "multi_select" | "slider" | "range" | "text", "options"?: string[], "min"?: number, "max"?: number, "step"?: number, "labels"?: { "min": string, "max": string } }
+    `;}
 
 function GenerateLaboratoryLLMQuery({ issue, gender, age, questions = [], answers = [] } = {}) {
   const safeIssue = String(issue || "").trim() || "an unspecified health issue";
@@ -197,21 +458,21 @@ function GenerateLaboratoryLLMQuery({ issue, gender, age, questions = [], answer
 
   Examples of the expected shape (do NOT include these literal questions unless clinically appropriate — they only illustrate the schema):
 
-  Low-libido case example:
+  Hormone panel case example:
   {
-    "question": "Total testosterone (ng/dL)",
+    "question": "Estradiol serum level (pg/mL)",
     "type": "slider",
     "min": 0,
     "max": 1500,
-    "step": 10,
+    "step": 5,
     "labels": { "min": "Very low", "max": "Very high" }
   }
 
-  Varicocele case example:
+  Vitamin D status example:
   {
-    "question": "Ultrasound varicocele grade",
+    "question": "Vitamin D (25-OH) status",
     "type": "single_select",
-    "options": ["Grade I", "Grade II", "Grade III", "Grade IV", "Other"]
+    "options": ["Deficient (< 20 ng/mL)", "Insufficient (20-29 ng/mL)", "Sufficient (30-100 ng/mL)", "Toxic (> 100 ng/mL)", "Other"]
   }
 
   Return ONLY a valid JSON array using this exact schema:
@@ -253,74 +514,183 @@ function GeneratePreDoctorRoomLLMQuery({
     laboratory?.answers
   );
 
-  return `You are a highly experienced, board-certified clinical physician conducting the **final clarifying intake** for a patient case before handing it over for full physician analysis. The patient has already completed (1) an intake symptom questionnaire and (2) a laboratory / imaging report intake. Your job now is to inspect everything you have so far and decide what **additional** clarifying questions a competent doctor would still want to ask before forming a diagnostic impression.
+  return `You are generating the FINAL physician-style clarifying intake questions for a patient case before full clinical analysis. The patient has already completed:
+(1) an intake symptom questionnaire
+and
+(2) a laboratory / imaging report intake.
 
-  Patient profile:
-  - Age: ${safeAge}
-  - Gender: ${safeGender}
-  - Presenting complaint: "${safeIssue}"
-  - Current date and time of this request: ${dateTimeStr}
+Your responsibility is to review everything already collected and determine whether any HIGH-VALUE missing information still needs clarification before diagnostic reasoning begins.
 
-  ${intakeBlock}
+Patient profile:
+- Age: ${safeAge}
+- Gender: ${safeGender}
+- Presenting complaint: "${safeIssue}"
+- Current date and time of this request: ${dateTimeStr}
 
-  ${labBlock}
+${intakeBlock}
 
-  Your task:
-  - Carefully read the presenting complaint, the intake answers, and the lab / imaging results above. Cross-reference them against current clinical knowledge.
-  - Identify the *remaining gaps* in the picture — symptom characteristics that were not yet captured, lifestyle / exposure factors not yet asked, time-course details, response-to-prior-treatment, family history, medication / supplement use, or anything contradictory in the data that needs clarification.
-  - Generate a focused set of additional clarifying questions a physician would ask in person before forming a working diagnosis. Do **not** repeat questions whose answers are already visible above; the patient will not want to answer the same thing twice.
-  - It is fine — even preferred — to return a small, surgical list of high-value questions rather than an exhaustive one. If genuinely no further clarification is needed, return a 1-question list confirming any single most important uncertainty.
+${labBlock}
 
-  Question authoring requirements (same rules as the intake questionnaire):
-  - Ask concise, professional, patient-friendly questions in the second person.
-  - Mix question types where appropriate: \`single_select\`, \`multi_select\`, \`slider\`, \`range\`, \`text\`.
-  - For selectable questions, always include an "Other" option as the LAST option.
-  - **Always state the unit of measurement in the question text whenever the answer is a quantity** (duration, frequency, length, weight, distance, temperature, count, dose, etc.). For example, write "How long has this issue been worsening (in weeks)?" instead of "How long has this issue been worsening?".
-    - For \`slider\` / \`range\`, the unit must appear in EITHER the question text OR both of \`labels.min\` / \`labels.max\` (preferred: in the question text). Bounds must be clinically reasonable for the chosen unit — do not pick arbitrary min / max. A pain or severity scale should typically be 0-10, not 0-100. \`step\` should be a sensible granularity for the unit.
-    - For \`single_select\` / \`multi_select\`, numeric option tokens MUST carry their unit ("30 minutes", not "30").
-  - No double-barreled questions (no "How long AND how severe…?"). Split or drop.
-  - Verify the chosen \`type\` matches the answer shape. Yes/no questions are \`single_select\` with ["Yes", "No", "Other"], not \`text\`.
+Clinical reasoning instructions:
+- Carefully analyze the presenting complaint, prior questionnaire responses, laboratory results, imaging findings, and all previously collected information.
+- Silently determine:
+  - the most likely diagnostic categories,
+  - the highest-risk possibilities,
+  - possible red flags,
+  - contradictions or inconsistencies,
+  - and the key missing information preventing further assessment.
+- Only ask questions that would MATERIALLY improve:
+  - diagnostic confidence,
+  - triage accuracy,
+  - urgency assessment,
+  - treatment safety,
+  - interpretation of abnormal findings,
+  - or next-step clinical decision making.
+- Prioritize questions that could:
+  - reveal red-flag symptoms,
+  - clarify abnormal lab findings,
+  - identify medication or treatment risks,
+  - resolve contradictory information,
+  - clarify symptom progression,
+  - or significantly narrow the differential diagnosis.
+- Pay particular attention to:
+  - symptom onset,
+  - progression over time,
+  - triggering factors,
+  - relieving factors,
+  - episodic vs persistent patterns,
+  - exposure risks,
+  - medication/supplement use,
+  - prior treatment response,
+  - and family history when clinically relevant.
+- Do NOT ask questions whose answers are already directly available or reasonably inferable from the provided information.
+- Do NOT ask semantically overlapping or redundant questions.
+- Do NOT ask low-yield exploratory filler questions.
+- If contradictions or inconsistencies exist, prioritize resolving them first.
+- If the information suggests a potentially urgent or emergent condition, prioritize clarification of:
+  - breathing difficulty,
+  - chest pain,
+  - neurological symptoms,
+  - bleeding,
+  - altered consciousness,
+  - severe infection symptoms,
+  - pregnancy-related emergencies,
+  - suicidality,
+  - or rapidly worsening symptoms.
 
-  Return ONLY valid JSON.
+Question count rules:
+- Return between 3 and 8 questions maximum.
+- Prefer fewer questions when confidence is already high.
+- If no meaningful diagnostic uncertainty remains, return [].
 
-  Expected JSON format:
-  [
-    {
-      "question": "How severe is your pain currently?",
-      "type": "slider",
-      "min": 0,
-      "max": 10,
-      "step": 1,
-      "labels": {
-        "min": "No pain",
-        "max": "Worst pain"
-      }
-    },
-    {
-      "question": "How long does each headache episode typically last (in minutes)?",
-      "type": "slider",
-      "min": 0,
-      "max": 1440,
-      "step": 5,
-      "labels": {
-        "min": "0 min",
-        "max": "24 h"
-      }
-    },
-    {
-      "question": "Which symptoms are you experiencing?",
-      "type": "multi_select",
-      "options": [
-        "Fever",
-        "Headache",
-        "Fatigue",
-        "Nausea",
-        "Other"
-      ]
+Question authoring requirements:
+- Ask concise, professional, patient-friendly questions in second-person language.
+- Avoid medical jargon unless clinically necessary.
+- No double-barreled questions.
+- Use the MOST appropriate question type:
+  - \`single_select\`
+  - \`multi_select\`
+  - \`slider\`
+  - \`range\`
+  - \`text\`
+- Yes/no questions MUST use:
+  - \`single_select\`
+  - with options: ["Yes", "No", "Other"]
+
+Units and measurement rules:
+- ALWAYS include units whenever the answer involves:
+  - duration,
+  - frequency,
+  - quantity,
+  - count,
+  - dose,
+  - distance,
+  - weight,
+  - temperature,
+  - or severity scales.
+- Example:
+  - GOOD: "How long have you had the cough (in days)?"
+  - BAD: "How long have you had the cough?"
+- For \`slider\` and \`range\`:
+  - bounds must be clinically realistic,
+  - \`step\` must be sensible,
+  - and units must appear either:
+    - in the question text,
+    - or in BOTH \`labels.min\` and \`labels.max\`.
+- Pain/severity scales should generally use 0-10 unless clinically inappropriate.
+- Numeric options inside selectable questions MUST include units.
+  - GOOD: "30 minutes"
+  - BAD: "30"
+
+Selectable question rules:
+- For ALL \`single_select\` and \`multi_select\` questions:
+  - ALWAYS include "Other" as the FINAL option.
+
+Schema rules:
+- \`text\` questions:
+  - allowed fields:
+    - \`question\`
+    - \`type\`
+- \`single_select\` and \`multi_select\` questions:
+  - required fields:
+    - \`question\`
+    - \`type\`
+    - \`options\`
+- \`slider\` and \`range\` questions:
+  - required fields:
+    - \`question\`
+    - \`type\`
+    - \`min\`
+    - \`max\`
+    - \`step\`
+    - \`labels\`
+
+Output requirements:
+- Return ONLY a valid JSON array.
+- Do NOT include explanations.
+- Do NOT include markdown.
+- Do NOT include comments.
+- Do NOT include code fences.
+- Do NOT include trailing commas.
+- Never invent unsupported question types.
+- Never include fields irrelevant to the selected question type.
+
+Expected JSON format:
+[
+  {
+    "question": "How severe is your pain currently?",
+    "type": "slider",
+    "min": 0,
+    "max": 10,
+    "step": 1,
+    "labels": {
+      "min": "No pain",
+      "max": "Worst pain"
     }
-  ]
-
-  Do not include explanations, markdown, comments, code fences, or any text outside the JSON array.`;
+  },
+  {
+    "question": "How long does each headache episode typically last (in minutes)?",
+    "type": "slider",
+    "min": 0,
+    "max": 1440,
+    "step": 5,
+    "labels": {
+      "min": "0 min",
+      "max": "24 h"
+    }
+  },
+  {
+    "question": "Which symptoms are you currently experiencing?",
+    "type": "multi_select",
+    "options": [
+      "Fever",
+      "Headache",
+      "Fatigue",
+      "Nausea",
+      "Other"
+    ]
+  }
+]`;
 }
 
 function formatQaBlock(label, questions = [], answers = []) {
@@ -390,63 +760,112 @@ function GenerateDoctorAnalysisLLMQuery({
     preDoctorRoom?.answers
   );
 
-  return `You are an experienced, board-certified clinical physician with deep diagnostic and pharmacological expertise. You are writing a **pre-doctor educational analysis** for a patient who has already completed an intake questionnaire, reported their laboratory / imaging findings, and answered a final round of clarifying questions. This is NOT a final diagnosis and NOT a prescription — it is structured guidance the patient will read before their real doctor's appointment.
+  return `You are generating a structured PRE-DOCTOR CLINICAL ANALYSIS for educational purposes.
 
-  Patient profile:
-  - Age: ${safeAge}
-  - Gender: ${safeGender}
-  - Presenting complaint: "${safeIssue}"
-  - Date of this analysis: ${dateTimeStr}
+This is NOT a diagnosis and NOT a treatment plan. It is a clinical reasoning summary intended to help the patient understand possible explanations and prepare for a real physician consultation.
 
-  ${intakeBlock}
+Patient profile:
+- Age: ${safeAge}
+- Gender: ${safeGender}
+- Presenting complaint: "${safeIssue}"
+- Date of analysis: ${dateTimeStr}
 
-  ${labBlock}
+${intakeBlock}
 
-  ${preDocBlock}
+${labBlock}
 
-  Your job:
-  - Analyse the case rigorously. Cross-reference symptoms, demographics, intake answers, and laboratory / imaging findings against current peer-reviewed medical research, standard clinical guidelines, and published case studies.
-  - Address the patient directly in the second person ("you", "your symptoms").
-  - Be honest about uncertainty — say "likely", "possible", or "less likely" rather than asserting a single cause if the picture is mixed.
-  - Reason about whether each likely cause is **natural / physiological**, **lifestyle-driven (self-made)**, **medication-induced or iatrogenic**, or **secondary to another condition** — and explain why for each.
-  - Surface red-flag warning signs that mean the patient should seek urgent / emergency care, not wait for an appointment.
+${preDocBlock}
 
-  Your response MUST be a single, fully-formatted Markdown document (no JSON, no code fences around the whole document). Use this exact section structure with these headings in this order:
+Clinical reasoning instructions:
+- Analyze all provided information: symptoms, questionnaire responses, lab results, imaging findings, and prior clarifying answers.
+- Only use the data provided. Do NOT assume missing results or invent external findings.
+- Identify patterns across symptoms and lab abnormalities.
+- Explicitly note when data is:
+  - incomplete,
+  - contradictory,
+  - unclear,
+  - or insufficient for strong conclusions.
+- Prioritize clinically meaningful reasoning:
+  - symptom clustering,
+  - system involvement (e.g., respiratory, gastrointestinal, neurological),
+  - timeline consistency,
+  - and lab–symptom alignment.
+- If contradictions exist, explicitly highlight them and explain why they matter.
 
-  # Pre-doctor Analysis
+Uncertainty handling:
+- Use cautious language such as "possible", "likely", "less likely", "cannot be confirmed".
+- Avoid absolute statements unless strongly supported by provided data.
+- Do NOT over-rank conditions with false precision. If needed, group similar possibilities together.
 
-  ## Summary
-  One short paragraph naming the most plausible working explanation(s) in plain language.
+Causal reasoning framework:
+For each major consideration, classify it into:
+- physiological / natural
+- lifestyle-related
+- medication or substance-related
+- secondary to another condition
+and explain the reasoning briefly.
 
-  ## Most Likely Causes
-  A ranked Markdown list (highest probability first). For each cause give 1-2 lines explaining *why* the patient's specific intake and lab findings point to it.
+Safety prioritization:
+- Always identify potential red-flag conditions.
+- Highlight symptoms or findings that would require urgent medical evaluation.
 
-  ## Is This Natural, Lifestyle-Driven, Medication-Induced, or Secondary?
-  Explicitly classify each leading cause from the previous section into one of those four buckets and justify the classification.
+Output format requirements:
 
-  ## How to Address This
-  Concrete, prioritised actions the patient can take now (self-care, lifestyle adjustments, diet, sleep, stress, exercise, ergonomic / environmental tweaks). Use a Markdown list.
+Return a single Markdown document ONLY, with the following structure:
 
-  ## Medications a Doctor Commonly Prescribes
-  Briefly describe the **classes of medication** a physician would typically consider for this presentation, what each class does, and why it might be chosen. Do **not** instruct the patient to self-medicate. Add a one-line caveat that exact drug, dose, and duration must come from their physician.
+# Pre-doctor Clinical Analysis
 
-  ## Prevention and Long-Term Outlook
-  How the patient can prevent recurrence or progression, plus what the realistic prognosis looks like with and without proper care.
+## Summary
+One concise paragraph explaining the most plausible clinical picture in simple language.
 
-  ## Red Flags — See a Doctor Immediately If
-  A Markdown bullet list of warning signs that warrant urgent or emergency evaluation, not a routine appointment.
+## Key Findings From Your Information
+- Summarize important symptom patterns
+- Summarize key lab/imaging abnormalities
+- Highlight any inconsistencies or missing critical data
 
-  ## What to Bring to the Doctor's Appointment
-  Short list: which symptoms to track between now and the visit, which reports / images / medication lists to bring, and which specific questions to ask the physician.
+## Possible Explanations
+Provide 3–6 clinically relevant possibilities.
+For each:
+- Brief description
+- Why it fits the data
+- Why it may not fully explain the case
 
-  ## Disclaimer
-  One short paragraph stating clearly that this is an AI-generated pre-doctor educational summary, not a diagnosis or prescription, and that the patient must consult a licensed clinician for a definitive evaluation.
+Do NOT strictly rank unless strongly justified.
 
-  Formatting rules:
-  - Output **Markdown only** — use \`#\`, \`##\`, \`**bold**\`, \`*italic*\`, and \`-\` / numbered lists.
-  - Do NOT wrap the entire reply in a code fence and do NOT return JSON.
-  - Do NOT include any text before the first heading or after the Disclaimer section.
-  - Keep paragraphs tight and patient-friendly; avoid raw medical jargon without a quick gloss.`;
+## Contributing Factors (If Applicable)
+Classify relevant causes into:
+- physiological / natural
+- lifestyle-related
+- medication or substance-related
+- secondary causes
+
+Explain briefly based on provided data only.
+
+## What This Could Mean
+Explain overall clinical interpretation in balanced terms, including uncertainty.
+
+## What Typically Needs to Be Ruled Out Next
+List what a physician would investigate further (tests, history, or examinations).
+
+## Red Flags — Seek Urgent Care If
+List symptoms or findings that require immediate medical attention.
+
+## How to Prepare for Your Doctor Visit
+- What symptoms to track
+- What reports to bring
+- What clarifying questions to ask
+
+## Disclaimer
+This is an AI-generated educational summary based only on provided information. It is not a diagnosis or treatment recommendation. A licensed clinician must perform a full evaluation.
+
+Formatting rules:
+- Use Markdown only
+- No JSON
+- No code fences
+- No external citations or fabricated research references
+- No prescriptions or drug instructions
+- Do not infer missing medical data
+- Keep language patient-friendly but clinically accurate`;
 }
 
 module.exports = {

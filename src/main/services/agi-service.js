@@ -2,15 +2,16 @@ const { chatCompletion, streamChat } = require("./api-helper");
 
 const OPENROUTER_WORKER_MODELS = [
   // "poolside/laguna-xs.2:free", 
- "google/gemini-2.5-flash-lite", // not free
-//"deepseek/deepseek-v4-flash", // not free
-//"openai/gpt-4o-mini", // not free
+ //"google/gemini-2.5-flash-lite", // not free
+ //"deepseek/deepseek-v4-flash", // not free
+  "openai/gpt-4o-mini", // not free
  //"google/gemini-3-flash-preview", //not free
   // "arcee-ai/trinity-large-thinking:free",
    //  "nvidia/nemotron-3-super-120b-a12b:free",
 ];
 
-const OPENROUTER_MASTER_MODEL = "deepseek/deepseek-v4-flash";
+//const OPENROUTER_MASTER_MODEL = "deepseek/deepseek-v4-flash";
+const OPENROUTER_MASTER_MODEL = "google/gemini-2.5-flash-lite";
 
 async function AskAllWorkerAgis(prompt, options = {}) {
   const messages = [{ role: "user", content: prompt }];
