@@ -53,7 +53,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   submitBtn?.addEventListener('click', async () => {
-    const answers = collectAnswers(formEl);
+    const { questions, answers } = collectSurviving(formEl, loadedQuestions);
     submitBtn.disabled = true;
     submitBtn.textContent = 'Submitting…';
     try {
@@ -61,13 +61,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         issue,
         gender,
         age,
-        questions: loadedQuestions,
+        questions,
         answers,
       });
       try {
         sessionStorage.setItem(
           'neuroagi:questionnaire',
-          JSON.stringify({ issue, gender, age, questions: loadedQuestions, answers })
+          JSON.stringify({ issue, gender, age, questions, answers })
         );
       } catch (storageErr) {
         console.warn('Failed to stash questionnaire in sessionStorage:', storageErr);
@@ -141,6 +141,19 @@ function buildCard(q, i) {
   card.dataset.index = String(i);
   card.dataset.type = type;
   card.dataset.question = questionText;
+
+  const del = document.createElement('button');
+  del.type = 'button';
+  del.className = 'q-card-delete';
+  del.setAttribute('aria-label', 'Remove this question');
+  del.title = 'Remove this question';
+  del.innerHTML =
+    '<svg viewBox="0 0 14 14" aria-hidden="true"><path d="M2 2 L12 12 M12 2 L2 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>';
+  del.addEventListener('click', () => {
+    card.classList.add('q-card--removing');
+    setTimeout(() => card.remove(), 160);
+  });
+  card.appendChild(del);
 
   const h = document.createElement('h2');
   h.className = 'q-question';
@@ -387,6 +400,18 @@ function renderText(q, name) {
 function numberOr(v, d) {
   const n = Number(v);
   return Number.isFinite(n) ? n : d;
+}
+
+function collectSurviving(formEl, allQuestions) {
+  const cards = formEl.querySelectorAll('.q-card');
+  const answers = collectAnswers(formEl);
+  const questions = Array.from(cards)
+    .map((card) => {
+      const idx = Number(card.dataset.index);
+      return Number.isFinite(idx) ? allQuestions[idx] : undefined;
+    })
+    .filter(Boolean);
+  return { questions, answers };
 }
 
 function collectAnswers(formEl) {
