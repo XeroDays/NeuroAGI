@@ -26,11 +26,23 @@
         </button>
       </div>
       <div class="home-selects-row">
-        <select id="select-gender" class="glass-select" aria-label="Gender">
-          <option value="male" selected>Male</option>
-          <option value="female">Female</option>
-        </select>
-        <select id="select-age" class="glass-select" aria-label="Age"></select>
+        <div class="home-reasoning-wrap">
+          <label for="select-reasoning" class="home-select-label">Reasoning level</label>
+          <select id="select-reasoning" class="glass-select" aria-label="Reasoning level">
+            <option value="none">None</option>
+            <option value="low">Low</option>
+            <option value="medium" selected>Medium</option>
+            <option value="high">High</option>
+            <option value="very_high">Very High</option>
+          </select>
+        </div>
+        <div class="home-demographics-wrap">
+          <select id="select-gender" class="glass-select" aria-label="Gender">
+            <option value="male" selected>Male</option>
+            <option value="female">Female</option>
+          </select>
+          <select id="select-age" class="glass-select" aria-label="Age"></select>
+        </div>
       </div>
     </div>
   </main>

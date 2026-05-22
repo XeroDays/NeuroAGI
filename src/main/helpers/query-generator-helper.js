@@ -17,7 +17,7 @@ function GenerateQuestionnaireLLMQuery ({ issue, gender, age } = {}) {
   return `You are generating the INITIAL structured medical intake questionnaire for a patient.
 
 The patient is:
-- Age: ${safeAge}
+- Age: ${safeAge} Years Old
 - Gender: ${safeGender}
 - Presenting issue: "${safeIssue}"
 
@@ -436,7 +436,7 @@ function GenerateLaboratoryLLMQuery({ issue, gender, age, questions = [], answer
 
   return `You are a highly experienced licensed physician and clinical pathologist (lab medicine specialist) designing the laboratory workup for a patient case.
 
-  The user is a ${safeAge}-year-old ${safeGender} reporting the following issue: "${safeIssue}".
+  The patient is  ${safeAge} Years Old ${safeGender} and presenting issue: "${safeIssue}".
 
   For awareness, the current date and time of this request is ${dateTimeStr}.
 
@@ -522,7 +522,7 @@ and
 Your responsibility is to review everything already collected and determine whether any HIGH-VALUE missing information still needs clarification before diagnostic reasoning begins.
 
 Patient profile:
-- Age: ${safeAge}
+- Age: ${safeAge} Years Old
 - Gender: ${safeGender}
 - Presenting complaint: "${safeIssue}"
 - Current date and time of this request: ${dateTimeStr}
@@ -765,7 +765,7 @@ function GenerateDoctorAnalysisLLMQuery({
 This is NOT a diagnosis and NOT a treatment plan. It is a clinical reasoning summary intended to help the patient understand possible explanations and prepare for a real physician consultation.
 
 Patient profile:
-- Age: ${safeAge}
+- Age: ${safeAge} Years Old
 - Gender: ${safeGender}
 - Presenting complaint: "${safeIssue}"
 - Date of analysis: ${dateTimeStr}
@@ -789,7 +789,7 @@ Clinical reasoning instructions:
   - symptom clustering,
   - system involvement (e.g., respiratory, gastrointestinal, neurological),
   - timeline consistency,
-  - and lab–symptom alignment.
+  - and lab-symptom alignment.
 - If contradictions exist, explicitly highlight them and explain why they matter.
 
 Uncertainty handling:
@@ -808,6 +808,25 @@ and explain the reasoning briefly.
 Safety prioritization:
 - Always identify potential red-flag conditions.
 - Highlight symptoms or findings that would require urgent medical evaluation.
+
+Risk-factor & prognosis reasoning:
+- Identify both MODIFIABLE risk factors (lifestyle, diet, medication adherence, sleep, stress, substance use, etc.) and NON-MODIFIABLE risk factors (age, gender, prior medical history, family history, genetic predisposition) that are visible in the provided data.
+- For each risk factor explicitly note:
+  - whether it is modifiable or fixed,
+  - how directly it ties back to the presenting complaint,
+  - an estimated impact level (low / moderate / high) with a one-line justification grounded ONLY in the patient's data,
+  - whether the link to the current issue is well-supported, suggestive, or speculative.
+- Project the likely trajectory if the current condition is left UNADDRESSED, broken down into three timeframes:
+  - short-term (days to weeks),
+  - medium-term (weeks to months),
+  - long-term (months to years).
+- For each timeframe describe the most plausible progression in plain language, and clearly flag any:
+  - irreversible outcomes,
+  - rapidly-escalating risks,
+  - or risks that could compromise quality of life, function, or fertility/reproductive health (if relevant).
+- Briefly contrast the "no-action" trajectory with the likely trajectory if the patient pursues timely medical evaluation and addresses the identified modifiable factors. Keep this contrast non-prescriptive — describe the general direction of improvement only; do NOT suggest specific drugs, dosages, procedures, or supplements.
+- If the available data is insufficient to project a particular timeframe responsibly, say so explicitly ("insufficient data to project the long-term trajectory") rather than guessing.
+- Stay grounded in the provided questionnaire, lab, and pre-doctor answers — do NOT invent risk factors, comorbidities, or projections that the data does not support.
 
 Output format requirements:
 
@@ -843,6 +862,24 @@ Explain briefly based on provided data only.
 
 ## What This Could Mean
 Explain overall clinical interpretation in balanced terms, including uncertainty.
+
+## Risk Factors & Projected Trajectory
+**Identified risk factors**
+- List MODIFIABLE risk factors visible in the data (lifestyle, diet, sleep, stress, substance use, medication adherence, etc.)
+- List NON-MODIFIABLE risk factors visible in the data (age, gender, prior history, family history)
+- For each, briefly note: how directly it ties to the current complaint, an estimated impact level (low / moderate / high), and whether the link is well-supported, suggestive, or speculative
+
+**If left unaddressed**
+- Short-term (days to weeks): most plausible progression in plain language
+- Medium-term (weeks to months): expected direction and severity
+- Long-term (months to years): expected direction, flagging any irreversible outcomes, rapidly-escalating risks, or impact on quality of life / function / fertility (if relevant)
+
+**With timely medical evaluation**
+- Brief, non-prescriptive contrast describing the general direction of improvement once the modifiable factors are addressed and a proper evaluation is performed
+- Do NOT name specific drugs, dosages, procedures, or supplements here
+
+**Uncertainty note**
+- Explicitly call out any timeframe or risk factor where the available data is insufficient for a responsible projection
 
 ## What Typically Needs to Be Ruled Out Next
 List what a physician would investigate further (tests, history, or examinations).

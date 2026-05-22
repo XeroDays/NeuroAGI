@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const btn = document.getElementById('btn-start-diagnostics');
   const genderSelect = document.getElementById('select-gender');
   const ageSelect = document.getElementById('select-age');
+  const reasoningSelect = document.getElementById('select-reasoning');
 
   if (ageSelect) {
     for (let i = 1; i <= 100; i++) {
@@ -30,6 +31,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const issue = input?.value?.trim() || '';
       const gender = genderSelect?.value || 'male';
       const age = ageSelect?.value || '30';
+      const reasoningLevel = reasoningSelect?.value || 'medium';
+
+      try {
+        sessionStorage.setItem('neuroagi:reasoningLevel', reasoningLevel);
+      } catch (err) {
+        console.warn('Failed to stash reasoning level:', err);
+      }
 
       const query = new URLSearchParams();
       if (issue) query.set('issue', issue);

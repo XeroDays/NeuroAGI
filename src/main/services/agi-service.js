@@ -1,22 +1,33 @@
 const { chatCompletion, streamChat } = require("./api-helper");
 
 const OPENROUTER_WORKER_MODELS = [
-  // "poolside/laguna-xs.2:free", 
+   "poolside/laguna-xs.2:free", 
  //"google/gemini-2.5-flash-lite", // not free
  //"deepseek/deepseek-v4-flash", // not free
-   "openai/gpt-4o-mini", // not free
+  // "openai/gpt-4o-mini", // not free
  //"google/gemini-3-flash-preview", //not free
-  // "arcee-ai/trinity-large-thinking:free",
-   // "nvidia/nemotron-3-super-120b-a12b:free",
+   "arcee-ai/trinity-large-thinking:free",
+   "nvidia/nemotron-3-super-120b-a12b:free",
+   "openai/gpt-oss-120b:free",
+   "z-ai/glm-4.5-air:free",
+   "google/gemma-4-31b-it:free",
+   "baidu/cobuddy:free"
 ];
 
 const OPENROUTER_DOCTOR_MODELS = [
-  "deepseek/deepseek-v4-flash",
+ // "deepseek/deepseek-v4-flash",
  // "google/gemini-2.5-flash-lite",
+ "deepseek/deepseek-v4-flash:free",
+ "nvidia/nemotron-nano-9b-v2:free",
+"openrouter/owl-alpha",
+ "google/gemma-4-31b-it:free",
+ "arcee-ai/trinity-large-thinking:free",
+
+ "baidu/cobuddy:free"
 ];
 
-const OPENROUTER_MASTER_MODEL = "deepseek/deepseek-v4-flash";
-//const OPENROUTER_MASTER_MODEL = "google/gemini-2.5-flash-lite";
+//const OPENROUTER_MASTER_MODEL = "deepseek/deepseek-v4-flash";
+const OPENROUTER_MASTER_MODEL = "deepseek/deepseek-v4-flash:free";
 
 async function AskAllWorkerAgis(prompt, options = {}) {
   const messages = [{ role: "user", content: prompt }];

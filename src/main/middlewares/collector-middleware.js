@@ -21,12 +21,24 @@ const JSON_LLM_OPTIONS   = { maxTokens: 4096,  reasoning: { effort: "none"   } }
 // const JSON_LLM_OPTIONS = { maxTokens: 8192,  reasoning: { effort: "none"   } };
 // const JSON_LLM_OPTIONS = { maxTokens: 8192,  reasoning: { effort: "low"    } };
 
-// Free-form doctor analysis report (streaming prose) — high reasoning for deep clinical thinking.
-// const PROSE_LLM_OPTIONS = { maxTokens: 4096,  reasoning: { effort: "none"   } };
-// const PROSE_LLM_OPTIONS = { maxTokens: 8192,  reasoning: { effort: "low"    } };
-// const PROSE_LLM_OPTIONS = { maxTokens: 16384, reasoning: { effort: "medium" } };
-const PROSE_LLM_OPTIONS   = { maxTokens: 32768, reasoning: { effort: "high"   } };
-// const PROSE_LLM_OPTIONS = { maxTokens: 65536, reasoning: { effort: "high"   } };
+// Free-form doctor analysis report (streaming prose) — chosen on the Home screen via the
+// "Reasoning level" dropdown and forwarded through StartDoctor (sessionStorage key
+// "neuroagi:reasoningLevel"). Default = "medium".
+const PROSE_LLM_OPTIONS_BY_LEVEL = {
+  none:      { maxTokens: 4096,  reasoning: { effort: "none"   } },
+  low:       { maxTokens: 8192,  reasoning: { effort: "low"    } },
+  medium:    { maxTokens: 16384, reasoning: { effort: "medium" } },
+  high:      { maxTokens: 32768, reasoning: { effort: "high"   } },
+  very_high: { maxTokens: 65536, reasoning: { effort: "high"   } },
+};
+const DEFAULT_REASONING_LEVEL = "medium";
+
+function resolveProseOptions(level) {
+  return (
+    PROSE_LLM_OPTIONS_BY_LEVEL[level] ||
+    PROSE_LLM_OPTIONS_BY_LEVEL[DEFAULT_REASONING_LEVEL]
+  );
+}
 
 function pickBestWorkerSet(sets) {
   const arrays = (Array.isArray(sets) ? sets : []).filter(Array.isArray);
@@ -435,6 +447,7 @@ function StartDoctor(
     issue,
     gender,
     age,
+    reasoningLevel,
     questionnaire = {},
     laboratory = {},
     preDoctorRoom = {},
@@ -448,10 +461,17 @@ function StartDoctor(
   const preDocQs = Array.isArray(preDoctorRoom?.questions) ? preDoctorRoom.questions : [];
   const preDocAs = Array.isArray(preDoctorRoom?.answers) ? preDoctorRoom.answers : [];
 
+  const proseOptions = resolveProseOptions(reasoningLevel);
+  const resolvedLevel = PROSE_LLM_OPTIONS_BY_LEVEL[reasoningLevel]
+    ? reasoningLevel
+    : DEFAULT_REASONING_LEVEL;
+
   console.log("[collector/doctor] StartDoctor:", {
     issue,
     gender,
     age,
+    reasoningLevel: resolvedLevel,
+    proseOptions,
     intakeQuestionCount: intakeQs.length,
     intakeAnswerCount: intakeAs.length,
     labQuestionCount: labQs.length,
@@ -530,7 +550,7 @@ function StartDoctor(
         );
       },
     },
-    PROSE_LLM_OPTIONS
+    proseOptions
   );
 
   return { ok: true, models };

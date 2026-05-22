@@ -340,12 +340,22 @@ document.addEventListener('DOMContentLoaded', () => {
     try { offError(); } catch {}
   });
 
+  const reasoningLevel =
+    (() => {
+      try {
+        return sessionStorage.getItem('neuroagi:reasoningLevel') || 'medium';
+      } catch {
+        return 'medium';
+      }
+    })();
+
   (async () => {
     try {
       const result = await window.electronAPI.startDoctor({
         issue,
         gender,
         age,
+        reasoningLevel,
         questionnaire: {
           questions: intake.questions,
           answers: intake.answers,
