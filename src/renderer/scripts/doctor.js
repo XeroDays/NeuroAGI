@@ -153,8 +153,49 @@ document.addEventListener('DOMContentLoaded', () => {
       paneHeader.appendChild(paneTag);
       pane.appendChild(paneHeader);
 
+      const thinkingBubble = document.createElement('div');
+      thinkingBubble.className = 'doc-thinking-bubble';
+      thinkingBubble.hidden = true;
+      const thinkingSpinner = document.createElement('span');
+      thinkingSpinner.className = 'doc-thinking-spinner';
+      thinkingSpinner.setAttribute('aria-hidden', 'true');
+      const thinkingLabel = document.createElement('span');
+      thinkingLabel.className = 'doc-thinking-label';
+      thinkingLabel.textContent = 'Thinking\u2026';
+      const thinkingCount = document.createElement('span');
+      thinkingCount.className = 'doc-thinking-count';
+      thinkingCount.textContent = '';
+      thinkingBubble.append(thinkingSpinner, thinkingLabel, thinkingCount);
+      pane.appendChild(thinkingBubble);
+
+      const reasoningPanel = document.createElement('div');
+      reasoningPanel.className = 'doc-reasoning-panel';
+      reasoningPanel.hidden = true;
+      const reasoningToggle = document.createElement('button');
+      reasoningToggle.type = 'button';
+      reasoningToggle.className = 'doc-reasoning-toggle';
+      reasoningToggle.setAttribute('aria-expanded', 'false');
+      const reasoningChevron = document.createElement('span');
+      reasoningChevron.className = 'doc-reasoning-chevron';
+      reasoningChevron.setAttribute('aria-hidden', 'true');
+      reasoningChevron.textContent = '\u25B8';
+      const reasoningToggleLabel = document.createElement('span');
+      reasoningToggleLabel.className = 'doc-reasoning-toggle-label';
+      reasoningToggleLabel.textContent = 'See thinking';
+      reasoningToggle.append(reasoningChevron, reasoningToggleLabel);
+      const reasoningBody = document.createElement('pre');
+      reasoningBody.className = 'doc-reasoning-body';
+      reasoningPanel.append(reasoningToggle, reasoningBody);
+      pane.appendChild(reasoningPanel);
+
+      reasoningToggle.addEventListener('click', () => {
+        const isOpen = reasoningPanel.classList.toggle('is-open');
+        reasoningToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      });
+
       const paneStatus = document.createElement('div');
       paneStatus.className = 'doc-pane-status';
+      paneStatus.hidden = true;
       const paneSpinner = document.createElement('span');
       paneSpinner.className = 'doc-pane-spinner';
       paneSpinner.setAttribute('aria-hidden', 'true');
@@ -177,7 +218,15 @@ document.addEventListener('DOMContentLoaded', () => {
         statusEl: paneStatus,
         statusLabelEl: paneStatusLabel,
         spinnerEl: paneSpinner,
+        thinkingEl: thinkingBubble,
+        thinkingCountEl: thinkingCount,
+        reasoningPanelEl: reasoningPanel,
+        reasoningToggleEl: reasoningToggle,
+        reasoningToggleLabelEl: reasoningToggleLabel,
+        reasoningBodyEl: reasoningBody,
         buffer: '',
+        reasoningBuffer: '',
+        contentStarted: false,
         status: 'streaming',
       });
 
@@ -199,7 +248,46 @@ document.addEventListener('DOMContentLoaded', () => {
     const state = tabState.get(model);
     if (!state || typeof delta !== 'string' || delta.length === 0) return;
     state.buffer += delta;
+    if (!state.contentStarted) {
+      state.contentStarted = true;
+      if (state.thinkingEl) state.thinkingEl.hidden = true;
+      if (state.statusEl) {
+        state.statusEl.hidden = false;
+        state.statusLabelEl.textContent = 'Streaming response\u2026';
+      }
+      if (state.reasoningPanelEl && state.reasoningBuffer.length > 0) {
+        state.reasoningPanelEl.classList.remove('is-open');
+        state.reasoningToggleEl?.setAttribute('aria-expanded', 'false');
+      }
+    }
     renderPane(state);
+  }
+
+  function handleReasoningDelta({ model, delta }) {
+    const state = tabState.get(model);
+    if (!state || typeof delta !== 'string' || delta.length === 0) return;
+    state.reasoningBuffer += delta;
+
+    if (!state.contentStarted) {
+      if (state.thinkingEl) state.thinkingEl.hidden = false;
+      if (state.thinkingCountEl) {
+        state.thinkingCountEl.textContent = `${state.reasoningBuffer.length} chars`;
+      }
+      if (state.statusEl) state.statusEl.hidden = true;
+    }
+
+    if (state.reasoningPanelEl) {
+      state.reasoningPanelEl.hidden = false;
+    }
+    if (state.reasoningToggleLabelEl) {
+      state.reasoningToggleLabelEl.textContent = `See thinking (${state.reasoningBuffer.length} chars)`;
+    }
+    if (state.reasoningBodyEl) {
+      state.reasoningBodyEl.textContent = state.reasoningBuffer;
+      if (state.reasoningPanelEl?.classList.contains('is-open')) {
+        state.reasoningBodyEl.scrollTop = state.reasoningBodyEl.scrollHeight;
+      }
+    }
   }
 
   function handleDone({ model }) {
@@ -207,6 +295,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!state) return;
     state.status = 'done';
     state.tabEl.classList.add('is-complete');
+    if (state.thinkingEl) state.thinkingEl.hidden = true;
+    if (state.reasoningPanelEl && state.reasoningBuffer.length === 0) {
+      state.reasoningPanelEl.hidden = true;
+    }
+    if (state.statusEl) state.statusEl.hidden = false;
     state.statusEl.classList.add('is-complete');
     state.statusLabelEl.textContent = 'Analysis complete';
     state.spinnerEl.hidden = true;
@@ -219,6 +312,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!state) return;
     state.status = 'error';
     state.tabEl.classList.add('is-failed');
+    if (state.thinkingEl) state.thinkingEl.hidden = true;
+    if (state.statusEl) state.statusEl.hidden = false;
     state.statusEl.classList.add('is-error');
     state.spinnerEl.hidden = true;
     state.statusLabelEl.textContent = 'This doctor could not respond';
@@ -232,11 +327,15 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   const offDelta = window.electronAPI.onDoctorStreamDelta?.(handleDelta) || (() => {});
+  const offReasoning =
+    window.electronAPI.onDoctorStreamReasoningDelta?.(handleReasoningDelta) ||
+    (() => {});
   const offDone = window.electronAPI.onDoctorStreamDone?.(handleDone) || (() => {});
   const offError = window.electronAPI.onDoctorStreamError?.(handleError) || (() => {});
 
   window.addEventListener('beforeunload', () => {
     try { offDelta(); } catch {}
+    try { offReasoning(); } catch {}
     try { offDone(); } catch {}
     try { offError(); } catch {}
   });
@@ -267,7 +366,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const models = Array.isArray(result.models) ? result.models : [];
       if (models.length === 0) {
-        throw new Error('No doctor models are configured. Add at least one model to OPENROUTER_WORKER_MODELS.');
+        throw new Error('No doctor models are configured. Add at least one model to OPENROUTER_DOCTOR_MODELS.');
       }
 
       buildTabs(models);

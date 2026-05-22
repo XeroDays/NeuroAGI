@@ -4,14 +4,19 @@ const OPENROUTER_WORKER_MODELS = [
   // "poolside/laguna-xs.2:free", 
  //"google/gemini-2.5-flash-lite", // not free
  //"deepseek/deepseek-v4-flash", // not free
- // "openai/gpt-4o-mini", // not free
+   "openai/gpt-4o-mini", // not free
  //"google/gemini-3-flash-preview", //not free
   // "arcee-ai/trinity-large-thinking:free",
-    "nvidia/nemotron-3-super-120b-a12b:free",
+   // "nvidia/nemotron-3-super-120b-a12b:free",
 ];
 
-//const OPENROUTER_MASTER_MODEL = "deepseek/deepseek-v4-flash";
-const OPENROUTER_MASTER_MODEL = "google/gemini-2.5-flash-lite";
+const OPENROUTER_DOCTOR_MODELS = [
+  "deepseek/deepseek-v4-flash",
+ // "google/gemini-2.5-flash-lite",
+];
+
+const OPENROUTER_MASTER_MODEL = "deepseek/deepseek-v4-flash";
+//const OPENROUTER_MASTER_MODEL = "google/gemini-2.5-flash-lite";
 
 async function AskAllWorkerAgis(prompt, options = {}) {
   const messages = [{ role: "user", content: prompt }];
@@ -47,22 +52,28 @@ async function AskMasterAgi(prompt, options = {}) {
   );
 }
 
-function StreamFromAllWorkerAgis(prompt, callbacks = {}, options = {}) {
+function StreamFromAllWorkerAgis(
+  prompt,
+  callbacks = {},
+  options = {},
+  modelList = OPENROUTER_WORKER_MODELS
+) {
   const {
     onModelDelta = () => {},
+    onModelReasoning = () => {},
     onModelDone = () => {},
     onModelError = () => {},
     onAllDone = () => {},
   } = callbacks;
 
   const messages = [{ role: "user", content: prompt }];
-  const models = OPENROUTER_WORKER_MODELS.slice();
+  const models = Array.isArray(modelList) ? modelList.slice() : [];
   const startedAt = Date.now();
 
-  console.log(`[agi] stream-fanout → ${models.length} worker model(s)`);
+  console.log(`[agi] stream-fanout → ${models.length} model(s)`);
 
   if (models.length === 0) {
-    console.warn("[agi] stream-fanout: OPENROUTER_WORKER_MODELS is empty");
+    console.warn("[agi] stream-fanout: model list is empty");
     queueMicrotask(() => onAllDone({ models: [], elapsedMs: 0 }));
     return models;
   }
@@ -134,7 +145,17 @@ function StreamFromAllWorkerAgis(prompt, callbacks = {}, options = {}) {
             settle(model, "err");
           }
         },
-        options
+        options,
+        (reasoningDelta) => {
+          try {
+            onModelReasoning(model, reasoningDelta);
+          } catch (cbErr) {
+            console.error(
+              `[agi] stream-fanout onModelReasoning callback threw for ${model}:`,
+              cbErr
+            );
+          }
+        }
       );
     } catch (err) {
       const msg = err?.message || String(err);
@@ -155,10 +176,16 @@ function StreamFromAllWorkerAgis(prompt, callbacks = {}, options = {}) {
   return models;
 }
 
+function StreamFromAllDoctorAgis(prompt, callbacks = {}, options = {}) {
+  return StreamFromAllWorkerAgis(prompt, callbacks, options, OPENROUTER_DOCTOR_MODELS);
+}
+
 module.exports = {
   AskAllWorkerAgis,
   AskMasterAgi,
   StreamFromAllWorkerAgis,
+  StreamFromAllDoctorAgis,
   OPENROUTER_WORKER_MODELS,
+  OPENROUTER_DOCTOR_MODELS,
   OPENROUTER_MASTER_MODEL,
 };

@@ -352,6 +352,143 @@ body.doc-shell::before {
   border-radius: 12px;
 }
 
+@keyframes doc-bubble-fadein {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.doc-thinking-bubble {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  align-self: flex-start;
+  padding: 0.5rem 0.95rem;
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: 1.25rem;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  animation: doc-bubble-fadein 220ms ease-out both;
+}
+
+.doc-thinking-bubble::before {
+  content: '';
+  position: absolute;
+  left: 14px;
+  bottom: -6px;
+  width: 12px;
+  height: 12px;
+  background: inherit;
+  border-right: 1px solid rgba(255, 255, 255, 0.32);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.32);
+  transform: rotate(45deg);
+  border-bottom-right-radius: 3px;
+}
+
+.doc-thinking-spinner {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: rgba(255, 255, 255, 0.95);
+  animation: doc-spin 0.8s linear infinite;
+}
+
+.doc-thinking-label {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.doc-thinking-count {
+  margin-left: 0.35rem;
+  padding-left: 0.55rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.7);
+  border-left: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.doc-reasoning-panel {
+  display: flex;
+  flex-direction: column;
+  margin-top: 0.25rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  overflow: hidden;
+}
+
+.doc-reasoning-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.55rem 0.85rem;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.doc-reasoning-toggle:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.doc-reasoning-chevron {
+  display: inline-block;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.7);
+  transition: transform 0.2s ease;
+}
+
+.doc-reasoning-panel.is-open .doc-reasoning-chevron {
+  transform: rotate(90deg);
+  color: #fff;
+}
+
+.doc-reasoning-toggle-label {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.doc-reasoning-body {
+  margin: 0;
+  padding: 0 0.85rem;
+  max-height: 0;
+  overflow: hidden;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: rgba(0, 0, 0, 0.18);
+  border-top: 1px solid transparent;
+  transition: max-height 200ms ease, padding 200ms ease, border-color 200ms ease;
+}
+
+.doc-reasoning-panel.is-open .doc-reasoning-body {
+  padding: 0.7rem 0.85rem;
+  max-height: 50vh;
+  overflow-y: auto;
+  border-top-color: rgba(255, 255, 255, 0.15);
+}
+
 .doc-prose {
   font-size: 0.95rem;
   line-height: 1.55;

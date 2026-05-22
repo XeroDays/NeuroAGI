@@ -8,6 +8,7 @@ module.exports = {
   SUBMIT_PRE_DOCTOR_ROOM: "neuroagi:submit-pre-doctor-room",
   START_DOCTOR: "neuroagi:start-doctor",
   DOCTOR_STREAM_DELTA: "neuroagi:doctor-stream-delta",
+  DOCTOR_STREAM_REASONING_DELTA: "neuroagi:doctor-stream-reasoning-delta",
   DOCTOR_STREAM_DONE: "neuroagi:doctor-stream-done",
   DOCTOR_STREAM_ERROR: "neuroagi:doctor-stream-error",
   OPEN_DEV_TOOLS: "neuroagi:open-dev-tools",

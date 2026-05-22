@@ -9,6 +9,7 @@ const {
   AskAllWorkerAgis,
   AskMasterAgi,
   StreamFromAllWorkerAgis,
+  StreamFromAllDoctorAgis,
 } = require("../services/agi-service");
 const channels = require("../../shared/ipc/channels");
 const { jsonrepair } = require("jsonrepair");
@@ -527,8 +528,9 @@ function StartDoctor(
   }
 
   const streamBuffers = new Map();
+  const reasoningBuffers = new Map();
 
-  const models = StreamFromAllWorkerAgis(
+  const models = StreamFromAllDoctorAgis(
     prompt,
     {
       onModelDelta: (model, delta) => {
@@ -536,10 +538,19 @@ function StartDoctor(
         streamBuffers.set(model, prev + (typeof delta === "string" ? delta : ""));
         safeSend(channels.DOCTOR_STREAM_DELTA, { model, delta });
       },
+      onModelReasoning: (model, delta) => {
+        const prev = reasoningBuffers.get(model) || "";
+        reasoningBuffers.set(
+          model,
+          prev + (typeof delta === "string" ? delta : "")
+        );
+        safeSend(channels.DOCTOR_STREAM_REASONING_DELTA, { model, delta });
+      },
       onModelDone: (model) => {
         const buf = streamBuffers.get(model) || "";
+        const reasoningBuf = reasoningBuffers.get(model) || "";
         console.log(
-          `[collector/doctor] stream done for ${model} (${buf.length} chars)`
+          `[collector/doctor] stream done for ${model} (content: ${buf.length} chars, reasoning: ${reasoningBuf.length} chars)`
         );
         logRawLLMOutput(
           "collector/doctor",
@@ -550,8 +561,9 @@ function StartDoctor(
       },
       onModelError: (model, error) => {
         const buf = streamBuffers.get(model) || "";
+        const reasoningBuf = reasoningBuffers.get(model) || "";
         console.warn(
-          `[collector/doctor] stream error for ${model} (after ${buf.length} chars):`,
+          `[collector/doctor] stream error for ${model} (after content: ${buf.length} chars, reasoning: ${reasoningBuf.length} chars):`,
           error
         );
         if (buf.length > 0) {

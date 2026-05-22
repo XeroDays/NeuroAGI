@@ -1,6 +1,14 @@
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
-async function streamChat(messages, model, onDelta, onDone, onError, options = {}) {
+async function streamChat(
+  messages,
+  model,
+  onDelta,
+  onDone,
+  onError,
+  options = {},
+  onReasoningDelta = () => {}
+) {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
     console.error('[api-helper] streamChat: OPENROUTER_API_KEY is not set');
@@ -24,6 +32,8 @@ async function streamChat(messages, model, onDelta, onDone, onError, options = {
     : 0;
   let deltaCount = 0;
   let deltaChars = 0;
+  let reasoningCount = 0;
+  let reasoningChars = 0;
 
   const { maxTokens, reasoning } = options || {};
 
@@ -45,6 +55,8 @@ async function streamChat(messages, model, onDelta, onDone, onError, options = {
       model,
       deltaCount,
       deltaChars,
+      reasoningCount,
+      reasoningChars,
       totalElapsedMs: Date.now() - startedAt,
     });
     onDone();
@@ -125,6 +137,12 @@ async function streamChat(messages, model, onDelta, onDone, onError, options = {
             deltaChars += delta.length;
             onDelta(delta);
           }
+          const reasoning = json.choices?.[0]?.delta?.reasoning;
+          if (typeof reasoning === 'string' && reasoning.length > 0) {
+            reasoningCount += 1;
+            reasoningChars += reasoning.length;
+            onReasoningDelta(reasoning);
+          }
         } catch {
         }
       }
@@ -142,6 +160,12 @@ async function streamChat(messages, model, onDelta, onDone, onError, options = {
               deltaCount += 1;
               deltaChars += delta.length;
               onDelta(delta);
+            }
+            const reasoning = json.choices?.[0]?.delta?.reasoning;
+            if (typeof reasoning === 'string' && reasoning.length > 0) {
+              reasoningCount += 1;
+              reasoningChars += reasoning.length;
+              onReasoningDelta(reasoning);
             }
           } catch {
           }
