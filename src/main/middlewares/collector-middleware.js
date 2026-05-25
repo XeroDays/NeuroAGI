@@ -17,9 +17,9 @@ const { jsonrepair } = require("jsonrepair");
 // payload genuinely needs more room. Uncomment a different row to switch.
 // const JSON_LLM_OPTIONS = { maxTokens: 4096,  reasoning: { effort: "none"   } };
 // const JSON_LLM_OPTIONS = { maxTokens: 8192,  reasoning: { effort: "low"    } };
-   const JSON_LLM_OPTIONS = { maxTokens: 16384, reasoning: { effort: "medium" } };
-// const JSON_LLM_OPTIONS = { maxTokens: 32768, reasoning: { effort: "high"   } };
-// const JSON_LLM_OPTIONS = { maxTokens: 65536, reasoning: { effort: "high"   } };
+  // const JSON_LLM_OPTIONS = { maxTokens: 16384, reasoning: { effort: "medium" } };
+   const JSON_LLM_OPTIONS = { maxTokens: 32768, reasoning: { effort: "high"   } };
+ //const JSON_LLM_OPTIONS = { maxTokens: 65536, reasoning: { effort: "high"   } };
 
 // Free-form doctor analysis report (streaming prose) — chosen on the Home screen via the
 // "Reasoning level" dropdown and forwarded through StartDoctor (sessionStorage key

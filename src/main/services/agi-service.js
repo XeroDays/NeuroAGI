@@ -1,9 +1,6 @@
 const { chatCompletion, streamChat } = require("./api-helper");
 const modelConfigService = require("./model-config-service");
 
-// Master model is not user-configurable — it is always used for the JSON merge step.
-const OPENROUTER_MASTER_MODEL = "baidu/cobuddy:free";
-
 /** Returns the currently active model IDs from the user's saved selection. */
 function getActiveModels() {
   return modelConfigService.getActiveModelIds();
@@ -36,10 +33,16 @@ async function AskAllWorkerAgis(prompt, options = {}) {
 }
 
 async function AskMasterAgi(prompt, options = {}) {
-  console.log(`[agi] master query → ${OPENROUTER_MASTER_MODEL}`);
+  const masterId = modelConfigService.getMasterModelRuntimeId();
+  if (!masterId) {
+    throw new Error(
+      "No master model selected. Star a model in the Models popup."
+    );
+  }
+  console.log(`[agi] master query → ${masterId}`);
   return chatCompletion(
     [{ role: "user", content: prompt }],
-    OPENROUTER_MASTER_MODEL,
+    masterId,
     options
   );
 }
@@ -181,6 +184,5 @@ module.exports = {
   AskMasterAgi,
   StreamFromAllWorkerAgis,
   StreamFromAllDoctorAgis,
-  OPENROUTER_MASTER_MODEL,
   getActiveModels,
 };

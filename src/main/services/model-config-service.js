@@ -4,8 +4,9 @@ const fs = require('fs');
 const CATALOG_PATH = path.join(__dirname, '../../../models-catalog.json');
 const STATE_PATH = path.join(__dirname, '../../../models-state.json');
 
-let catalog = [];        // [{ name, type }] — loaded once from JSON
+let catalog = [];        // [{ name, type, ... }] — loaded once from JSON
 let activeModels = null; // Set<string> of enabled catalog names
+let masterModel = '';    // catalog name of the starred master merge model
 
 /**
  * Reconstruct the full OpenRouter model ID from a catalog entry.
@@ -20,7 +21,10 @@ function toRuntimeId(entry) {
 
 function saveState() {
   try {
-    const data = { activeModels: Array.from(activeModels) };
+    const data = {
+      activeModels: Array.from(activeModels),
+      masterModel,
+    };
     fs.writeFileSync(STATE_PATH, JSON.stringify(data, null, 2), 'utf-8');
   } catch (err) {
     console.error('[model-config] Failed to save state:', err.message);
@@ -49,29 +53,34 @@ function init() {
 
   const catalogNames = new Set(catalog.map((m) => m.name));
 
-  // Load persisted activation state
+  // Load persisted activation + master state
   try {
     const raw = fs.readFileSync(STATE_PATH, 'utf-8');
     const state = JSON.parse(raw);
     if (Array.isArray(state.activeModels)) {
-      // Accept only names that exist in the current catalog
       const valid = state.activeModels.filter((n) => catalogNames.has(n));
       activeModels = new Set(valid);
-      console.log(`[model-config] Loaded state: ${activeModels.size} active model(s)`);
     } else {
       throw new Error('state.activeModels is not an array');
     }
+
+    const savedMaster =
+      typeof state.masterModel === 'string' ? state.masterModel : '';
+    masterModel = catalogNames.has(savedMaster) ? savedMaster : '';
+
+    console.log(
+      `[model-config] Loaded state: ${activeModels.size} active model(s), master=${masterModel || '(none)'}`
+    );
   } catch (_err) {
-    // No state file yet — start with nothing selected so the user explicitly
-    // chooses which models to activate via the Models popup.
     activeModels = new Set();
-    console.log('[model-config] No state file — starting with no active models');
+    masterModel = '';
+    console.log('[model-config] No state file — starting with no active models or master');
   }
 }
 
 /**
- * Returns the full model list with per-model enabled state for the popup UI.
- * @returns {{ name: string, type: string, latency: string, throughput: string, enabled: boolean }[]}
+ * Returns the full model list with per-model enabled/master state for the popup UI.
+ * @returns {{ name: string, type: string, latency: string, throughput: string, enabled: boolean, isMaster: boolean }[]}
  */
 function getModelsWithState() {
   if (!activeModels) init();
@@ -81,6 +90,7 @@ function getModelsWithState() {
     latency: typeof m.latency === 'string' ? m.latency : '',
     throughput: typeof m.throughput === 'string' ? m.throughput : '',
     enabled: activeModels.has(m.name),
+    isMaster: m.name === masterModel,
   }));
 }
 
@@ -91,29 +101,53 @@ function getModelsWithState() {
  */
 function getActiveModelIds() {
   if (!activeModels) init();
-  const ids = catalog
+  return catalog
     .filter((m) => activeModels.has(m.name))
     .map(toRuntimeId);
-
-  return ids;
 }
 
 /**
- * Persist a new activation set. Unknown names are silently ignored.
- * An empty array is a valid selection (all models off).
- * @param {string[]} activeNames  Array of catalog model names to enable.
+ * Returns the runtime OpenRouter ID for the starred master model, or null if unset.
+ * @returns {string|null}
  */
-function updateActivation(activeNames) {
-  if (!Array.isArray(activeNames)) return;
+function getMasterModelRuntimeId() {
+  if (!activeModels) init();
+  if (!masterModel) return null;
+  const entry = catalog.find((m) => m.name === masterModel);
+  if (!entry) return null;
+  return toRuntimeId(entry);
+}
+
+/**
+ * Persist activation set and/or starred master model.
+ * @param {{ activeModels?: string[], masterModel?: string }} payload
+ */
+function updateState({ activeModels: activeNames, masterModel: newMaster } = {}) {
   if (!activeModels) init();
 
   const catalogNames = new Set(catalog.map((m) => m.name));
-  const validated = activeNames.filter((n) => catalogNames.has(n));
 
-  activeModels = new Set(validated);
+  if (Array.isArray(activeNames)) {
+    const validated = activeNames.filter((n) => catalogNames.has(n));
+    activeModels = new Set(validated);
+  }
+
+  if (newMaster !== undefined) {
+    if (typeof newMaster === 'string' && (newMaster === '' || catalogNames.has(newMaster))) {
+      masterModel = newMaster;
+    }
+  }
 
   saveState();
-  console.log(`[model-config] Activation updated: ${activeModels.size} model(s) active`);
+  console.log(
+    `[model-config] State updated: ${activeModels.size} active model(s), master=${masterModel || '(none)'}`
+  );
 }
 
-module.exports = { init, getModelsWithState, getActiveModelIds, updateActivation };
+module.exports = {
+  init,
+  getModelsWithState,
+  getActiveModelIds,
+  getMasterModelRuntimeId,
+  updateState,
+};

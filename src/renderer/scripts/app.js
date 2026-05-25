@@ -72,8 +72,20 @@ document.addEventListener('DOMContentLoaded', () => {
   const modelsUpdateBtn = document.getElementById('btn-models-update');
   const modelsTabs      = document.querySelectorAll('.models-tab');
 
-  // Local snapshot of the model list; mutated by toggle interactions.
+  // Local snapshot of the model list; mutated by toggle/star interactions.
   let modelsState = [];
+
+  function setMasterModel(modelName) {
+    const entry = modelsState.find((m) => m.name === modelName);
+    const wasMaster = entry?.isMaster === true;
+    modelsState.forEach((m) => {
+      m.isMaster = false;
+    });
+    if (entry && !wasMaster) {
+      entry.isMaster = true;
+    }
+    renderModelsList();
+  }
 
   // Build a single panel's rows from a filtered slice of modelsState.
   function renderTabPanel(container, models) {
@@ -83,6 +95,19 @@ document.addEventListener('DOMContentLoaded', () => {
       const row = document.createElement('div');
       row.className = 'models-row';
       row.setAttribute('role', 'listitem');
+
+      const starBtn = document.createElement('button');
+      starBtn.type = 'button';
+      starBtn.className = `models-star-btn${model.isMaster ? ' is-starred' : ''}`;
+      starBtn.setAttribute(
+        'aria-label',
+        model.isMaster
+          ? `Master model: ${model.name}`
+          : `Set ${model.name} as master model`
+      );
+      starBtn.innerHTML =
+        '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
+      starBtn.addEventListener('click', () => setMasterModel(model.name));
 
       // Left: name + type badge
       const info = document.createElement('div');
@@ -135,6 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
       toggleLabel.appendChild(toggleInput);
       toggleLabel.appendChild(toggleSlider);
 
+      row.appendChild(starBtn);
       row.appendChild(info);
       row.appendChild(toggleLabel);
       container.appendChild(row);
@@ -218,10 +244,12 @@ document.addEventListener('DOMContentLoaded', () => {
   if (modelsUpdateBtn) {
     modelsUpdateBtn.addEventListener('click', async () => {
       const activeModels = modelsState.filter((m) => m.enabled).map((m) => m.name);
+      const masterModelEntry = modelsState.find((m) => m.isMaster);
+      const masterModel = masterModelEntry?.name ?? '';
       modelsUpdateBtn.disabled = true;
       modelsUpdateBtn.textContent = 'Saving…';
       try {
-        await window.electronAPI?.updateModelsConfig?.({ activeModels });
+        await window.electronAPI?.updateModelsConfig?.({ activeModels, masterModel });
         closeModelsPopup();
       } catch (err) {
         console.error('[app] Failed to update models config:', err);

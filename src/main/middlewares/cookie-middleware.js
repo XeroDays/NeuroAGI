@@ -5,7 +5,7 @@ const modelConfigService = require('../services/model-config-service');
  * Called by the GET_MODELS_CONFIG IPC handler so the renderer can
  * populate the Models popup.
  *
- * @returns {{ name: string, type: string, enabled: boolean }[]}
+ * @returns {{ name: string, type: string, latency: string, throughput: string, enabled: boolean, isMaster: boolean }[]}
  */
 function GetModelsConfig() {
   console.log('[cookie] GetModelsConfig');
@@ -13,16 +13,19 @@ function GetModelsConfig() {
 }
 
 /**
- * Persists a new model activation set.
+ * Persists model activation set and starred master model.
  * Called by the UPDATE_MODELS_CONFIG IPC handler when the user clicks
  * "Update" in the Models popup.
  *
- * @param {{ activeModels: string[] }} payload
+ * @param {{ activeModels: string[], masterModel?: string }} payload
  * @returns {{ ok: boolean }}
  */
-function UpdateModelsConfig({ activeModels } = {}) {
-  console.log('[cookie] UpdateModelsConfig:', { count: Array.isArray(activeModels) ? activeModels.length : 'invalid' });
-  modelConfigService.updateActivation(activeModels);
+function UpdateModelsConfig({ activeModels, masterModel } = {}) {
+  console.log('[cookie] UpdateModelsConfig:', {
+    count: Array.isArray(activeModels) ? activeModels.length : 'invalid',
+    masterModel: masterModel ?? '(unchanged)',
+  });
+  modelConfigService.updateState({ activeModels, masterModel });
   return { ok: true };
 }
 
