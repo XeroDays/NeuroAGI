@@ -80,7 +80,7 @@ function init() {
 
 /**
  * Returns the full model list with per-model enabled/master state for the popup UI.
- * @returns {{ name: string, type: string, latency: string, throughput: string, enabled: boolean, isMaster: boolean }[]}
+ * @returns {{ name: string, type: string, latency: string, throughput: string, price: string, enabled: boolean, isMaster: boolean }[]}
  */
 function getModelsWithState() {
   if (!activeModels) init();
@@ -89,6 +89,7 @@ function getModelsWithState() {
     type: m.type,
     latency: typeof m.latency === 'string' ? m.latency : '',
     throughput: typeof m.throughput === 'string' ? m.throughput : '',
+    price: typeof m.price === 'string' ? m.price : '',
     enabled: activeModels.has(m.name),
     isMaster: m.name === masterModel,
   }));

@@ -138,6 +138,13 @@ document.addEventListener('DOMContentLoaded', () => {
         info.appendChild(throughputBadge);
       }
 
+      if (model.price) {
+        const priceBadge = document.createElement('span');
+        priceBadge.className = 'models-price-badge';
+        priceBadge.textContent = model.price;
+        info.appendChild(priceBadge);
+      }
+
       // Right: toggle switch
       const toggleLabel = document.createElement('label');
       toggleLabel.className = 'models-toggle';

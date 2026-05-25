@@ -1,6 +1,6 @@
 {
   "activeModels": [
-    "poolside/laguna-xs.2:free"
+    "arcee-ai/trinity-large-thinking:free"
   ],
-  "masterModel": ""
+  "masterModel": "deepseek/deepseek-v4-flash:free"
 }
