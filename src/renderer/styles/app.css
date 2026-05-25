@@ -446,6 +446,62 @@ body.app-shell::before {
   line-height: 1.4;
 }
 
+/* ── Tab bar ─────────────────────────────────────────────────────────────── */
+.models-tabs-bar {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid #e8e8e8;
+  flex-shrink: 0;
+  padding: 0 1.5rem;
+}
+
+.models-tab {
+  position: relative;
+  padding: 0.65rem 1rem 0.6rem;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #888;
+  background: none;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s ease;
+  outline: none;
+}
+
+.models-tab::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: rgba(236, 72, 153, 0.85);
+  border-radius: 2px 2px 0 0;
+  transform: scaleX(0);
+  transition: transform 0.18s ease;
+}
+
+.models-tab:hover {
+  color: #444;
+}
+
+.models-tab.is-active {
+  color: #1a1a1a;
+  font-weight: 600;
+}
+
+.models-tab.is-active::after {
+  transform: scaleX(1);
+}
+
+.models-tab:focus-visible {
+  outline: 2px solid rgba(34, 211, 238, 0.8);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 /* ── Model list ───────────────────────────────────────────────────────────── */
 .models-modal-body {
   flex: 1;
@@ -525,6 +581,18 @@ body.app-shell::before {
   background: rgba(37, 99, 235, 0.1);
   border: 1px solid rgba(37, 99, 235, 0.35);
   color: #1d4ed8;
+}
+
+.models-latency-badge {
+  flex-shrink: 0;
+  font-size: 0.64rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  letter-spacing: 0.03em;
+  background: rgba(100, 100, 100, 0.08);
+  border: 1px solid rgba(100, 100, 100, 0.22);
+  color: #555;
 }
 
 /* ── Toggle switch ───────────────────────────────────────────────────────── */

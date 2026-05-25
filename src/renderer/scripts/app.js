@@ -64,19 +64,22 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ── Models popup ──────────────────────────────────────────────────────────
-  const modelsBtn      = document.getElementById('btn-models');
-  const modelsOverlay  = document.getElementById('models-overlay');
-  const modelsList     = document.getElementById('models-list');
-  const modelsCloseBtn = document.getElementById('btn-models-close');
+  const modelsBtn       = document.getElementById('btn-models');
+  const modelsOverlay   = document.getElementById('models-overlay');
+  const modelsListFree  = document.getElementById('models-list-free');
+  const modelsListPaid  = document.getElementById('models-list-paid');
+  const modelsCloseBtn  = document.getElementById('btn-models-close');
   const modelsUpdateBtn = document.getElementById('btn-models-update');
+  const modelsTabs      = document.querySelectorAll('.models-tab');
 
   // Local snapshot of the model list; mutated by toggle interactions.
   let modelsState = [];
 
-  function renderModelsList() {
-    if (!modelsList) return;
-    modelsList.innerHTML = '';
-    for (const model of modelsState) {
+  // Build a single panel's rows from a filtered slice of modelsState.
+  function renderTabPanel(container, models) {
+    if (!container) return;
+    container.innerHTML = '';
+    for (const model of models) {
       const row = document.createElement('div');
       row.className = 'models-row';
       row.setAttribute('role', 'listitem');
@@ -96,6 +99,13 @@ document.addEventListener('DOMContentLoaded', () => {
       info.appendChild(nameSpan);
       info.appendChild(typeBadge);
 
+      if (model.latency) {
+        const latencyBadge = document.createElement('span');
+        latencyBadge.className = 'models-latency-badge';
+        latencyBadge.textContent = model.latency;
+        info.appendChild(latencyBadge);
+      }
+
       // Right: toggle switch
       const toggleLabel = document.createElement('label');
       toggleLabel.className = 'models-toggle';
@@ -108,6 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
       toggleInput.addEventListener('change', (e) => {
         const entry = modelsState.find((m) => m.name === e.target.dataset.modelName);
         if (entry) entry.enabled = e.target.checked;
+        updateTabCounts();
       });
 
       const toggleSlider = document.createElement('span');
@@ -119,9 +130,47 @@ document.addEventListener('DOMContentLoaded', () => {
 
       row.appendChild(info);
       row.appendChild(toggleLabel);
-      modelsList.appendChild(row);
+      container.appendChild(row);
     }
   }
+
+  // Update the enabled-count badge on each tab button.
+  function updateTabCounts() {
+    const freeEnabled = modelsState.filter(m => m.type.toLowerCase() === 'free' && m.enabled).length;
+    const freeTotal   = modelsState.filter(m => m.type.toLowerCase() === 'free').length;
+    const paidEnabled = modelsState.filter(m => m.type.toLowerCase() === 'paid' && m.enabled).length;
+    const paidTotal   = modelsState.filter(m => m.type.toLowerCase() === 'paid').length;
+
+    modelsTabs.forEach((tab) => {
+      if (tab.dataset.tab === 'free') {
+        tab.textContent = `Free (${freeEnabled}/${freeTotal})`;
+      } else {
+        tab.textContent = `Paid (${paidEnabled}/${paidTotal})`;
+      }
+    });
+  }
+
+  // Render both panels and refresh tab counts.
+  function renderModelsList() {
+    renderTabPanel(modelsListFree, modelsState.filter(m => m.type.toLowerCase() === 'free'));
+    renderTabPanel(modelsListPaid, modelsState.filter(m => m.type.toLowerCase() === 'paid'));
+    updateTabCounts();
+  }
+
+  // Switch active tab; show the matching panel, hide the other.
+  function switchTab(tabName) {
+    modelsTabs.forEach((tab) => {
+      const isActive = tab.dataset.tab === tabName;
+      tab.classList.toggle('is-active', isActive);
+      tab.setAttribute('aria-selected', String(isActive));
+    });
+    if (modelsListFree) modelsListFree.hidden = (tabName !== 'free');
+    if (modelsListPaid) modelsListPaid.hidden = (tabName !== 'paid');
+  }
+
+  modelsTabs.forEach((tab) => {
+    tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+  });
 
   async function openModelsPopup() {
     if (!modelsOverlay) return;
@@ -129,6 +178,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const config = await window.electronAPI?.getModelsConfig?.();
       modelsState = Array.isArray(config) ? config : [];
       renderModelsList();
+      switchTab('free'); // always open on Free tab
       modelsOverlay.hidden = false;
     } catch (err) {
       console.error('[app] Failed to load models config:', err);

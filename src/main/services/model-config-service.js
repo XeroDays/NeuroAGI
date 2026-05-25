@@ -71,13 +71,14 @@ function init() {
 
 /**
  * Returns the full model list with per-model enabled state for the popup UI.
- * @returns {{ name: string, type: string, enabled: boolean }[]}
+ * @returns {{ name: string, type: string, latency: string, enabled: boolean }[]}
  */
 function getModelsWithState() {
   if (!activeModels) init();
   return catalog.map((m) => ({
     name: m.name,
     type: m.type,
+    latency: typeof m.latency === 'string' ? m.latency : '',
     enabled: activeModels.has(m.name),
   }));
 }

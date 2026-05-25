@@ -25,7 +25,12 @@
         <h2 class="models-modal-title" id="models-modal-title">Models</h2>
         <p class="models-modal-subtitle">Toggle which models are active for all diagnostic steps.</p>
       </div>
-      <div class="models-modal-body" id="models-list" role="list"></div>
+      <div class="models-tabs-bar" role="tablist">
+        <button type="button" class="models-tab is-active" data-tab="free" role="tab" aria-selected="true" aria-controls="models-list-free">Free</button>
+        <button type="button" class="models-tab" data-tab="paid" role="tab" aria-selected="false" aria-controls="models-list-paid">Paid</button>
+      </div>
+      <div class="models-modal-body" id="models-list-free" role="list"></div>
+      <div class="models-modal-body" id="models-list-paid" role="list" hidden></div>
       <div class="models-modal-footer">
         <button type="button" id="btn-models-close" class="models-btn-close">Close</button>
         <button type="button" id="btn-models-update" class="models-btn-update">Update</button>
