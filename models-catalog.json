@@ -1,0 +1,38 @@
+[
+  {
+    "name": "arcee-ai/trinity-large-thinking",
+    "type": "Free"
+  },
+  {
+    "name": "nvidia/nemotron-3-super-120b-a12b",
+    "type": "Free"
+  },
+  {
+    "name": "openai/gpt-oss-120b",
+    "type": "Free"
+  },
+  {
+    "name": "z-ai/glm-4.5-air",
+    "type": "Free"
+  },
+  {
+    "name": "google/gemma-4-31b-it",
+    "type": "Free"
+  },
+  {
+    "name": "baidu/cobuddy",
+    "type": "Free"
+  },
+  {
+    "name": "poolside/laguna-xs.2",
+    "type": "Free"
+  },
+  {
+    "name": "nvidia/nemotron-nano-9b-v2",
+    "type": "Free"
+  },
+  {
+    "name": "openrouter/owl-alpha",
+    "type": "Free"
+  }
+]

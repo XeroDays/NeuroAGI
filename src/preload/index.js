@@ -16,6 +16,8 @@ const CH = {
   GET_USAGE_TOTALS: "neuroagi:get-usage-totals",
   USAGE_UPDATE: "neuroagi:usage-update",
   OPEN_DEV_TOOLS: "neuroagi:open-dev-tools",
+  GET_MODELS_CONFIG: "neuroagi:get-models-config",
+  UPDATE_MODELS_CONFIG: "neuroagi:update-models-config",
 };
 
 function subscribe(channel, cb) {
@@ -57,4 +59,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onUsageUpdate: (cb) => subscribe(CH.USAGE_UPDATE, cb),
 
   openDevTools: () => ipcRenderer.invoke(CH.OPEN_DEV_TOOLS),
+
+  getModelsConfig: () => ipcRenderer.invoke(CH.GET_MODELS_CONFIG),
+  updateModelsConfig: (payload) => ipcRenderer.invoke(CH.UPDATE_MODELS_CONFIG, payload),
 });

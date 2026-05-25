@@ -1,40 +1,22 @@
 const { chatCompletion, streamChat } = require("./api-helper");
+const modelConfigService = require("./model-config-service");
 
-const OPENROUTER_WORKER_MODELS = [
-   "poolside/laguna-xs.2:free", 
- //"google/gemini-2.5-flash-lite", // not free
- //"deepseek/deepseek-v4-flash", // not free
-  // "openai/gpt-4o-mini", // not free
- //"google/gemini-3-flash-preview", //not free
-   "arcee-ai/trinity-large-thinking:free",
-   "nvidia/nemotron-3-super-120b-a12b:free",
-   "openai/gpt-oss-120b:free",
-   "z-ai/glm-4.5-air:free",
-   "google/gemma-4-31b-it:free",
-   "baidu/cobuddy:free"
-];
-
-const OPENROUTER_DOCTOR_MODELS = [
- // "deepseek/deepseek-v4-flash",
- // "google/gemini-2.5-flash-lite", 
- "nvidia/nemotron-nano-9b-v2:free",
-"openrouter/owl-alpha",
- "google/gemma-4-31b-it:free",
- "arcee-ai/trinity-large-thinking:free",
-
- "baidu/cobuddy:free"
-];
-
-//const OPENROUTER_MASTER_MODEL = "deepseek/deepseek-v4-flash";
+// Master model is not user-configurable — it is always used for the JSON merge step.
 const OPENROUTER_MASTER_MODEL = "baidu/cobuddy:free";
 
+/** Returns the currently active model IDs from the user's saved selection. */
+function getActiveModels() {
+  return modelConfigService.getActiveModelIds();
+}
+
 async function AskAllWorkerAgis(prompt, options = {}) {
+  const models = getActiveModels();
   const messages = [{ role: "user", content: prompt }];
   const startedAt = Date.now();
-  console.log(`[agi] fanout → ${OPENROUTER_WORKER_MODELS.length} worker models`);
+  console.log(`[agi] fanout → ${models.length} worker model(s)`);
 
   const settled = await Promise.allSettled(
-    OPENROUTER_WORKER_MODELS.map((model) =>
+    models.map((model) =>
       chatCompletion(messages, model, options)
         .then((content) => ({ model, ok: true, content }))
         .catch((err) => ({
@@ -66,7 +48,7 @@ function StreamFromAllWorkerAgis(
   prompt,
   callbacks = {},
   options = {},
-  modelList = OPENROUTER_WORKER_MODELS
+  modelList = null
 ) {
   const {
     onModelDelta = () => {},
@@ -77,7 +59,8 @@ function StreamFromAllWorkerAgis(
   } = callbacks;
 
   const messages = [{ role: "user", content: prompt }];
-  const models = Array.isArray(modelList) ? modelList.slice() : [];
+  const resolvedList = modelList !== null ? modelList : getActiveModels();
+  const models = Array.isArray(resolvedList) ? resolvedList.slice() : [];
   const startedAt = Date.now();
 
   console.log(`[agi] stream-fanout → ${models.length} model(s)`);
@@ -187,7 +170,10 @@ function StreamFromAllWorkerAgis(
 }
 
 function StreamFromAllDoctorAgis(prompt, callbacks = {}, options = {}) {
-  return StreamFromAllWorkerAgis(prompt, callbacks, options, OPENROUTER_DOCTOR_MODELS);
+  // Doctor analysis uses the same user-activated model pool as the worker
+  // fanout — the list separation is maintained at the call-site level, not
+  // by maintaining two separate static arrays.
+  return StreamFromAllWorkerAgis(prompt, callbacks, options, getActiveModels());
 }
 
 module.exports = {
@@ -195,7 +181,6 @@ module.exports = {
   AskMasterAgi,
   StreamFromAllWorkerAgis,
   StreamFromAllDoctorAgis,
-  OPENROUTER_WORKER_MODELS,
-  OPENROUTER_DOCTOR_MODELS,
   OPENROUTER_MASTER_MODEL,
+  getActiveModels,
 };

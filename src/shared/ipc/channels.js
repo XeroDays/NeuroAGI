@@ -14,4 +14,6 @@ module.exports = {
   GET_USAGE_TOTALS: "neuroagi:get-usage-totals",
   USAGE_UPDATE: "neuroagi:usage-update",
   OPEN_DEV_TOOLS: "neuroagi:open-dev-tools",
+  GET_MODELS_CONFIG: "neuroagi:get-models-config",
+  UPDATE_MODELS_CONFIG: "neuroagi:update-models-config",
 };

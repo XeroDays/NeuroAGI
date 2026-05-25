@@ -16,6 +16,22 @@
       <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
     </svg>
   </button>
+  <button type="button" id="btn-models" class="glass-models-btn" aria-label="Models">Models</button>
+
+  <!-- Models popup -->
+  <div id="models-overlay" class="models-overlay" hidden aria-modal="true" role="dialog" aria-labelledby="models-modal-title">
+    <div class="models-modal">
+      <div class="models-modal-header">
+        <h2 class="models-modal-title" id="models-modal-title">Models</h2>
+        <p class="models-modal-subtitle">Toggle which models are active for all diagnostic steps.</p>
+      </div>
+      <div class="models-modal-body" id="models-list" role="list"></div>
+      <div class="models-modal-footer">
+        <button type="button" id="btn-models-close" class="models-btn-close">Close</button>
+        <button type="button" id="btn-models-update" class="models-btn-update">Update</button>
+      </div>
+    </div>
+  </div>
   <main class="app-main">
     <div class="home-stack">
       <img id="app-logo" class="app-logo" src="assets/icons/Frame%2076.png" alt="Neuro AGI">

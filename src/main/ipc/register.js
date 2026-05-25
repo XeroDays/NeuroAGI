@@ -9,6 +9,7 @@ const {
   SubmitPreDoctorRoom,
   StartDoctor,
 } = require("../middlewares/collector-middleware");
+const { GetModelsConfig, UpdateModelsConfig } = require("../middlewares/cookie-middleware");
 const usageTracker = require("../services/usage-tracker");
 
 function registerIpcHandlers() {
@@ -48,6 +49,14 @@ function registerIpcHandlers() {
     const win = BrowserWindow.fromWebContents(event.sender);
     if (win) win.webContents.toggleDevTools();
     return { ok: true };
+  });
+
+  ipcMain.handle(channels.GET_MODELS_CONFIG, () => {
+    return GetModelsConfig();
+  });
+
+  ipcMain.handle(channels.UPDATE_MODELS_CONFIG, (_event, payload) => {
+    return UpdateModelsConfig(payload || {});
   });
 }
 
