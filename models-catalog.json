@@ -1,38 +1,38 @@
 [
   {
-    "name": "arcee-ai/trinity-large-thinking",
+    "name": "arcee-ai/trinity-large-thinking:free",
     "type": "Free"
   },
   {
-    "name": "nvidia/nemotron-3-super-120b-a12b",
+    "name": "nvidia/nemotron-3-super-120b-a12b:free",
     "type": "Free"
   },
   {
-    "name": "openai/gpt-oss-120b",
+    "name": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
     "type": "Free"
   },
   {
-    "name": "z-ai/glm-4.5-air",
+    "name": "openai/gpt-oss-120b:free",
     "type": "Free"
   },
   {
-    "name": "google/gemma-4-31b-it",
+    "name": "openai/gpt-oss-20b:free",
     "type": "Free"
   },
   {
-    "name": "baidu/cobuddy",
+    "name": "z-ai/glm-4.5-air:free",
+    "type": "Free"
+  }, 
+  {
+    "name": "baidu/cobuddy:free",
     "type": "Free"
   },
   {
-    "name": "poolside/laguna-xs.2",
-    "type": "Free"
-  },
-  {
-    "name": "nvidia/nemotron-nano-9b-v2",
+    "name": "poolside/laguna-xs.2:free",
     "type": "Free"
   },
   {
     "name": "openrouter/owl-alpha",
     "type": "Free"
-  }
+  } 
 ]
