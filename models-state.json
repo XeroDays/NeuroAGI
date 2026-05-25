@@ -1,6 +1,3 @@
 {
-  "activeModels": [
-    "nvidia/nemotron-3-super-120b-a12b",
-    "openai/gpt-oss-120b"
-  ]
+  "activeModels": []
 }
