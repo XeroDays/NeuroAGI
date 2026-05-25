@@ -106,6 +106,13 @@ document.addEventListener('DOMContentLoaded', () => {
         info.appendChild(latencyBadge);
       }
 
+      if (model.throughput) {
+        const throughputBadge = document.createElement('span');
+        throughputBadge.className = 'models-throughput-badge';
+        throughputBadge.textContent = model.throughput;
+        info.appendChild(throughputBadge);
+      }
+
       // Right: toggle switch
       const toggleLabel = document.createElement('label');
       toggleLabel.className = 'models-toggle';

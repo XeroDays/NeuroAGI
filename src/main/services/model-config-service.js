@@ -71,7 +71,7 @@ function init() {
 
 /**
  * Returns the full model list with per-model enabled state for the popup UI.
- * @returns {{ name: string, type: string, latency: string, enabled: boolean }[]}
+ * @returns {{ name: string, type: string, latency: string, throughput: string, enabled: boolean }[]}
  */
 function getModelsWithState() {
   if (!activeModels) init();
@@ -79,6 +79,7 @@ function getModelsWithState() {
     name: m.name,
     type: m.type,
     latency: typeof m.latency === 'string' ? m.latency : '',
+    throughput: typeof m.throughput === 'string' ? m.throughput : '',
     enabled: activeModels.has(m.name),
   }));
 }

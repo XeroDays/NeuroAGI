@@ -595,6 +595,18 @@ body.app-shell::before {
   color: #555;
 }
 
+.models-throughput-badge {
+  flex-shrink: 0;
+  font-size: 0.64rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  letter-spacing: 0.03em;
+  background: rgba(180, 140, 210, 0.12);
+  border: 1px solid rgba(180, 140, 210, 0.4);
+  color: #7c3aad;
+}
+
 /* ── Toggle switch ───────────────────────────────────────────────────────── */
 .models-toggle {
   position: relative;
