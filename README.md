@@ -43,6 +43,8 @@ Use **Back** on any screen to return home. Starting a new run from home resets u
 2. Run `npm install`, then `npm start`.
 3. Create a `.env` file in the project root with your OpenRouter API key (the file is git-ignored). Open the **Models** popup on the home screen to enable models and star a master before running questionnaire steps.
 
+   For an **installed Windows build**, place `.env` in the same folder as `NeuroAGI.exe` (typically `C:\Users\<you>\AppData\Local\Programs\NeuroAGI\`) with the same `OPENROUTER_API_KEY=sk-or-...` line.
+
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines.
 
 ### Windows helpers
@@ -61,6 +63,7 @@ If PowerShell blocks `npm`, use Command Prompt, run `npm.cmd` instead of `npm`, 
 | Command | Description |
 |---------|-------------|
 | `npm start` | Launches the Electron app |
+| `npm run build:win` | Builds the Windows NSIS installer into `dist/` |
 | `npm install` | Installs dependencies |
 
 ## Community and governance

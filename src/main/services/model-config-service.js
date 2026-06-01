@@ -1,12 +1,23 @@
-const path = require('path');
-const fs = require('fs');
+const path = require("path");
+const fs = require("fs");
+const { app } = require("electron");
 
-const CATALOG_PATH = path.join(__dirname, '../../../models-catalog.json');
-const STATE_PATH = path.join(__dirname, '../../../models-state.json');
+let catalogPath = "";
+let statePath = "";
 
 let catalog = [];        // [{ name, type, ... }] — loaded once from JSON
 let activeModels = null; // Set<string> of enabled catalog names
-let masterModel = '';    // catalog name of the starred master merge model
+let masterModel = "";    // catalog name of the starred master merge model
+
+function resolvePaths() {
+  if (catalogPath && statePath) return;
+
+  catalogPath = app.isPackaged
+    ? path.join(process.resourcesPath, "models-catalog.json")
+    : path.join(__dirname, "../../../models-catalog.json");
+
+  statePath = path.join(app.getPath("userData"), "models-state.json");
+}
 
 /**
  * Reconstruct the full OpenRouter model ID from a catalog entry.
@@ -15,19 +26,21 @@ let masterModel = '';    // catalog name of the starred master merge model
  * as-is. Paid models are used without any suffix.
  */
 function toRuntimeId(entry) {
-  if (entry.name.includes(':')) return entry.name;
-  return entry.type === 'Free' ? `${entry.name}:free` : entry.name;
+  if (entry.name.includes(":")) return entry.name;
+  return entry.type === "Free" ? `${entry.name}:free` : entry.name;
 }
 
 function saveState() {
+  resolvePaths();
   try {
     const data = {
       activeModels: Array.from(activeModels),
       masterModel,
     };
-    fs.writeFileSync(STATE_PATH, JSON.stringify(data, null, 2), 'utf-8');
+    fs.mkdirSync(path.dirname(statePath), { recursive: true });
+    fs.writeFileSync(statePath, JSON.stringify(data, null, 2), "utf-8");
   } catch (err) {
-    console.error('[model-config] Failed to save state:', err.message);
+    console.error("[model-config] Failed to save state:", err.message);
   }
 }
 
@@ -36,18 +49,20 @@ function saveState() {
  * Safe to call multiple times (re-initialises each time).
  */
 function init() {
+  resolvePaths();
+
   // Load catalog
   try {
-    const raw = fs.readFileSync(CATALOG_PATH, 'utf-8');
+    const raw = fs.readFileSync(catalogPath, "utf-8");
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
       catalog = parsed.filter(
-        (m) => m && typeof m.name === 'string' && typeof m.type === 'string'
+        (m) => m && typeof m.name === "string" && typeof m.type === "string"
       );
     }
     console.log(`[model-config] Loaded catalog: ${catalog.length} model(s)`);
   } catch (err) {
-    console.error('[model-config] Failed to load catalog:', err.message);
+    console.error("[model-config] Failed to load catalog:", err.message);
     catalog = [];
   }
 
@@ -55,26 +70,26 @@ function init() {
 
   // Load persisted activation + master state
   try {
-    const raw = fs.readFileSync(STATE_PATH, 'utf-8');
+    const raw = fs.readFileSync(statePath, "utf-8");
     const state = JSON.parse(raw);
     if (Array.isArray(state.activeModels)) {
       const valid = state.activeModels.filter((n) => catalogNames.has(n));
       activeModels = new Set(valid);
     } else {
-      throw new Error('state.activeModels is not an array');
+      throw new Error("state.activeModels is not an array");
     }
 
     const savedMaster =
-      typeof state.masterModel === 'string' ? state.masterModel : '';
-    masterModel = catalogNames.has(savedMaster) ? savedMaster : '';
+      typeof state.masterModel === "string" ? state.masterModel : "";
+    masterModel = catalogNames.has(savedMaster) ? savedMaster : "";
 
     console.log(
-      `[model-config] Loaded state: ${activeModels.size} active model(s), master=${masterModel || '(none)'}`
+      `[model-config] Loaded state: ${activeModels.size} active model(s), master=${masterModel || "(none)"}`
     );
   } catch (_err) {
     activeModels = new Set();
-    masterModel = '';
-    console.log('[model-config] No state file — starting with no active models or master');
+    masterModel = "";
+    console.log("[model-config] No state file — starting with no active models or master");
   }
 }
 
@@ -87,10 +102,10 @@ function getModelsWithState() {
   return catalog.map((m) => ({
     name: m.name,
     type: m.type,
-    latency: typeof m.latency === 'string' ? m.latency : '',
-    throughput: typeof m.throughput === 'string' ? m.throughput : '',
-    price: typeof m.price === 'string' ? m.price : '',
-    labels: typeof m.labels === 'string' ? m.labels : '',
+    latency: typeof m.latency === "string" ? m.latency : "",
+    throughput: typeof m.throughput === "string" ? m.throughput : "",
+    price: typeof m.price === "string" ? m.price : "",
+    labels: typeof m.labels === "string" ? m.labels : "",
     enabled: activeModels.has(m.name),
     isMaster: m.name === masterModel,
   }));
@@ -135,14 +150,14 @@ function updateState({ activeModels: activeNames, masterModel: newMaster } = {})
   }
 
   if (newMaster !== undefined) {
-    if (typeof newMaster === 'string' && (newMaster === '' || catalogNames.has(newMaster))) {
+    if (typeof newMaster === "string" && (newMaster === "" || catalogNames.has(newMaster))) {
       masterModel = newMaster;
     }
   }
 
   saveState();
   console.log(
-    `[model-config] State updated: ${activeModels.size} active model(s), master=${masterModel || '(none)'}`
+    `[model-config] State updated: ${activeModels.size} active model(s), master=${masterModel || "(none)"}`
   );
 }
 
