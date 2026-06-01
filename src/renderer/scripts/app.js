@@ -86,19 +86,6 @@ document.addEventListener('DOMContentLoaded', () => {
     return raw.split(';').map((s) => s.trim()).filter(Boolean);
   }
 
-  function labelBadgeColors(text) {
-    let hash = 0;
-    for (let i = 0; i < text.length; i++) {
-      hash = text.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    const hue = Math.abs(hash) % 360;
-    return {
-      background: `hsla(${hue}, 62%, 48%, 0.14)`,
-      borderColor: `hsla(${hue}, 62%, 42%, 0.38)`,
-      color: `hsl(${hue}, 52%, 30%)`,
-    };
-  }
-
   function setMasterModel(modelName) {
     const entry = modelsState.find((m) => m.name === modelName);
     const wasMaster = entry?.isMaster === true;
@@ -173,10 +160,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const labelBadge = document.createElement('span');
         labelBadge.className = 'models-label-badge';
         labelBadge.textContent = label;
-        const colors = labelBadgeColors(label);
-        labelBadge.style.background = colors.background;
-        labelBadge.style.borderColor = colors.borderColor;
-        labelBadge.style.color = colors.color;
         info.appendChild(labelBadge);
       }
 

@@ -665,7 +665,8 @@ body.app-shell::before {
   padding: 0.15rem 0.5rem;
   border-radius: 999px;
   letter-spacing: 0.03em;
-  border: 1px solid;
+  background: rgb(22 144 173 / 88%);
+  color: #fff;
 }
 
 /* ── Toggle switch ───────────────────────────────────────────────────────── */
