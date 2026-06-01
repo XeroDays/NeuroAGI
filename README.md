@@ -1,7 +1,7 @@
 # NeuroAGI
 
 Desktop app built with [Electron](https://www.electronjs.org/) and JavaScript. A pastel glassmorphism flow: **Home** (issue + gender + age) → **Questionnaire** (LLM-generated intake) → **Laboratory** (LLM-generated lab-result inputs) → **Doctor** (summary).
-<img width="968" height="660" alt="image" src="https://github.com/user-attachments/assets/5b08d4f1-bd1d-4874-b628-e49985040343" />
+ <img width="770" height="542" alt="image" src="https://github.com/user-attachments/assets/f06df5a7-82bf-4b2c-a4ce-d58851b5597d" />
 
 ## Requirements
 
