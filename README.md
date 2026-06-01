@@ -17,7 +17,9 @@ npm install
 npm start
 ```
 
-If the project folder path contains spaces, quote it, e.g. `cd "C:\path\to\NeuroAGI"`.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines.
+
+If the project folder path contains spaces, quote it, e.g. `cd "C:\path\to\Open-Health"`.
 
 ### OpenRouter API key
 
@@ -126,9 +128,19 @@ The on-screen app title and shared labels live in **`src/renderer/scripts/consta
 | **“OPENROUTER_API_KEY is not set”** | Create a `.env` file in the repo root with `OPENROUTER_API_KEY=sk-or-...` (see **OpenRouter API key** above) and restart the app. |
 | **Push rejected (large file)** | Do not commit **`node_modules/`**. It is listed in **`.gitignore`**. |
 
+## Community and governance
+
+| Document | Description |
+|----------|-------------|
+| [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute, development setup, and pull request guidelines |
+| [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) | Community standards and enforcement |
+| [SECURITY.md](SECURITY.md) | Responsible vulnerability disclosure |
+| [SUPPORT.md](SUPPORT.md) | Bug reports, feature requests, and getting help |
+| [CHANGELOG.md](CHANGELOG.md) | Release history and version notes |
+
 ## License
 
-ISC (see `package.json`).
+[MIT License](LICENSE)
 
 ## Disclaimer
 
