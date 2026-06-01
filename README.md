@@ -1,132 +1,67 @@
 # NeuroAGI
 
-Desktop app built with [Electron](https://www.electronjs.org/) and JavaScript. A pastel glassmorphism flow: **Home** (issue + gender + age) → **Questionnaire** (LLM-generated intake) → **Laboratory** (LLM-generated lab-result inputs) → **Doctor** (summary).
- <img width="770" height="542" alt="image" src="https://github.com/user-attachments/assets/f06df5a7-82bf-4b2c-a4ce-d58851b5597d" />
+Desktop health diagnostics app built with [Electron](https://www.electronjs.org/) and JavaScript. A pastel glassmorphism experience that walks you through intake, lab results, final clarifications, and multi-model AI analysis.
+
+<img width="770" height="542" alt="image" src="https://github.com/user-attachments/assets/f06df5a7-82bf-4b2c-a4ce-d58851b5597d" />
+
+## What it does
+
+NeuroAGI helps you explore a health concern step by step. You describe your issue on the home screen; AI then generates tailored follow-up questions, lab-style result inputs, and a last round of clarifications. On the doctor screen, several AI models stream independent pre-doctor analyses in parallel so you can compare perspectives.
+
+The app uses [OpenRouter](https://openrouter.ai/) for AI requests. Multiple models work together on structured steps (questionnaire, laboratory, pre-doctor room), with a user-chosen master model consolidating their outputs. The doctor step streams prose from a dedicated set of analysis models.
+
+## User journey
+
+| Step | Screen | Purpose |
+|------|--------|---------|
+| 1 | **Home** | Enter health issue, gender, age, and reasoning depth; start a new run |
+| 2 | **Questionnaire** | Answer AI-generated intake questions (you can remove questions you do not want) |
+| 3 | **Laboratory** | Enter results for suggested tests and imaging (mark which reports you have) |
+| 4 | **Pre-doctor room** | Answer final clarifying questions after intake and lab data are collected |
+| 5 | **Doctor** | Read streaming analyses from multiple AI models, with optional reasoning views |
+
+Use **Back** on any screen to return home. Starting a new run from home resets usage totals for that session.
+
+## Key features
+
+- **Multi-model pipeline** — Worker models propose content in parallel; a starred master model merges questionnaire-style steps when possible, with a fallback if merge is unavailable.
+- **Models settings** — Choose which models are active, designate one master for merge steps, and browse free vs paid options with latency, throughput, and price hints.
+- **Reasoning level** — On home, pick how deeply doctor models reason (None through Very High); default is Medium.
+- **Usage tracking** — Cost and token totals appear in the top-right on every screen and update live during a run.
+- **Doctor experience** — One tab per analysis model; live streaming, optional “thinking” view for models that expose reasoning, and a way to copy the analysis prompt on the doctor screen.
+- **Developer tools** — Gear icon on home toggles DevTools for debugging.
 
 ## Requirements
 
 - [Node.js](https://nodejs.org/) **LTS** (v18 or newer recommended)
 - **npm** (included with Node)
+- An [OpenRouter](https://openrouter.ai/) API key
 
-## Quick start
+## Getting started
 
-```bash
-git clone https://github.com/XeroDays/NeuroAGI.git
-cd NeuroAGI
-npm install
-npm start
-```
+1. Clone the repository and open the project folder (quote the path if it contains spaces).
+2. Run `npm install`, then `npm start`.
+3. Create a `.env` file in the project root with your OpenRouter API key (the file is git-ignored). Open the **Models** popup on the home screen to enable models and star a master before running questionnaire steps.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines.
 
-If the project folder path contains spaces, quote it, e.g. `cd "C:\path\to\Open-Health"`.
-
-### OpenRouter API key
-
-The Questionnaire and Laboratory screens call [OpenRouter](https://openrouter.ai/) from the main process via a multi-model fanout + master merge (see `src/main/services/agi-service.js`).
-
-Create a **`.env`** file in the repo root (it is git-ignored — never commit real keys) with a single line:
-
-```
-OPENROUTER_API_KEY=sk-or-...
-```
-
-The file is loaded via `dotenv` at the top of `src/main/index.js`. The worker model list (`OPENROUTER_WORKER_MODELS`) and the master model (`OPENROUTER_MASTER_MODEL`) are configured in `src/main/services/agi-service.js`.
-
-> **Note:** If the GitHub repository is still named differently (e.g. `Open-Health`), use that URL and `cd` into the folder name you get after clone.
-
-### Windows (recommended helpers)
+### Windows helpers
 
 | File | Purpose |
 |------|---------|
-| **`install-deps.bat`** | Runs `npm.cmd install` (dependencies into `node_modules`) |
-| **`run.bat`** | Runs the app via `npm.cmd start` and pauses on errors |
+| **`install-deps.bat`** | Installs dependencies |
+| **`run.bat`** | Launches the app and pauses on errors |
 
 Double-click **`install-deps.bat`** once after cloning, then **`run.bat`** to launch.
 
-### Windows: PowerShell and `npm`
-
-If PowerShell shows **"running scripts is disabled"** when you run `npm`:
-
-- Use **Command Prompt** (`cmd.exe`) instead, or  
-- Run **`npm.cmd install`** and **`npm.cmd start`** (note the **`.cmd`**), or  
-- For your user only: `Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned`
+If PowerShell blocks `npm`, use Command Prompt, run `npm.cmd` instead of `npm`, or use the batch files above.
 
 ## Scripts
 
 | Command | Description |
 |---------|-------------|
-| `npm start` | Launches the Electron app via `scripts/start-electron.js` |
-| `npm install` | Installs dependencies (creates `node_modules`; not committed to Git) |
-
-## Project layout
-
-```
-├── package.json
-├── .env                              # OPENROUTER_API_KEY (git-ignored)
-├── scripts/
-│   └── start-electron.js             # Spawns Electron cleanly
-├── src/
-│   ├── main/
-│   │   ├── index.js                  # App bootstrap (dotenv, IPC, window)
-│   │   ├── ipc/
-│   │   │   └── register.js           # IPC handler registration
-│   │   ├── middlewares/
-│   │   │   └── collector-middleware.js # StartReportcollection / SubmitQuestionnaire / GotoLaboratory / SubmitLaboratory + tiered JSON parser
-│   │   ├── helpers/
-│   │   │   └── query-generator-helper.js # LLM prompt builders (intake, merge, laboratory)
-│   │   ├── services/
-│   │   │   ├── api-helper.js         # OpenRouter transport: chatCompletion / streamChat
-│   │   │   └── agi-service.js        # Multi-model fanout + master Nemotron merge
-│   │   └── windows/
-│   │       └── main-window.js        # BrowserWindow creation
-│   ├── preload/
-│   │   └── index.js                  # contextBridge → window.electronAPI
-│   ├── renderer/
-│   │   ├── index.html                # Home screen (glass UI)
-│   │   ├── screens/
-│   │   │   ├── questionnaire/
-│   │   │   │   └── index.html        # Questionnaire screen
-│   │   │   ├── laboratory/
-│   │   │   │   └── index.html        # Laboratory screen
-│   │   │   └── doctor/
-│   │   │       └── index.html        # Doctor screen
-│   │   ├── scripts/
-│   │   │   ├── constants.js          # Shared display strings
-│   │   │   ├── app.js                # Home screen logic
-│   │   │   ├── questionnaire.js      # Questionnaire screen logic
-│   │   │   ├── laboratory.js         # Laboratory screen logic
-│   │   │   └── doctor.js             # Doctor screen logic
-│   │   ├── styles/
-│   │   │   ├── app.css               # Home pastel theme
-│   │   │   ├── questionnaire.css     # Questionnaire + Laboratory pastel theme
-│   │   │   └── doctor.css            # Doctor pastel theme
-│   │   └── assets/
-│   │       ├── images/
-│   │       ├── fonts/
-│   │       └── icons/
-│   └── shared/
-│       └── ipc/
-│           └── channels.js           # IPC channel name constants
-├── .vscode/
-│   └── launch.json                   # Debug Main Process
-├── run.bat
-├── install-deps.bat
-├── context.md
-└── README.md
-```
-
-The on-screen app title and shared labels live in **`src/renderer/scripts/constants.js`** (`APP_TITLE`, etc.).
-
-## Troubleshooting
-
-| Issue | What to try |
-|-------|-------------|
-| **`electron` is not recognized** | Run `npm install`, then `npm start` (the repo's script calls Electron via Node). |
-| **`npm` fails in PowerShell** | Use **`npm.cmd`** or **`install-deps.bat`** / **`run.bat`**. |
-| **Blank or no window** | `node ./node_modules/electron/cli.js . --disable-gpu` from the project root. |
-| **“OPENROUTER_API_KEY is not set”** | Create a `.env` file in the repo root with `OPENROUTER_API_KEY=sk-or-...` (see **OpenRouter API key** above) and restart the app. |
-| **Push rejected (large file)** | Do not commit **`node_modules/`**. It is listed in **`.gitignore`**. |
+| `npm start` | Launches the Electron app |
+| `npm install` | Installs dependencies |
 
 ## Community and governance
 

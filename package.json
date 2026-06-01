@@ -4,17 +4,50 @@
   "description": "NeuroAGI - Electron desktop app",
   "main": "src/main/index.js",
   "scripts": {
-    "start": "node scripts/start-electron.js"
+    "start": "node scripts/start-electron.js",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win"
   },
   "keywords": [],
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "electron": "^28.0.0"
+    "electron": "^28.0.0",
+    "electron-builder": "^25.1.8"
   },
   "dependencies": {
     "dotenv": "^17.4.2",
     "jsonrepair": "^3.14.0",
     "marked": "^18.0.4"
+  },
+  "build": {
+    "appId": "com.xerodays.neuro-agi",
+    "productName": "NeuroAGI",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "models-catalog.json",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "models-catalog.json",
+        "to": "models-catalog.json"
+      }
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   }
 }
