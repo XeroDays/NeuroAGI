@@ -45,6 +45,11 @@ function registerIpcHandlers() {
 
   ipcMain.handle(channels.GET_USAGE_TOTALS, () => usageTracker.getTotals());
 
+  ipcMain.handle(channels.RESET_USAGE_TOTALS, () => {
+    usageTracker.resetTotals();
+    return { ok: true };
+  });
+
   ipcMain.handle(channels.OPEN_DEV_TOOLS, (event) => {
     const win = BrowserWindow.fromWebContents(event.sender);
     if (win) win.webContents.toggleDevTools();

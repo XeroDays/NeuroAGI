@@ -1,6 +1,7 @@
 {
   "activeModels": [
-    "arcee-ai/trinity-large-thinking:free"
+    "deepseek/deepseek-v4-flash",
+    "rekaai/reka-edge"
   ],
-  "masterModel": "deepseek/deepseek-v4-flash:free"
+  "masterModel": "deepseek/deepseek-v4-flash"
 }

@@ -103,13 +103,13 @@
     "latency": "0.43s",
     "throughput": "18tps",
     "price": "$0.40"
-  },
+  }, 
   {
-    "name": "rekaai/reka-edge",
+    "name": "qwen/qwen3.6-flash",
     "type": "Paid",
-    "latency": "0.73s",
-    "throughput": "7tps",
-    "price": "$0.10"
+    "latency": "0.67s",
+    "throughput": "117tps",
+    "price": "$1.125"
   },
   {
     "name": "xiaomi/mimo-v2-flash",
@@ -124,5 +124,19 @@
     "latency": "0.43s",
     "throughput": "20tps",
     "price": "$0.32"
-  }
+  },
+  {
+    "name": "stepfun/step-3.7-flash",
+    "type": "Paid",
+    "latency": "1.36s",
+    "throughput": "95tps",
+    "price": "$1.15"
+  },
+  {
+    "name": "google/gemini-3-flash-preview",
+    "type": "Paid",
+    "latency": "0.99s",
+    "throughput": "85tps",
+    "price": "$3.0"
+  } 
 ]

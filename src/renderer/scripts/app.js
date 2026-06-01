@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (btn) {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
       const issue = input?.value?.trim() || '';
       const gender = genderSelect?.value || 'male';
       const age = ageSelect?.value || '30';
@@ -37,6 +37,12 @@ document.addEventListener('DOMContentLoaded', () => {
         sessionStorage.setItem('neuroagi:reasoningLevel', reasoningLevel);
       } catch (err) {
         console.warn('Failed to stash reasoning level:', err);
+      }
+
+      try {
+        await window.electronAPI?.resetUsageTotals?.();
+      } catch (err) {
+        console.warn('[app] Failed to reset usage totals:', err);
       }
 
       const query = new URLSearchParams();

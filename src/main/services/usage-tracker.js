@@ -50,7 +50,15 @@ function getTotals() {
   return { totalUSD, totalTokens };
 }
 
+function resetTotals() {
+  totalUSD = 0;
+  totalTokens = 0;
+  console.log("[usage] reset → totals USD 0, tokens 0");
+  broadcast();
+}
+
 module.exports = {
   recordUsage,
   getTotals,
+  resetTotals,
 };

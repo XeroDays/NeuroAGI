@@ -12,6 +12,7 @@ module.exports = {
   DOCTOR_STREAM_DONE: "neuroagi:doctor-stream-done",
   DOCTOR_STREAM_ERROR: "neuroagi:doctor-stream-error",
   GET_USAGE_TOTALS: "neuroagi:get-usage-totals",
+  RESET_USAGE_TOTALS: "neuroagi:reset-usage-totals",
   USAGE_UPDATE: "neuroagi:usage-update",
   OPEN_DEV_TOOLS: "neuroagi:open-dev-tools",
   GET_MODELS_CONFIG: "neuroagi:get-models-config",

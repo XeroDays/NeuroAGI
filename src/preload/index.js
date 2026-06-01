@@ -14,6 +14,7 @@ const CH = {
   DOCTOR_STREAM_DONE: "neuroagi:doctor-stream-done",
   DOCTOR_STREAM_ERROR: "neuroagi:doctor-stream-error",
   GET_USAGE_TOTALS: "neuroagi:get-usage-totals",
+  RESET_USAGE_TOTALS: "neuroagi:reset-usage-totals",
   USAGE_UPDATE: "neuroagi:usage-update",
   OPEN_DEV_TOOLS: "neuroagi:open-dev-tools",
   GET_MODELS_CONFIG: "neuroagi:get-models-config",
@@ -56,6 +57,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onDoctorStreamError: (cb) => subscribe(CH.DOCTOR_STREAM_ERROR, cb),
 
   getUsageTotals: () => ipcRenderer.invoke(CH.GET_USAGE_TOTALS),
+  resetUsageTotals: () => ipcRenderer.invoke(CH.RESET_USAGE_TOTALS),
   onUsageUpdate: (cb) => subscribe(CH.USAGE_UPDATE, cb),
 
   openDevTools: () => ipcRenderer.invoke(CH.OPEN_DEV_TOOLS),
