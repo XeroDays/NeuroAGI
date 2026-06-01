@@ -553,7 +553,7 @@ function StartDoctor(
     proseOptions
   );
 
-  return { ok: true, models };
+  return { ok: true, models, prompt };
 }
 
 module.exports = {

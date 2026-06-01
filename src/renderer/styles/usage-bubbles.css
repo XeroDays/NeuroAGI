@@ -48,3 +48,18 @@
   color: #eaf3ff;
   text-shadow: 0 1px 6px rgba(20, 50, 110, 0.25);
 }
+
+.prompt-copy-bubble {
+  padding: 0.4rem 0.55rem;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.2);
+  font: inherit;
+}
+
+.prompt-copy-bubble:focus-visible {
+  outline: 2px solid rgba(34, 211, 238, 0.8);
+  outline-offset: 2px;
+}

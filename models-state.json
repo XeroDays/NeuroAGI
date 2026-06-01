@@ -1,7 +1,6 @@
 {
   "activeModels": [
-    "deepseek/deepseek-v4-flash",
-    "rekaai/reka-edge"
+    "poolside/laguna-xs.2:free"
   ],
-  "masterModel": "deepseek/deepseek-v4-flash"
+  "masterModel": "nvidia/nemotron-3-nano-30b-a3b:free"
 }

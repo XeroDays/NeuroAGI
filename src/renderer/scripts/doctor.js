@@ -40,6 +40,39 @@ function humanizeError(err) {
   return msg || 'Something went wrong.';
 }
 
+const PROMPT_COPY_LABEL = 'Copy doctor LLM prompt to clipboard';
+
+function mountPromptCopyBubble(promptText) {
+  if (typeof promptText !== 'string' || !promptText.trim()) return;
+
+  const container = document.querySelector('.usage-bubbles');
+  if (!container || container.querySelector('.prompt-copy-bubble')) return;
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'usage-bubble prompt-copy-bubble';
+  btn.title = PROMPT_COPY_LABEL;
+  btn.setAttribute('aria-label', PROMPT_COPY_LABEL);
+  btn.innerHTML =
+    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+
+  btn.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(promptText);
+      btn.title = 'Copied!';
+      btn.setAttribute('aria-label', 'Copied!');
+      window.setTimeout(() => {
+        btn.title = PROMPT_COPY_LABEL;
+        btn.setAttribute('aria-label', PROMPT_COPY_LABEL);
+      }, 2000);
+    } catch (err) {
+      console.warn('[doctor] clipboard copy failed:', err);
+    }
+  });
+
+  container.insertBefore(btn, container.firstChild);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   document.title = `${SCREEN_DOCTOR} — ${APP_TITLE}`;
 
@@ -380,6 +413,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       buildTabs(models);
+      mountPromptCopyBubble(result.prompt);
       if (loadingEl) loadingEl.hidden = true;
       if (tabsEl) tabsEl.hidden = false;
       if (panesEl) panesEl.hidden = false;
