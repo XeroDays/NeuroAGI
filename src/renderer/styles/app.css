@@ -414,7 +414,7 @@ body.app-shell::before {
 
 /* ── Models modal card ────────────────────────────────────────────────────── */
 .models-modal {
-  width: min(92vw, 594px);
+  width: min(92vw, 784px);
   max-height: 78vh;
   display: flex;
   flex-direction: column;
@@ -583,6 +583,7 @@ body.app-shell::before {
 .models-row-info {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.6rem;
   min-width: 0;
   flex: 1;
@@ -655,6 +656,16 @@ body.app-shell::before {
   background: rgba(217, 119, 6, 0.1);
   border: 1px solid rgba(217, 119, 6, 0.35);
   color: #b45309;
+}
+
+.models-label-badge {
+  flex-shrink: 0;
+  font-size: 0.64rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  letter-spacing: 0.03em;
+  border: 1px solid;
 }
 
 /* ── Toggle switch ───────────────────────────────────────────────────────── */

@@ -5,7 +5,7 @@ const modelConfigService = require('../services/model-config-service');
  * Called by the GET_MODELS_CONFIG IPC handler so the renderer can
  * populate the Models popup.
  *
- * @returns {{ name: string, type: string, latency: string, throughput: string, price: string, enabled: boolean, isMaster: boolean }[]}
+ * @returns {{ name: string, type: string, latency: string, throughput: string, price: string, labels: string, enabled: boolean, isMaster: boolean }[]}
  */
 function GetModelsConfig() {
   console.log('[cookie] GetModelsConfig');

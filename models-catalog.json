@@ -4,139 +4,159 @@
     "type": "Free",
     "latency": "0.84s",
     "throughput": "127tps",
-    "price": ""
+    "price": "",
+    "labels": null
   },
   {
     "name": "nvidia/nemotron-3-super-120b-a12b:free",
     "type": "Free",
     "latency": "18.25s",
     "throughput": "17tps",
-    "price": ""
+    "price": "",
+    "labels": null
   },
   {
     "name": "nvidia/nemotron-3-nano-30b-a3b:free",
     "type": "Free",
     "latency": "0.48s",
     "throughput": "124tps",
-    "price": ""
+    "price": "",
+    "labels": null
   },
   {
     "name": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
     "type": "Free",
     "latency": "0.60s",
     "throughput": "130tps",
-    "price": ""
+    "price": "",
+    "labels": null
   },
   {
     "name": "openai/gpt-oss-120b:free",
     "type": "Free",
     "latency": "0.74s",
     "throughput": "22tps",
-    "price": ""
+    "price": "",
+    "labels": null
   },
   {
     "name": "openai/gpt-oss-20b:free",
     "type": "Free",
     "latency": "0.73s",
     "throughput": "27tps",
-    "price": ""
+    "price": "",
+    "labels": null
   },
   {
     "name": "z-ai/glm-4.5-air:free",
     "type": "Free",
     "latency": "4.70s",
     "throughput": "25tps",
-    "price": ""
+    "price": "",
+    "labels": null
   },
   {
     "name": "baidu/cobuddy:free",
     "type": "Free",
     "latency": "2.85s",
     "throughput": "7tps",
-    "price": ""
+    "price": "",
+    "labels": null
   },
   {
     "name": "poolside/laguna-xs.2:free",
     "type": "Free",
     "latency": "0.66s",
     "throughput": "91tps",
-    "price": ""
+    "price": "",
+    "labels": null
   },
   {
     "name": "poolside/laguna-m.1:free",
     "type": "Free",
     "latency": "2.08s",
     "throughput": "9tps",
-    "price": ""
+    "price": "",
+    "labels": null
   },
   {
     "name": "openrouter/owl-alpha",
     "type": "Free",
     "latency": "10.53s",
     "throughput": "9tps",
-    "price": ""
+    "price": "",
+    "labels": null
   },
   {
     "name": "deepseek/deepseek-v4-flash:free",
     "type": "Free",
     "latency": "4.65s",
     "throughput": "43tps",
-    "price": ""
+    "price": "",
+    "labels": null
   },
   {
     "name": "deepseek/deepseek-v4-flash",
     "type": "Paid",
     "latency": "0.95s",
     "throughput": "25tps",
-    "price": "$0.20"
+    "price": "$0.20",
+    "labels": "Health #1"
   },
   {
     "name": "google/gemini-2.5-flash-lite",
     "type": "Paid",
     "latency": "0.33s",
     "throughput": "138tps",
-    "price": "$0.40"
+    "price": "$0.40",
+    "labels": ""
   },
   {
     "name": "openai/gpt-4.1-nano",
     "type": "Paid",
     "latency": "0.43s",
     "throughput": "18tps",
-    "price": "$0.40"
-  }, 
+    "price": "$0.40",
+    "labels": null
+  },
   {
     "name": "qwen/qwen3.6-flash",
     "type": "Paid",
     "latency": "0.67s",
     "throughput": "117tps",
-    "price": "$1.125"
+    "price": "$1.125",
+    "labels": null
   },
   {
     "name": "xiaomi/mimo-v2-flash",
     "type": "Paid",
     "latency": "1.26s",
     "throughput": "65tps",
-    "price": "$0.30"
+    "price": "$0.30",
+    "labels": null
   },
   {
     "name": "meta-llama/llama-3.3-70b-instruct",
     "type": "Paid",
     "latency": "0.43s",
     "throughput": "20tps",
-    "price": "$0.32"
+    "price": "$0.32",
+    "labels": null
   },
   {
     "name": "stepfun/step-3.7-flash",
     "type": "Paid",
     "latency": "1.36s",
     "throughput": "95tps",
-    "price": "$1.15"
+    "price": "$1.15",
+    "labels": null
   },
   {
     "name": "google/gemini-3-flash-preview",
     "type": "Paid",
     "latency": "0.99s",
     "throughput": "85tps",
-    "price": "$3.0"
-  } 
+    "price": "$3.0",
+    "labels": null
+  }
 ]
