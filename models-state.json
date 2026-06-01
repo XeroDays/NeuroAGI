@@ -1,5 +1,6 @@
 {
   "activeModels": [
+    "nvidia/nemotron-3-nano-30b-a3b:free",
     "poolside/laguna-xs.2:free"
   ],
   "masterModel": "nvidia/nemotron-3-nano-30b-a3b:free"

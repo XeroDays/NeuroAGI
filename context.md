@@ -422,12 +422,11 @@ Builds the prompt each worker model fills out as an independent "doctor" opinion
 7. `## Prevention and Long-Term Outlook`
 8. `## Red Flags — See a Doctor Immediately If`
 9. `## What to Bring to the Doctor's Appointment`
-10. `## Disclaimer`
 
 **Formatting rules:**
 - Output Markdown only — `#`, `##`, `**bold**`, `*italic*`, `-` / numbered lists are encouraged.
 - Do NOT wrap the entire reply in a code fence and do NOT return JSON.
-- Do NOT include any text before the first heading or after the Disclaimer section.
+- Do NOT include any text before the first heading or after the last section.
 
 **Consumers:** wired through `src/main/middlewares/collector-middleware.js#StartDoctor`, fanned out via `StreamFromAllDoctorAgis` in `agi-service.js` — a wrapper around `StreamFromAllWorkerAgis` that uses the dedicated **`OPENROUTER_DOCTOR_MODELS`** pool (one parallel `streamChat` per doctor, currently `deepseek/deepseek-v4-flash` + `google/gemini-2.5-flash-lite`). Each model's stream is forwarded over the IPC channels `DOCTOR_STREAM_DELTA / DOCTOR_STREAM_REASONING_DELTA / DOCTOR_STREAM_DONE / DOCTOR_STREAM_ERROR` — the reasoning channel drives the live "Thinking…" bubble and the collapsible "See thinking" panel on each tab, the content channel drives the streamed Markdown prose. There is **no master merge** for this prompt — each doctor is treated as an independent "physician" giving their own opinion, and the user picks which tab to read.
 

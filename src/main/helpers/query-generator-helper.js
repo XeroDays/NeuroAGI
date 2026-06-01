@@ -842,14 +842,59 @@ One concise paragraph explaining the most plausible clinical picture in simple l
 - Summarize key lab/imaging abnormalities
 - Highlight any inconsistencies or missing critical data
 
-## Possible Explanations
-Provide 3–6 clinically relevant possibilities.
-For each:
-- Brief description
-- Why it fits the data
-- Why it may not fully explain the case
 
-Do NOT strictly rank unless strongly justified.
+Diagnostic reasoning approach:
+
+Before listing possibilities:
+
+1. Identify the SINGLE MOST SUPPORTED clinical explanation from the available data.
+2. Identify competing explanations only if they explain findings that the leading explanation does not.
+3. Eliminate possibilities that have weak support or directly conflict with the provided data.
+4. Explicitly compare alternatives against the leading explanation.
+
+For every possibility provide:
+
+- Supporting evidence
+- Contradicting evidence
+- Missing evidence needed for confirmation
+
+Assign one confidence category:
+
+- Strongly supported
+- Moderately supported
+- Weakly supported
+- Unlikely
+
+Do not include possibilities that are only theoretically possible without supporting evidence from the patient's data.
+ 
+Clinical weighting instructions:
+
+Not all findings are equally important.
+
+Assign greater weight to:
+
+- Objective laboratory abnormalities
+- Imaging findings
+- Persistent symptoms
+- Symptoms temporally linked to onset
+
+Assign lower weight to:
+
+- Nonspecific symptoms
+- Isolated symptoms without corroborating findings
+
+Prioritize explanations that account for the greatest number of findings simultaneously.
+
+## Leading Clinical Impression
+
+State the single most likely explanation based on the available information.
+
+Include:
+
+- Why it best explains the overall picture
+- Which findings support it most strongly
+- What uncertainty remains
+- What evidence would strengthen or weaken this impression
 
 ## Contributing Factors (If Applicable)
 Classify relevant causes into:
@@ -859,41 +904,42 @@ Classify relevant causes into:
 - secondary causes
 
 Explain briefly based on provided data only.
+ 
+ 
+Differential refinement:
 
-## What This Could Mean
-Explain overall clinical interpretation in balanced terms, including uncertainty.
+For every alternative explanation listed, explicitly explain:
 
-## Risk Factors & Projected Trajectory
-**Identified risk factors**
-- List MODIFIABLE risk factors visible in the data (lifestyle, diet, sleep, stress, substance use, medication adherence, etc.)
-- List NON-MODIFIABLE risk factors visible in the data (age, gender, prior history, family history)
-- For each, briefly note: how directly it ties to the current complaint, an estimated impact level (low / moderate / high), and whether the link is well-supported, suggestive, or speculative
+- Why it is less likely than the leading explanation
+- Which findings are missing
+- Which findings contradict it
 
-**If left unaddressed**
-- Short-term (days to weeks): most plausible progression in plain language
-- Medium-term (weeks to months): expected direction and severity
-- Long-term (months to years): expected direction, flagging any irreversible outcomes, rapidly-escalating risks, or impact on quality of life / function / fertility (if relevant)
+Do not present alternatives as equally likely unless the evidence truly supports that conclusion.
+ 
+ 
+ At the end of the analysis provide:
 
-**With timely medical evaluation**
-- Brief, non-prescriptive contrast describing the general direction of improvement once the modifiable factors are addressed and a proper evaluation is performed
-- Do NOT name specific drugs, dosages, procedures, or supplements here
+## Diagnostic Confidence
 
-**Uncertainty note**
-- Explicitly call out any timeframe or risk factor where the available data is insufficient for a responsible projection
+Estimate confidence in the leading explanation:
 
-## What Typically Needs to Be Ruled Out Next
-List what a physician would investigate further (tests, history, or examinations).
+- High confidence
+- Moderate confidence
+- Low confidence
 
-## Red Flags — Seek Urgent Care If
-List symptoms or findings that require immediate medical attention.
+Explain exactly why the confidence is not higher.
 
-## How to Prepare for Your Doctor Visit
-- What symptoms to track
-- What reports to bring
-- What clarifying questions to ask
+## Possible Explanations
+Provide any clinically relevant possibilities if any.
+For each candidate explanation calculate:
 
-## Disclaimer
-This is an AI-generated educational summary based only on provided information. It is not a diagnosis or treatment recommendation. A licensed clinician must perform a full evaluation.
+- Evidence supporting it
+- Evidence against it
+- Findings left unexplained
+
+Then compare all candidates and select the explanation that best accounts for the total clinical picture with the fewest assumptions.
+
+The final report should emphasize the winning explanation rather than presenting all possibilities equally.
 
 Formatting rules:
 - Use Markdown only
