@@ -104,10 +104,10 @@
     "labels": "Health #1;Science #1"
   },
   {
-    "name": "google/gemini-2.5-flash-lite",
+    "name": "google/gemini-2.5-flash-lite-preview-09-2025",
     "type": "Paid",
-    "latency": "0.33s",
-    "throughput": "138tps",
+    "latency": "1.00s",
+    "throughput": "109tps",
     "price": "$0.40",
     "labels": ""
   },
@@ -134,15 +134,7 @@
     "throughput": "65tps",
     "price": "$0.30",
     "labels": null
-  },
-  {
-    "name": "meta-llama/llama-3.3-70b-instruct",
-    "type": "Paid",
-    "latency": "0.43s",
-    "throughput": "20tps",
-    "price": "$0.32",
-    "labels": null
-  },
+  }, 
   {
     "name": "stepfun/step-3.7-flash",
     "type": "Paid",
@@ -157,6 +149,14 @@
     "latency": "0.99s",
     "throughput": "85tps",
     "price": "$3.0",
-    "labels": null
+    "labels": "Health #16; Academia #16; Science #26"
+  },
+  {
+    "name": "z-ai/glm-4-32b",
+    "type": "Paid",
+    "latency": "0.97s",
+    "throughput": "3tps",
+    "price": "$0.10",
+    "labels": "Online Search #1"
   }
 ]
