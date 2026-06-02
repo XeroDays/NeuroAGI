@@ -5,8 +5,8 @@
   "main": "src/main/index.js",
   "scripts": {
     "start": "node scripts/start-electron.js",
-    "build": "electron-builder",
-    "build:win": "electron-builder --win"
+    "build": "electron-builder --publish never",
+    "build:win": "electron-builder --win --publish never"
   },
   "keywords": [],
   "author": "",
@@ -39,11 +39,13 @@
       }
     ],
     "asar": true,
+    "publish": null,
     "win": {
       "target": [
         "nsis"
       ],
-      "icon": "build/icon.ico"
+      "icon": "build/icon.ico",
+      "signAndEditExecutable": false
     },
     "nsis": {
       "oneClick": false,
