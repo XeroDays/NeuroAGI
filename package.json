@@ -47,6 +47,7 @@
       "icon": "build/icon.ico",
       "signAndEditExecutable": false
     },
+    "artifactName": "NeuroAGI Release Candidate.${ext}",
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
