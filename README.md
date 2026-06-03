@@ -2,6 +2,7 @@
 
 Desktop health diagnostics app built with [Electron](https://www.electronjs.org/) and JavaScript. A pastel glassmorphism experience that walks you through intake, lab results, final clarifications, and multi-model AI analysis.
 
+
 <img width="770" height="542" alt="image" src="https://github.com/user-attachments/assets/f06df5a7-82bf-4b2c-a4ce-d58851b5597d" />
 
 ## What it does
