@@ -1,0 +1,193 @@
+{
+  "runAt": "2026-06-04T10:09:47.374Z",
+  "totalRunMs": 301887,
+  "prompt": "Count the number of letters in the word \"characteristically\".\nThink carefully and verify your count.\nAfter you have finished, reply with exactly: OK",
+  "options": {
+    "maxTokens": 16384,
+    "reasoning": {
+      "effort": "medium"
+    }
+  },
+  "results": [
+    {
+      "model": "nvidia/nemotron-3-nano-30b-a3b:free",
+      "type": "Free",
+      "status": "ok",
+      "elapsedMs": 3086,
+      "finishReason": "stop",
+      "contentLength": 2,
+      "reasoningLength": 656,
+      "note": "OK"
+    },
+    {
+      "model": "openai/gpt-oss-20b:free",
+      "type": "Free",
+      "status": "ok",
+      "elapsedMs": 6151,
+      "finishReason": "stop",
+      "contentLength": 2,
+      "reasoningLength": 445,
+      "note": "OK"
+    },
+    {
+      "model": "poolside/laguna-xs.2:free",
+      "type": "Free",
+      "status": "ok",
+      "elapsedMs": 11006,
+      "finishReason": "stop",
+      "contentLength": 331,
+      "reasoningLength": 456,
+      "note": "I'll count the letters in \"characteristically\" carefully. Let me break it down: c-h-a-r-a-c-t-e-r-i-s-t-i-c-a-l-l-y Coun…"
+    },
+    {
+      "model": "openai/gpt-oss-120b:free",
+      "type": "Free",
+      "status": "ok",
+      "elapsedMs": 5171,
+      "finishReason": "stop",
+      "contentLength": 2,
+      "reasoningLength": 444,
+      "note": "OK"
+    },
+    {
+      "model": "openrouter/owl-alpha",
+      "type": "Free",
+      "status": "ok",
+      "elapsedMs": 6523,
+      "finishReason": "stop",
+      "contentLength": 54,
+      "reasoningLength": 0,
+      "note": "The word \"characteristically\" contains 17 letters. OK"
+    },
+    {
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "type": "Free",
+      "status": "ok",
+      "elapsedMs": 18912,
+      "finishReason": "stop",
+      "contentLength": 2,
+      "reasoningLength": 291,
+      "note": "OK"
+    },
+    {
+      "model": "poolside/laguna-m.1:free",
+      "type": "Free",
+      "status": "ok",
+      "elapsedMs": 113705,
+      "finishReason": "stop",
+      "contentLength": 4,
+      "reasoningLength": 3354,
+      "note": "OK"
+    },
+    {
+      "model": "z-ai/glm-4.5-air:free",
+      "type": "Free",
+      "status": "ok",
+      "elapsedMs": 100962,
+      "finishReason": "stop",
+      "contentLength": 2,
+      "reasoningLength": 13327,
+      "note": "OK"
+    },
+    {
+      "model": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+      "type": "Free",
+      "status": "ok",
+      "elapsedMs": 4774,
+      "finishReason": "stop",
+      "contentLength": 2,
+      "reasoningLength": 1318,
+      "note": "OK"
+    },
+    {
+      "model": "openai/gpt-4.1-mini",
+      "type": "Paid",
+      "status": "ok",
+      "elapsedMs": 1499,
+      "finishReason": "stop",
+      "contentLength": 49,
+      "reasoningLength": 0,
+      "note": "The word \"characteristically\" has 16 letters. OK"
+    },
+    {
+      "model": "z-ai/glm-4-32b",
+      "type": "Paid",
+      "status": "ok",
+      "elapsedMs": 4448,
+      "finishReason": "stop",
+      "contentLength": 218,
+      "reasoningLength": 0,
+      "note": "The word \"characteristically\" has 18 letters. I've carefully verified this count by examining each letter in the word: c…"
+    },
+    {
+      "model": "stepfun/step-3.7-flash",
+      "type": "Paid",
+      "status": "ok",
+      "elapsedMs": 3794,
+      "finishReason": "stop",
+      "contentLength": 2,
+      "reasoningLength": 1219,
+      "note": "OK"
+    },
+    {
+      "model": "meta-llama/llama-3.3-70b-instruct",
+      "type": "Paid",
+      "status": "ok",
+      "elapsedMs": 673,
+      "finishReason": "stop",
+      "contentLength": 2,
+      "reasoningLength": 0,
+      "note": "OK"
+    },
+    {
+      "model": "google/gemini-2.5-flash-lite-preview-09-2025",
+      "type": "Paid",
+      "status": "ok",
+      "elapsedMs": 2235,
+      "finishReason": "stop",
+      "contentLength": 2,
+      "reasoningLength": 435,
+      "note": "OK"
+    },
+    {
+      "model": "google/gemini-2.5-flash-lite",
+      "type": "Paid",
+      "status": "ok",
+      "elapsedMs": 4825,
+      "finishReason": "stop",
+      "contentLength": 2,
+      "reasoningLength": 638,
+      "note": "OK"
+    },
+    {
+      "model": "deepseek/deepseek-v4-flash",
+      "type": "Paid",
+      "status": "ok",
+      "elapsedMs": 2999,
+      "finishReason": "stop",
+      "contentLength": 2,
+      "reasoningLength": 330,
+      "note": "OK"
+    },
+    {
+      "model": "google/gemini-3-flash-preview",
+      "type": "Paid",
+      "status": "ok",
+      "elapsedMs": 2799,
+      "finishReason": "stop",
+      "contentLength": 2,
+      "reasoningLength": 446,
+      "note": "OK"
+    },
+    {
+      "model": "qwen/qwen3.6-flash",
+      "type": "Paid",
+      "status": "ok",
+      "elapsedMs": 8313,
+      "finishReason": "stop",
+      "contentLength": 2,
+      "reasoningLength": 3866,
+      "note": "OK"
+    }
+  ]
+}

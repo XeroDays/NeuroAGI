@@ -5,6 +5,7 @@
   "main": "src/main/index.js",
   "scripts": {
     "start": "node scripts/start-electron.js",
+    "benchmark:latency": "node scripts/benchmark-latency.js",
     "build": "electron-builder --publish never",
     "build:win": "electron-builder --win --publish never"
   },
