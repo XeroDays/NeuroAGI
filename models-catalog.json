@@ -1,21 +1,5 @@
 [
   {
-    "name": "arcee-ai/trinity-large-thinking:free",
-    "type": "Free",
-    "latency": "0.84s",
-    "throughput": "127tps",
-    "price": "",
-    "labels": null
-  },
-  {
-    "name": "nvidia/nemotron-3-super-120b-a12b:free",
-    "type": "Free",
-    "latency": "18.25s",
-    "throughput": "17tps",
-    "price": "",
-    "labels": null
-  },
-  {
     "name": "nvidia/nemotron-3-nano-30b-a3b:free",
     "type": "Free",
     "latency": "0.48s",
@@ -32,12 +16,12 @@
     "labels": "Translation #35"
   },
   {
-    "name": "openai/gpt-oss-120b:free",
+    "name": "poolside/laguna-xs.2:free",
     "type": "Free",
-    "latency": "0.74s",
-    "throughput": "22tps",
+    "latency": "0.66s",
+    "throughput": "91tps",
     "price": "",
-    "labels": null
+    "labels": "Logic #27"
   },
   {
     "name": "openai/gpt-oss-20b:free",
@@ -48,28 +32,20 @@
     "labels": null
   },
   {
-    "name": "z-ai/glm-4.5-air:free",
+    "name": "openai/gpt-oss-120b:free",
     "type": "Free",
-    "latency": "4.70s",
-    "throughput": "25tps",
+    "latency": "0.74s",
+    "throughput": "22tps",
     "price": "",
     "labels": null
   },
   {
-    "name": "baidu/cobuddy:free",
+    "name": "arcee-ai/trinity-large-thinking:free",
     "type": "Free",
-    "latency": "2.85s",
-    "throughput": "7tps",
+    "latency": "0.84s",
+    "throughput": "127tps",
     "price": "",
     "labels": null
-  },
-  {
-    "name": "poolside/laguna-xs.2:free",
-    "type": "Free",
-    "latency": "0.66s",
-    "throughput": "91tps",
-    "price": "",
-    "labels": "Logic #27"
   },
   {
     "name": "poolside/laguna-m.1:free",
@@ -80,12 +56,12 @@
     "labels": "Science #26; Logic #10"
   },
   {
-    "name": "openrouter/owl-alpha",
+    "name": "baidu/cobuddy:free",
     "type": "Free",
-    "latency": "10.53s",
-    "throughput": "9tps",
+    "latency": "2.85s",
+    "throughput": "7tps",
     "price": "",
-    "labels": "Health #39; Science #2"
+    "labels": null
   },
   {
     "name": "deepseek/deepseek-v4-flash:free",
@@ -96,12 +72,68 @@
     "labels": "Health #1; Science #1; Academia #1"
   },
   {
+    "name": "z-ai/glm-4.5-air:free",
+    "type": "Free",
+    "latency": "4.70s",
+    "throughput": "25tps",
+    "price": "",
+    "labels": null
+  },
+  {
+    "name": "openrouter/owl-alpha",
+    "type": "Free",
+    "latency": "10.53s",
+    "throughput": "9tps",
+    "price": "",
+    "labels": "Health #39; Science #2"
+  },
+  {
+    "name": "nvidia/nemotron-3-super-120b-a12b:free",
+    "type": "Free",
+    "latency": "18.25s",
+    "throughput": "17tps",
+    "price": "",
+    "labels": null
+  },
+  {
+    "name": "z-ai/glm-4-32b",
+    "type": "Paid",
+    "latency": "0.97s",
+    "throughput": "3tps",
+    "price": "$0.10",
+    "labels": "Online Search #1"
+  },
+  {
     "name": "deepseek/deepseek-v4-flash",
     "type": "Paid",
     "latency": "0.95s",
     "throughput": "25tps",
     "price": "$0.20",
     "labels": "Health #1;Science #1"
+  },
+  {
+    "name": "xiaomi/mimo-v2-flash",
+    "type": "Paid",
+    "latency": "1.26s",
+    "throughput": "65tps",
+    "price": "$0.30",
+    "labels": null
+  },
+  {
+    "name": "meta-llama/llama-3.3-70b-instruct",
+    "type": "Paid",
+    "latency": "0.50s",
+    "throughput": "30tps",
+    "price": "$0.32",
+    "labels": "Health #30"
+  },
+  {
+    "name": "google/gemini-2.5-flash-lite",
+    "type": "Paid",
+    "latency": "0.50s",
+    "throughput": "112tps",
+    "price": "$0.40",
+    "labels": "Health #6; Academia #11"
   },
   {
     "name": "google/gemini-2.5-flash-lite-preview-09-2025",
@@ -112,14 +144,6 @@
     "labels": ""
   },
   {
-    "name": "openai/gpt-4.1-mini",
-    "type": "Paid",
-    "latency": "0.72s",
-    "throughput": "24tps",
-    "price": "$1.60",
-    "labels": "Health #20; Academia #40"
-  },
-  {
     "name": "qwen/qwen3.6-flash",
     "type": "Paid",
     "latency": "0.67s",
@@ -127,14 +151,6 @@
     "price": "$1.125",
     "labels": "Health #48"
   },
-  {
-    "name": "xiaomi/mimo-v2-flash",
-    "type": "Paid",
-    "latency": "1.26s",
-    "throughput": "65tps",
-    "price": "$0.30",
-    "labels": null
-  }, 
   {
     "name": "stepfun/step-3.7-flash",
     "type": "Paid",
@@ -144,19 +160,19 @@
     "labels": "Logic #28; Science #25"
   },
   {
+    "name": "openai/gpt-4.1-mini",
+    "type": "Paid",
+    "latency": "0.72s",
+    "throughput": "24tps",
+    "price": "$1.60",
+    "labels": "Health #20; Academia #40"
+  },
+  {
     "name": "google/gemini-3-flash-preview",
     "type": "Paid",
     "latency": "0.99s",
     "throughput": "85tps",
     "price": "$3.0",
     "labels": "Health #16; Academia #16; Science #26"
-  },
-  {
-    "name": "z-ai/glm-4-32b",
-    "type": "Paid",
-    "latency": "0.97s",
-    "throughput": "3tps",
-    "price": "$0.10",
-    "labels": "Online Search #1"
   }
 ]

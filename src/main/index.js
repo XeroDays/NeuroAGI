@@ -4,7 +4,7 @@ const dotenv = require("dotenv");
 
 const envCandidates = [
   path.join(path.dirname(process.execPath), ".env"),
-  path.join(__dirname, "../../..", ".env"),
+  path.join(__dirname, "../..", ".env"),
 ];
 
 for (const envPath of envCandidates) {
