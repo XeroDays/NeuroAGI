@@ -526,12 +526,14 @@ Patient profile:
 - Gender: ${safeGender}
 - Presenting complaint: "${safeIssue}"
 - Current date and time of this request: ${dateTimeStr}
-
+ 
 ${intakeBlock}
 
 ${labBlock}
 
 Clinical reasoning instructions:
+- Analyze the laboratory report results and compare with the original complaint and questionnaire answers  to find any missing information you want to ask from the patient.
+- If the laboratory report are not there, do not ask further questions, just return [].
 - Carefully analyze the presenting complaint, prior questionnaire responses, laboratory results, imaging findings, and all previously collected information.
 - Silently determine:
   - the most likely diagnostic categories,
@@ -562,7 +564,7 @@ Clinical reasoning instructions:
   - exposure risks,
   - medication/supplement use,
   - prior treatment response,
-  - and family history when clinically relevant.
+  - and family history when clinically relevant. 
 - Do NOT ask questions whose answers are already directly available or reasonably inferable from the provided information.
 - Do NOT ask semantically overlapping or redundant questions.
 - Do NOT ask low-yield exploratory filler questions.
@@ -941,12 +943,40 @@ Then compare all candidates and select the explanation that best accounts for th
 
 The final report should emphasize the winning explanation rather than presenting all possibilities equally.
 
-Formatting rules:
+## Medication Considerations (Educational Overview)
+
+This section provides general educational context about medication 
+categories commonly associated with the identified conditions. 
+This is NOT a prescription. All medication decisions must be made 
+exclusively by a licensed physician or pharmacist.
+
+For the leading clinical impression and any strongly supported differentials, provide:
+
+### Commonly Used Medication Classes
+- List the general CLASS of medications relevant to this condition (e.g., "antihistamines", "proton pump inhibitors", "NSAIDs")
+- Do NOT include specific brand names or drug names
+- Briefly explain what role each class plays in managing the condition
+- Note whether this class is typically used short-term, long-term,  or as-needed
+
+### Lifestyle & Non-Pharmacological Approaches
+- Describe general evidence-based non-medication strategies relevant to the identified condition (e.g., dietary changes, sleep hygiene,  activity modifications, stress management)
+- Keep these directional and general — not specific protocols
+ 
+
+### Urgency Classification
+Classify how soon medication evaluation is needed:
+- **Urgent** — within 24-48 hours
+- **Soon** — within 1-2 weeks  
+- **Routine** — at a scheduled appointment
+
+ 
+Formatting rules for overall output:
 - Use Markdown only
 - No JSON
 - No code fences
 - No external citations or fabricated research references
-- No prescriptions or drug instructions
+- No specific drug names, brand names, dosages, or prescription instructions
+- Medication references are limited to general drug CLASS categories only, framed as educational context 
 - Do not infer missing medical data
 - Keep language patient-friendly but clinically accurate`;
 }
