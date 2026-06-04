@@ -943,25 +943,24 @@ Then compare all candidates and select the explanation that best accounts for th
 
 The final report should emphasize the winning explanation rather than presenting all possibilities equally.
 
-## Medication Considerations (Educational Overview)
+## Medication Recommendations
+**Important Disclaimer**: These are general, educational suggestions only based on common clinical practice for the leading impression. **This is not a prescription**. You must consult a licensed physician before taking any medication. Self-medication can be dangerous.
 
-This section provides general educational context about medication 
-categories commonly associated with the identified conditions. 
-This is NOT a prescription. All medication decisions must be made 
-exclusively by a licensed physician or pharmacist.
+Based on the leading clinical impression and provided information, the following medications are **commonly considered** for this type of presentation:
 
-For the leading clinical impression and any strongly supported differentials, provide:
+  **First-line options** (most frequently used):
+  - Medicine name: [e.g., Paracetamol / Omeprazole / etc.]
+    - Common dosage range: [e.g., 500mg every 6-8 hours as needed]
+    - Purpose: [Brief one-line explanation]
+    - Typical duration: [e.g., 5-7 days / as needed]
 
-### Commonly Used Medication Classes
-- List the general CLASS of medications relevant to this condition (e.g., "antihistamines", "proton pump inhibitors", "NSAIDs")
-- Do NOT include specific brand names or drug names
-- Briefly explain what role each class plays in managing the condition
-- Note whether this class is typically used short-term, long-term,  or as-needed
+  **Alternative options** (if first-line not suitable or not effective):
+  - List 1-2 alternatives with purpose.
 
-### Lifestyle & Non-Pharmacological Approaches
-- Describe general evidence-based non-medication strategies relevant to the identified condition (e.g., dietary changes, sleep hygiene,  activity modifications, stress management)
-- Keep these directional and general — not specific protocols
- 
+  **Important warnings**:
+- Mention any common contraindications relevant to the patient's age/gender/known conditions from the intake.
+- Note potential side effects to watch for.
+- State that final choice of medication, dosage, and duration must be determined by a doctor after proper examination and consideration of allergies, other medications, and full medical history.
 
 ### Urgency Classification
 Classify how soon medication evaluation is needed:
@@ -975,8 +974,7 @@ Formatting rules for overall output:
 - No JSON
 - No code fences
 - No external citations or fabricated research references
-- No specific drug names, brand names, dosages, or prescription instructions
-- Medication references are limited to general drug CLASS categories only, framed as educational context 
+- Medication references are not limited to general drug CLASS categories, but can be specific to the condition and the leading clinical impression
 - Do not infer missing medical data
 - Keep language patient-friendly but clinically accurate`;
 }

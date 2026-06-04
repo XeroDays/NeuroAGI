@@ -58,6 +58,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   let loadedQuestions = [];
+  let shouldAutoSubmit = false;
 
   try {
     const result = await window.electronAPI.gotoPreDoctorRoom({
@@ -78,14 +79,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     const questions = Array.isArray(result.questions) ? result.questions : [];
     if (questions.length === 0) {
-      showError('No pre-doctor questions were returned. Please try again.');
-      return;
+      loadedQuestions = [];
+      if (statusEl) {
+        statusEl.classList.remove('q-status--error');
+        statusEl.textContent = 'No follow-up questions needed. Proceeding…';
+        statusEl.hidden = false;
+      }
+      shouldAutoSubmit = true;
+    } else {
+      loadedQuestions = questions;
+      renderQuestions(questions);
+      statusEl.hidden = true;
+      formEl.hidden = false;
+      actionsEl.hidden = false;
     }
-    loadedQuestions = questions;
-    renderQuestions(questions);
-    statusEl.hidden = true;
-    formEl.hidden = false;
-    actionsEl.hidden = false;
   } catch (err) {
     console.error('Failed to load pre-doctor room:', err);
     showError(humanizeError(err));
@@ -123,6 +130,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       showError(humanizeError(err));
     }
   });
+
+  if (shouldAutoSubmit) {
+    submitBtn?.click();
+  }
 
   function showError(msg) {
     if (!statusEl) return;
