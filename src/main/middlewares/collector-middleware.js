@@ -159,7 +159,12 @@ async function StartReportcollection({ issue, gender, age } = {}) {
     }
     console.log(`[collector] ${parsedSets.length} clean worker set(s) → master merge`);
 
-    const mergePrompt = GenerateMergeQuestionnaireLLMQuery(parsedSets);
+    const mergePrompt = GenerateMergeQuestionnaireLLMQuery({
+      issue,
+      gender,
+      age,
+      questionnaireSets: parsedSets,
+    });
     const mergedRaw = await AskMasterAgi(mergePrompt, JSON_LLM_OPTIONS);
 
     let questions;
@@ -264,7 +269,12 @@ async function GotoLaboratory({ issue, gender, age, questions = [], answers = []
     }
     console.log(`[collector/lab] ${parsedSets.length} clean worker set(s) → master merge`);
 
-    const mergePrompt = GenerateMergeQuestionnaireLLMQuery(parsedSets);
+    const mergePrompt = GenerateMergeQuestionnaireLLMQuery({
+      issue,
+      gender,
+      age,
+      questionnaireSets: parsedSets,
+    });
     const mergedRaw = await AskMasterAgi(mergePrompt, JSON_LLM_OPTIONS);
 
     let labQuestions;
@@ -380,7 +390,12 @@ async function GotoPreDoctorRoom(
       `[collector/predoc] ${parsedSets.length} clean worker set(s) → master merge`
     );
 
-    const mergePrompt = GenerateMergeQuestionnaireLLMQuery(parsedSets);
+    const mergePrompt = GenerateMergeQuestionnaireLLMQuery({
+      issue,
+      gender,
+      age,
+      questionnaireSets: parsedSets,
+    });
     const mergedRaw = await AskMasterAgi(mergePrompt, JSON_LLM_OPTIONS);
 
     let preDocQuestions;

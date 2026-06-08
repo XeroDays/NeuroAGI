@@ -263,7 +263,10 @@ Expected JSON format:
 ]`;
 }
 
-function GenerateMergeQuestionnaireLLMQuery(questionnaireSets = []) {
+function GenerateMergeQuestionnaireLLMQuery({ issue, gender, age, questionnaireSets } = {}) {
+  const safeIssue = String(issue || "").trim() || "an unspecified health issue";
+  const safeGender = String(gender || "male").toLowerCase();
+  const safeAge = String(age || "30");
   const sets = Array.isArray(questionnaireSets) ? questionnaireSets : [];
 
   const now = new Date();
@@ -287,6 +290,9 @@ function GenerateMergeQuestionnaireLLMQuery(questionnaireSets = []) {
     
     For awareness:
     Current date/time: ${dateTimeStr}
+    Patient original issue: "${safeIssue}"
+    Age: ${safeAge} years old
+    Gender: ${safeGender}
     
     You are given ${sets.length} JSON arrays of questions for the same patient case.
     
@@ -525,6 +531,10 @@ function GenerateLaboratoryLLMQuery({ issue, gender, age, questions = [], answer
     - Free-form descriptive finding -> "text".
   - Prioritise medically meaningful, first-line tests for this case. Do not invent obscure or irrelevant tests. Do not duplicate questions.
   - It is fine to return a small focused panel rather than an exhaustive list.
+  - Check if the patient has already answered the question in the intake questionnaire or issue donot ask then.
+  - prioritize laboratory tests that are most likely to help the patient understand their condition better.
+  - donot ask duplicate laboratory tests.
+
 
   Examples of the expected shape (do NOT include these literal questions unless clinically appropriate — they only illustrate the schema):
 
