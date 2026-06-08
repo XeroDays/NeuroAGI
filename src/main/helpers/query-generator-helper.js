@@ -26,160 +26,205 @@ ${dateTimeStr}
 
 Your responsibility is to generate medically relevant intake questions that help collect the MOST clinically useful information for understanding the patient's condition before deeper analysis occurs.
 
-Clinical intake objectives:
-- Gather information that improves:
-  - symptom understanding,
-  - severity assessment,
-  - risk stratification,
-  - triage accuracy,
-  - and diagnostic direction.
-- Adapt dynamically to the reported issue.
-- Focus on high-yield clinical questioning.
-- Avoid generic filler questions.
-- Avoid repetitive or semantically overlapping questions.
-- Prefer questions that materially improve clinical understanding.
+  ────────────────────────────────────────
+  PRIMARY OBJECTIVE
+  ────────────────────────────────────────
 
-Clinical reasoning guidance:
-- Silently determine:
-  - likely symptom categories,
-  - possible body systems involved,
-  - common causes,
-  - dangerous causes that should not be missed,
-  - and the most important missing information.
-- Prioritize questions that clarify:
-  - onset,
-  - duration,
-  - progression,
-  - severity,
-  - frequency,
-  - triggers,
-  - relieving factors,
-  - associated symptoms,
-  - functional impact,
-  - prior episodes,
-  - medications,
-  - supplements,
-  - relevant medical history,
-  - exposure risks,
-  - and family history when clinically relevant.
-- If the issue may indicate an urgent condition, prioritize questions about:
-  - chest pain,
-  - breathing difficulty,
-  - neurological symptoms,
-  - bleeding,
-  - loss of consciousness,
-  - suicidality,
-  - severe infection symptoms,
-  - pregnancy-related emergencies,
-  - or rapidly worsening symptoms.
+  Clinical intake objectives:
+  - Gather information that improves:
+    - symptom understanding,
+    - severity assessment,
+    - risk stratification,
+    - triage accuracy,
+    - and diagnostic direction.
+  - Adapt dynamically to the reported issue.
+  - Focus on high-yield clinical questioning.
+  - Collect insightful information that helps the patient understand their condition better.
+  - Avoid generic filler questions.
+  - Avoid questions that are already answered by the patient.
+  - Avoid repetitive or semantically overlapping questions.
+  - Prefer questions that materially improve clinical understanding.
 
-Question count rules:
-- Return between 8 and 20 questions.
-- Prefer quality over quantity.
-- Do NOT ask excessive low-value questions.
-- Do NOT ask multiple questions that gather essentially the same information.
-- Prioritize adaptive relevance over completeness.
+  ────────────────────────────────────────
+  Relevance Rules
+  ────────────────────────────────────────
 
-Question authoring requirements:
-- Ask concise, professional, patient-friendly questions.
-- Use second-person language.
-- Avoid unnecessary medical jargon.
-- No double-barreled questions.
-- Each question should gather ONE clear piece of information.
+  Clinical reasoning guidance:
+  - Silently determine:
+    - likely symptom categories,
+    - possible body systems involved,
+    - common causes,
+    - dangerous causes that should not be missed,
+    - and the most important missing information.
+  - Prioritize questions that clarify:
+    - onset,
+    - duration,
+    - progression,
+    - severity,
+    - frequency,
+    - triggers,
+    - relieving factors,
+    - associated symptoms,
+    - functional impact,
+    - prior episodes,
+    - medications,
+    - supplements,
+    - relevant medical history,
+    - exposure risks,
+    - and family history when clinically relevant.
+    
+  - If the issue may indicate an urgent condition, prioritize questions about:
+    - chest pain,
+    - breathing difficulty,
+    - neurological symptoms,
+    - bleeding,
+    - loss of consciousness,
+    - suicidality,
+    - severe infection symptoms,
+    - pregnancy-related emergencies,
+    - or rapidly worsening symptoms.
 
-Question types:
-Use the MOST appropriate type:
-- \`single_select\`
-- \`multi_select\`
-- \`slider\`
-- \`range\`
-- \`text\`
+  ────────────────────────────────────────
+  Count Rules
+  ────────────────────────────────────────
+ 
+  Question count rules:
+  - Return between 8 and 20 questions.
+  - Prefer quality over quantity.
+  - Do NOT ask excessive low-value questions.
+  - Do NOT ask multiple questions that gather essentially the same information.
+  - Prioritize adaptive relevance over completeness.
 
-Question type guidance:
-- Use \`single_select\` for:
-  - yes/no,
-  - severity categories,
-  - frequency categories,
-  - or mutually exclusive answers.
-- Use \`multi_select\` when multiple symptoms, triggers, exposures, or conditions may apply.
-- Use \`slider\` for:
-  - pain,
-  - severity,
-  - stress,
-  - mood,
-  - sleep quality,
-  - or other graded experiences.
-- Use \`text\` only when structured answers are not practical.
 
-Units and measurement rules:
-- ALWAYS include units whenever answers involve:
-  - duration,
-  - frequency,
-  - quantity,
-  - count,
-  - weight,
-  - dose,
-  - temperature,
-  - distance,
-  - or measurable values.
-- A patient reading the question in isolation must immediately understand the expected unit.
+  ────────────────────────────────────────
+  Authoring Rules
+  ────────────────────────────────────────
+ 
+  Question authoring requirements:
+  - Ask concise, professional, patient-friendly questions.
+  - Use second-person language.
+  - Avoid unnecessary medical jargon.
+  - No double-barreled questions.
+  - Each question should gather ONE clear piece of information.
 
-Examples:
-- GOOD:
-  - "How long does each episode last (in minutes)?"
-  - "How many times per week does this occur?"
-  - "What is your temperature (in °C)?"
-- BAD:
-  - "How long does it last?"
-  - "How often does it happen?"
+  ────────────────────────────────────────
+  Question Type Rules
+  ────────────────────────────────────────
+ 
+  Question types:
+  Use the MOST appropriate type:
+  - \`single_select\`
+  - \`multi_select\`
+  - \`slider\`
+  - \`range\`
+  - \`text\`
 
-Slider and range rules:
-- Bounds must be clinically realistic.
-- Step values must be sensible.
-- Units must appear:
-  - either in the question text,
-  - or in BOTH labels.min and labels.max.
-- Pain/severity scales should usually use 0-10 unless clinically inappropriate.
+  ────────────────────────────────────────
+  Question Type Guidance Rules
+  ────────────────────────────────────────
+ 
+  Question type guidance:
+  - Use \`single_select\` for:
+    - yes/no,
+    - severity categories,
+    - frequency categories,
+    - or mutually exclusive answers.
+  - Use \`multi_select\` when multiple symptoms, triggers, exposures, or conditions may apply.
+  - Use \`slider\` for:
+    - pain,
+    - severity,
+    - stress,
+    - mood,
+    - sleep quality,
+    - or other graded experiences.
+  - Use \`text\` only when structured answers are not practical.
 
-Selectable question rules:
-- ALL \`single_select\` and \`multi_select\` questions MUST include "Other" as the FINAL option.
-- Numeric selectable options MUST include units.
+  ────────────────────────────────────────
+  Units and Measurement Rules
+  ────────────────────────────────────────
+ 
+  Units and measurement rules:
+  - ALWAYS include units whenever answers involve:
+    - duration,
+    - frequency,
+    - quantity,
+    - count,
+    - weight,
+    - dose,
+    - temperature,
+    - distance,
+    - or measurable values.
+  - A patient reading the question in isolation must immediately understand the expected unit.
+
+  ────────────────────────────────────────
+  Examples
+  ────────────────────────────────────────
+  
+  Examples:
   - GOOD:
-    - "30 minutes"
-    - "3 times per week"
+    - "How long does each episode last (in minutes)?"
+    - "How many times per week does this occur?"
+    - "What is your temperature (in °C)?"
   - BAD:
-    - "30"
-    - "3"
+    - "How long does it last?"
+    - "How often does it happen?"
 
-Schema rules:
-- \`text\`:
-  - allowed fields:
-    - \`question\`
-    - \`type\`
-- \`single_select\` and \`multi_select\`:
-  - required fields:
-    - \`question\`
-    - \`type\`
-    - \`options\`
-- \`slider\` and \`range\`:
-  - required fields:
-    - \`question\`
-    - \`type\`
-    - \`min\`
-    - \`max\`
-    - \`step\`
-    - \`labels\`
+  Slider and range rules:
+  - Bounds must be clinically realistic.
+  - Step values must be sensible.
+  - Units must appear:
+    - either in the question text,
+    - or in BOTH labels.min and labels.max.
+  - Pain/severity scales should usually use 0-10 unless clinically inappropriate.
 
-Output requirements:
-- Return ONLY a valid JSON array.
-- No markdown.
-- No explanations.
-- No comments.
-- No trailing commas.
-- No code fences.
-- Never invent unsupported question types.
-- Never include fields irrelevant to the selected question type.
+  Selectable question rules:
+  - ALL \`single_select\` and \`multi_select\` questions MUST include "Other" as the FINAL option.
+  - Numeric selectable options MUST include units.
+    - GOOD:
+      - "30 minutes"
+      - "3 times per week"
+    - BAD:
+      - "30"
+      - "3"
 
+  ────────────────────────────────────────
+  Schema Rules
+  ────────────────────────────────────────
+ 
+  Schema rules:
+  - \`text\`:
+    - allowed fields:
+      - \`question\`
+      - \`type\`
+  - \`single_select\` and \`multi_select\`:
+    - required fields:
+      - \`question\`
+      - \`type\`
+      - \`options\`
+  - \`slider\` and \`range\`:
+    - required fields:
+      - \`question\`
+      - \`type\`
+      - \`min\`
+      - \`max\`
+      - \`step\`
+      - \`labels\`
+
+
+  ────────────────────────────────────────
+  Output Requirements
+  ────────────────────────────────────────
+       
+  Output requirements:
+  - Return ONLY a valid JSON array.
+  - No markdown.
+  - No explanations.
+  - No comments.
+  - No trailing commas.
+  - No code fences.
+  - Never invent unsupported question types.
+  - Never include fields irrelevant to the selected question type.
+ 
 Expected JSON format:
 [
   {
@@ -264,7 +309,32 @@ function GenerateMergeQuestionnaireLLMQuery(questionnaireSets = []) {
     - medically meaningful
     
     Do NOT optimize for completeness. Optimize for clinical signal quality.
+
+    ────────────────────────────────────────
+    Ordering Rules
+    ────────────────────────────────────────
     
+    Prioritize questions that:
+    - are clinically most relevant to the presenting issue by patient
+    - are the most usefull insights to the patient
+    - are the most likely to help the patient understand their condition better
+    
+
+    ────────────────────────────────────────
+    Redundancy Rules
+    ────────────────────────────────────────
+    
+    Treat questions as duplicates if they measure:
+    - the same symptom
+    - same time dimension (duration/frequency/onset)
+    - same severity scale
+    - same trigger set
+    - same clinical domain variable
+    - check if the issue does not exist in the patient's issue
+    
+    Even if wording differs.
+    
+
     ────────────────────────────────────────
     MERGING PRINCIPLES (STRICT)
     ────────────────────────────────────────
