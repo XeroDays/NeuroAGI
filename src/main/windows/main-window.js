@@ -1,7 +1,7 @@
 const { BrowserWindow } = require("electron");
 const path = require("path");
 
-const iconPath = path.join(__dirname, "../../renderer/assets/icons/NeuroLogo.png");
+const iconPath = path.join(__dirname, "../../renderer/assets/icons/app icon.png");
 
 function createMainWindow() {
   const win = new BrowserWindow({
