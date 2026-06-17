@@ -26,8 +26,11 @@ document.addEventListener('DOMContentLoaded', () => {
     input.focus();
   }
 
+  let enhancing = false;
+
   if (btn) {
     btn.addEventListener('click', async () => {
+      if (enhancing) return;
       const issue = input?.value?.trim() || '';
       const gender = genderSelect?.value || 'male';
       const age = ageSelect?.value || '30';
@@ -45,8 +48,35 @@ document.addEventListener('DOMContentLoaded', () => {
         console.warn('[app] Failed to reset usage totals:', err);
       }
 
+      let finalIssue = issue;
+
+      if (issue && window.electronAPI?.enhanceQuery) {
+        enhancing = true;
+        btn.classList.add('is-loading');
+        btn.disabled = true;
+        if (input) input.disabled = true;
+
+        let unsubscribe = () => {};
+        if (window.electronAPI?.onQueryEnhancerProgress) {
+          unsubscribe = window.electronAPI.onQueryEnhancerProgress((payload) => {
+            if (payload?.message) showToast(payload.message, payload.status);
+          });
+        }
+
+        try {
+          const res = await window.electronAPI.enhanceQuery({ issue, gender, age });
+          if (typeof res?.enhancedQuery === 'string' && res.enhancedQuery.trim()) {
+            finalIssue = res.enhancedQuery;
+          }
+        } catch (err) {
+          console.warn('[app] QueryEnhancer failed, continuing with original query:', err);
+        } finally {
+          unsubscribe();
+        }
+      }
+
       const query = new URLSearchParams();
-      if (issue) query.set('issue', issue);
+      if (finalIssue) query.set('issue', finalIssue);
       query.set('gender', gender);
       query.set('age', age);
       window.location.href = `screens/questionnaire/index.html?${query}`;
@@ -60,6 +90,26 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.click();
       }
     });
+  }
+
+  function showToast(message, status = 'active') {
+    let stack = document.getElementById('qe-toast-stack');
+    if (!stack) {
+      stack = document.createElement('div');
+      stack.id = 'qe-toast-stack';
+      stack.className = 'qe-toast-stack';
+      document.body.appendChild(stack);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = `qe-toast qe-toast--${status}`;
+    toast.textContent = message;
+    stack.appendChild(toast);
+
+    setTimeout(() => {
+      toast.classList.add('qe-toast--leaving');
+      setTimeout(() => toast.remove(), 280);
+    }, 3500);
   }
 
   const settingsBtn = document.getElementById('btn-settings');

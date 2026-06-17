@@ -2,6 +2,8 @@ const { contextBridge, ipcRenderer } = require("electron");
 
 const CH = {
   PING: "neuroagi:ping",
+  ENHANCE_QUERY: "neuroagi:enhance-query",
+  QUERY_ENHANCER_PROGRESS: "neuroagi:query-enhancer-progress",
   START_REPORT_COLLECTION: "neuroagi:start-report-collection",
   SUBMIT_QUESTIONNAIRE: "neuroagi:submit-questionnaire",
   GOTO_LABORATORY: "neuroagi:goto-laboratory",
@@ -30,6 +32,9 @@ function subscribe(channel, cb) {
 
 contextBridge.exposeInMainWorld("electronAPI", {
   ping: () => ipcRenderer.invoke(CH.PING),
+
+  enhanceQuery: (payload) => ipcRenderer.invoke(CH.ENHANCE_QUERY, payload),
+  onQueryEnhancerProgress: (cb) => subscribe(CH.QUERY_ENHANCER_PROGRESS, cb),
 
   startReportCollection: (payload) =>
     ipcRenderer.invoke(CH.START_REPORT_COLLECTION, payload),

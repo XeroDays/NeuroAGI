@@ -1,5 +1,7 @@
 module.exports = {
   PING: "neuroagi:ping",
+  ENHANCE_QUERY: "neuroagi:enhance-query",
+  QUERY_ENHANCER_PROGRESS: "neuroagi:query-enhancer-progress",
   START_REPORT_COLLECTION: "neuroagi:start-report-collection",
   SUBMIT_QUESTIONNAIRE: "neuroagi:submit-questionnaire",
   GOTO_LABORATORY: "neuroagi:goto-laboratory",

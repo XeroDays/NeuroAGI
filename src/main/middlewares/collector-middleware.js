@@ -4,6 +4,8 @@ const {
   GenerateLaboratoryLLMQuery,
   GeneratePreDoctorRoomLLMQuery,
   GenerateDoctorAnalysisLLMQuery,
+  GenerateMedicineFilterLLMQuery,
+  GenerateEnhancedQueryLLMQuery,
 } = require("../helpers/query-generator-helper");
 const {
   AskAllWorkerAgis,
@@ -11,6 +13,7 @@ const {
   StreamFromAllWorkerAgis,
   StreamFromAllDoctorAgis,
 } = require("../services/agi-service");
+const webSearch = require("../services/web-search-service");
 const channels = require("../../shared/ipc/channels");
 const { jsonrepair } = require("jsonrepair");
   
@@ -128,6 +131,149 @@ function parseJsonArray(raw) {
       }
     }
   }
+}
+
+async function EnhanceQuery({ issue, gender, age } = {}, sender) {
+  const safeIssue = String(issue || "").trim();
+  console.log("[collector/enhance] EnhanceQuery:", { issue, gender, age });
+
+  const emit = (message, status = "active") => {
+    if (!sender) return;
+    try {
+      if (sender.isDestroyed && sender.isDestroyed()) return;
+      sender.send(channels.QUERY_ENHANCER_PROGRESS, { message, status });
+    } catch (err) {
+      console.warn(
+        "[collector/enhance] progress emit failed:",
+        err?.message || String(err)
+      );
+    }
+  };
+
+  if (!safeIssue) {
+    return { ok: true, enhancedQuery: "" };
+  }
+
+  try {
+    // Step 1 — detect medications the patient explicitly mentioned.
+    emit("Scanning your description for medications…");
+    const filterPrompt = GenerateMedicineFilterLLMQuery({ issue, gender, age });
+    const filterRaw = await AskMasterAgi(filterPrompt, JSON_LLM_OPTIONS);
+
+    let detected = [];
+    try {
+      detected = parseJsonArray(filterRaw);
+    } catch (parseErr) {
+      console.warn(
+        "[collector/enhance] medicine filter parse failed:",
+        parseErr.message
+      );
+      detected = [];
+    }
+
+    const medicines = (Array.isArray(detected) ? detected : [])
+      .map((m) => ({
+        name: String(m?.name || "").trim(),
+        mg: String(m?.mg || "").trim(),
+        timing: String(m?.timing || "").trim(),
+      }))
+      .filter((m) => m.name);
+
+    if (medicines.length === 0) {
+      console.log("[collector/enhance] no medications detected");
+      emit("No medications detected", "done");
+      return { ok: true, enhancedQuery: safeIssue };
+    }
+
+    console.log(
+      `[collector/enhance] ${medicines.length} medication(s) detected → web lookup`
+    );
+
+    // Step 2 — Tavily lookup per medicine (sequential so each gets a toast).
+    const searchResults = [];
+    for (const med of medicines) {
+      emit(`Looking up ${med.name}…`);
+      try {
+        const res = await webSearch.search(
+          `active ingredient and generic formula of the medication "${med.name}"`,
+          { includeAnswer: true, maxResults: 3 }
+        );
+        searchResults.push({
+          name: med.name,
+          answer: res?.answer || null,
+          results: Array.isArray(res?.results)
+            ? res.results.map((r) => ({ title: r.title, url: r.url, content: r.content }))
+            : [],
+        });
+      } catch (searchErr) {
+        console.warn(
+          `[collector/enhance] web lookup failed for ${med.name}:`,
+          searchErr?.message || String(searchErr)
+        );
+        searchResults.push({ name: med.name, answer: null, results: [] });
+      }
+    }
+
+    // Step 3 — rewrite the query, appending a resolved medication section.
+    emit("Enhancing your query with medication details…");
+    let enhancedQuery;
+    try {
+      const enhancePrompt = GenerateEnhancedQueryLLMQuery({
+        issue: safeIssue,
+        medicines,
+        searchResults,
+      });
+      const enhancedRaw = await AskMasterAgi(enhancePrompt, JSON_LLM_OPTIONS);
+      enhancedQuery = stripFences(enhancedRaw);
+      if (!enhancedQuery) {
+        throw new Error("Enhanced query was empty");
+      }
+    } catch (enhanceErr) {
+      console.warn(
+        "[collector/enhance] query enhancement unusable, falling back to built section:",
+        enhanceErr.message
+      );
+      enhancedQuery = buildFallbackEnhancedQuery(safeIssue, medicines);
+    }
+
+    console.log(
+      `[collector/enhance] enrichment complete (${medicines.length} medication(s), ${enhancedQuery.length} chars)`
+    );
+    emit(`Found ${medicines.length} medication(s)`, "done");
+    return { ok: true, enhancedQuery };
+  } catch (err) {
+    console.error("[collector/enhance] EnhanceQuery failed:", err);
+    emit("Could not analyze medications — continuing", "error");
+    return { ok: true, enhancedQuery: safeIssue };
+  }
+}
+
+function stripFences(raw) {
+  if (typeof raw !== "string") return "";
+  return raw
+    .trim()
+    .replace(/^```(?:\w+)?\s*/i, "")
+    .replace(/```\s*$/i, "")
+    .trim();
+}
+
+function buildFallbackEnhancedQuery(issue, medicines = []) {
+  const meds = Array.isArray(medicines) ? medicines : [];
+  const lines = meds
+    .map((m) => {
+      const name = String(m?.name || "").trim();
+      if (!name) return null;
+      const mg = String(m?.mg || "").trim();
+      const timing = String(m?.timing || "").trim();
+      let line = `- ${name}`;
+      if (mg) line += `; dosage: ${mg}`;
+      if (timing) line += `; timing: ${timing}`;
+      return line;
+    })
+    .filter(Boolean);
+
+  if (lines.length === 0) return issue;
+  return `${issue}\n\nMedication by user:\n${lines.join("\n")}`;
 }
 
 async function StartReportcollection({ issue, gender, age } = {}) {
@@ -572,6 +718,7 @@ function StartDoctor(
 }
 
 module.exports = {
+  EnhanceQuery,
   StartReportcollection,
   SubmitQuestionnaire,
   GotoLaboratory,

@@ -1059,10 +1059,116 @@ Formatting rules for overall output:
 - Keep language patient-friendly but clinically accurate`;
 }
 
+function GenerateMedicineFilterLLMQuery({ issue, gender, age } = {}) {
+  const safeIssue = String(issue || "").trim() || "an unspecified health issue";
+  const safeGender = String(gender || "male").toLowerCase();
+  const safeAge = String(age || "30");
+
+  return `You are an experienced clinical pharmacist extracting the medications a patient is CURRENTLY TAKING from their own free-text description.
+
+Patient:
+- Age: ${safeAge} Years Old
+- Gender: ${safeGender}
+- Description: "${safeIssue}"
+
+Your task:
+- Read the patient's description carefully.
+- Extract ONLY the medications, drugs, or supplements the patient EXPLICITLY mentions taking.
+- Do NOT invent, infer, or suggest medications. Do NOT add medications that a patient with this issue "might" take.
+- If the patient mentions a brand name, keep it exactly as written (the active ingredient is resolved in a later step).
+- If no dosage (mg/strength) is stated, leave it as an empty string.
+- If no timing/frequency is stated, leave it as an empty string.
+- If the patient mentions NO medications at all, return an empty array: []
+
+Output contract:
+- Return ONLY a valid JSON array.
+- Each element MUST have exactly these keys:
+  { "name": string, "mg": string, "timing": string }
+- "name": the medication name exactly as the patient referred to it.
+- "mg": the dosage/strength if stated (e.g. "500mg", "10 mg"), otherwise "".
+- "timing": the timing/frequency if stated (e.g. "twice a day", "every night", "after meals"), otherwise "".
+- No markdown, no comments, no explanations, no code fences, no trailing commas.
+
+Expected JSON format:
+[
+  {
+    "name": "Panadol",
+    "mg": "500mg",
+    "timing": "twice a day"
+  },
+  {
+    "name": "Vitamin D",
+    "mg": "",
+    "timing": ""
+  }
+]`;
+}
+
+function GenerateEnhancedQueryLLMQuery({ issue, medicines = [], searchResults = [] } = {}) {
+  const safeIssue = String(issue || "").trim() || "an unspecified health issue";
+  const meds = Array.isArray(medicines) ? medicines : [];
+  const research = Array.isArray(searchResults) ? searchResults : [];
+
+  const evidence = meds
+    .map((m, i) => {
+      const name = String(m?.name || `(medicine ${i + 1})`);
+      const mg = String(m?.mg || "");
+      const timing = String(m?.timing || "");
+      const found = research.find(
+        (r) => String(r?.name || "").toLowerCase() === name.toLowerCase()
+      );
+      const web = found
+        ? JSON.stringify(
+            { answer: found.answer || null, results: found.results || [] },
+            null,
+            2
+          )
+        : "(no web results)";
+      return `Medicine ${i + 1}:
+- Reported name: ${name}
+- Reported dosage: ${mg || "(not stated)"}
+- Reported timing: ${timing || "(not stated)"}
+- Web research:
+${web}`;
+    })
+    .join("\n\n");
+
+  return `You are a clinical pharmacist enhancing a patient's free-text health complaint by appending a clean, structured medication section.
+
+Original patient query:
+"""
+${safeIssue}
+"""
+
+Reported medications with web research collected for each:
+
+${evidence || "(no medicines provided)"}
+
+Your task:
+- For EACH reported medicine, determine its generic active ingredient(s) (the pharmacological "formula") using the web research as evidence. If the brand name maps to a known active ingredient (e.g. Panadol -> paracetamol (acetaminophen)), use the generic name. If a medicine is already a generic name, keep it. If the active ingredient genuinely cannot be determined, fall back to the reported name.
+- Produce the FINAL ENHANCED QUERY: the patient's original query preserved verbatim (do NOT remove, summarize, or distort any of it), followed by a blank line and then a medication section.
+
+The medication section MUST be formatted EXACTLY like this:
+Medication by user:
+- <formula> (reported as "<name>")[; dosage: <mg>][; timing: <timing>]
+
+Rules:
+- One bullet line per medicine, in the same order provided.
+- Omit the "; dosage: <mg>" part if no dosage was reported. Omit the "; timing: <timing>" part if no timing was reported.
+- Use the resolved generic formula as the leading text of each line.
+
+Output rules:
+- Return ONLY the final enhanced query text.
+- Do NOT add any preamble, explanation, labels, JSON, or code fences.
+- Do NOT wrap the output in quotes.`;
+}
+
 module.exports = {
   GenerateQuestionnaireLLMQuery,
   GenerateMergeQuestionnaireLLMQuery,
   GenerateLaboratoryLLMQuery,
   GeneratePreDoctorRoomLLMQuery,
   GenerateDoctorAnalysisLLMQuery,
+  GenerateMedicineFilterLLMQuery,
+  GenerateEnhancedQueryLLMQuery,
 };

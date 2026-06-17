@@ -6,11 +6,23 @@ function getActiveModels() {
   return modelConfigService.getActiveModelIds();
 }
 
+/**
+ * Builds a single-line, length-capped preview of a prompt for logging so the
+ * console stays readable even when prompts are thousands of characters long.
+ */
+function previewPrompt(prompt, maxChars = 200) {
+  const text = typeof prompt === "string" ? prompt : String(prompt ?? "");
+  const oneLine = text.replace(/\s+/g, " ").trim();
+  if (oneLine.length <= maxChars) return oneLine;
+  return `${oneLine.slice(0, maxChars)}… (${text.length} chars total)`;
+}
+
 async function AskAllWorkerAgis(prompt, options = {}) {
   const models = getActiveModels();
   const messages = [{ role: "user", content: prompt }];
   const startedAt = Date.now();
   console.log(`[agi] fanout → ${models.length} worker model(s)`);
+  console.log(`[agi] fanout prompt → ${previewPrompt(prompt)}`);
 
   const settled = await Promise.allSettled(
     models.map((model) =>
@@ -35,11 +47,10 @@ async function AskAllWorkerAgis(prompt, options = {}) {
 async function AskMasterAgi(prompt, options = {}) {
   const masterId = modelConfigService.getMasterModelRuntimeId();
   if (!masterId) {
-    throw new Error(
-      "No master model selected. Star a model in the Models popup."
-    );
+    throw new Error("No master model selected. Star a model in the Models popup.");
   }
   console.log(`[agi] master query → ${masterId}`);
+  console.log(`[agi] master query prompt → ${previewPrompt(prompt)}`);
   return chatCompletion(
     [{ role: "user", content: prompt }],
     masterId,
@@ -67,6 +78,7 @@ function StreamFromAllWorkerAgis(
   const startedAt = Date.now();
 
   console.log(`[agi] stream-fanout → ${models.length} model(s)`);
+  console.log(`[agi] stream-fanout prompt → ${previewPrompt(prompt)}`);
 
   if (models.length === 0) {
     console.warn("[agi] stream-fanout: model list is empty");

@@ -1,0 +1,25 @@
+chekc the @context.md  for the rules and workflows and features of the software
+
+then task is following :
+i want a logger window which will have the log items of the web calls or tool calls 
+such as if there is called to the @src/main/services/agi-service.js  to a model 
+then item with following information will be there AI Tool call , model name, query which is passed to hte model , reasioning level, total prompt tokens like that one item will be  created
+if there is web tool call then there will be item as following data will be there in hte log item: Web Tool Call, Query and response data will be stored but not shown, that will be shown when i click on the log item a popup will come with more information..
+
+For the log create one more view or window  whcih will be seperate and will have the list of logs and when i click o the log item it will open the panel to the left side of the detail wit h the response data andthe query data nad all related information for the calls 
+same will be for web tool calls of agi tool calls or ai tool calls 
+
+
+create a static list of log in a log service or somewhere create new service if required
+in that list of objects of hte logs will be there 
+and when i open this new screen of hte log it will load content from hte log list of static 
+
+also generate a id for hte log item to make it unqiue you can use anything such as guid or anything 
+
+also the button for log screen wil be on the top right there are two bubbles whcih is the token count and the usd amount count along with that on the left side create one bubble icon button of the logger icon and text as Logs  when on that the user clicks, it will open this logger view 
+
+for hte design use the same design defined in either in hte @context.md  or check the main screen of the software or the @src/renderer/styles/doctor.css  use that design  for hte log screen
+
+this logs will contain only logs of the calls , not normal logging should be there, only the agi call, tool calls, ai calls, web calls 
+
+also the if possicle calculate the response time, such as how much time tool to complete the response such as for web tool or agi when the chatCompletion is stop that will be considered as total time 

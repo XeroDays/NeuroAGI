@@ -1,6 +1,7 @@
 const { ipcMain, BrowserWindow } = require("electron");
 const channels = require("../../shared/ipc/channels");
 const {
+  EnhanceQuery,
   StartReportcollection,
   SubmitQuestionnaire,
   GotoLaboratory,
@@ -14,6 +15,10 @@ const usageTracker = require("../services/usage-tracker");
 
 function registerIpcHandlers() {
   ipcMain.handle(channels.PING, async () => "pong");
+
+  ipcMain.handle(channels.ENHANCE_QUERY, (event, payload) => {
+    return EnhanceQuery(payload || {}, event.sender);
+  });
 
   ipcMain.handle(channels.START_REPORT_COLLECTION, async (_event, payload) => {
     return StartReportcollection(payload || {});
