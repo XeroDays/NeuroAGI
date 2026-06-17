@@ -176,6 +176,7 @@ async function EnhanceQuery({ issue, gender, age } = {}, sender) {
         name: String(m?.name || "").trim(),
         mg: String(m?.mg || "").trim(),
         timing: String(m?.timing || "").trim(),
+        duration: String(m?.duration || "").trim(),
       }))
       .filter((m) => m.name);
 
@@ -268,9 +269,11 @@ function buildFallbackEnhancedQuery(issue, medicines = []) {
       if (!name) return null;
       const mg = String(m?.mg || "").trim();
       const timing = String(m?.timing || "").trim();
+      const duration = String(m?.duration || "").trim();
       let line = `- ${name}`;
       if (mg) line += `; dosage: ${mg}`;
       if (timing) line += `; timing: ${timing}`;
+      if (duration) line += `; used for: ${duration}`;
       return line;
     })
     .filter(Boolean);

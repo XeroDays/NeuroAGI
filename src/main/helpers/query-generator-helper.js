@@ -79,7 +79,6 @@ Your responsibility is to generate medically relevant intake questions that help
     - neurological symptoms,
     - bleeding,
     - loss of consciousness,
-    - suicidality,
     - severe infection symptoms,
     - pregnancy-related emergencies,
     - or rapidly worsening symptoms.
@@ -657,7 +656,6 @@ Clinical reasoning instructions:
   - altered consciousness,
   - severe infection symptoms,
   - pregnancy-related emergencies,
-  - suicidality,
   - or rapidly worsening symptoms.
 
 Question count rules:
@@ -1078,15 +1076,17 @@ Your task:
 - If the patient mentions a brand name, keep it exactly as written (the active ingredient is resolved in a later step).
 - If no dosage (mg/strength) is stated, leave it as an empty string.
 - If no timing/frequency is stated, leave it as an empty string.
+- If no duration of use is stated (e.g. "for 3 days", "for 2 weeks", "since last month"), leave it as an empty string.
 - If the patient mentions NO medications at all, return an empty array: []
 
 Output contract:
 - Return ONLY a valid JSON array.
 - Each element MUST have exactly these keys:
-  { "name": string, "mg": string, "timing": string }
+  { "name": string, "mg": string, "timing": string, "duration": string }
 - "name": the medication name exactly as the patient referred to it.
 - "mg": the dosage/strength if stated (e.g. "500mg", "10 mg"), otherwise "".
 - "timing": the timing/frequency if stated (e.g. "twice a day", "every night", "after meals"), otherwise "".
+- "duration": how long the patient has been taking the medication if stated (e.g. "3 days", "2 weeks", "1 month", "since last month"), otherwise "".
 - No markdown, no comments, no explanations, no code fences, no trailing commas.
 
 Expected JSON format:
@@ -1094,12 +1094,14 @@ Expected JSON format:
   {
     "name": "Panadol",
     "mg": "500mg",
-    "timing": "twice a day"
+    "timing": "twice a day",
+    "duration": "3 days"
   },
   {
     "name": "Vitamin D",
     "mg": "",
-    "timing": ""
+    "timing": "",
+    "duration": ""
   }
 ]`;
 }
@@ -1114,6 +1116,7 @@ function GenerateEnhancedQueryLLMQuery({ issue, medicines = [], searchResults = 
       const name = String(m?.name || `(medicine ${i + 1})`);
       const mg = String(m?.mg || "");
       const timing = String(m?.timing || "");
+      const duration = String(m?.duration || "");
       const found = research.find(
         (r) => String(r?.name || "").toLowerCase() === name.toLowerCase()
       );
@@ -1128,6 +1131,7 @@ function GenerateEnhancedQueryLLMQuery({ issue, medicines = [], searchResults = 
 - Reported name: ${name}
 - Reported dosage: ${mg || "(not stated)"}
 - Reported timing: ${timing || "(not stated)"}
+- Reported duration of use: ${duration || "(not stated)"}
 - Web research:
 ${web}`;
     })
@@ -1152,13 +1156,13 @@ Your task:
 
 The medication section MUST be formatted EXACTLY like this:
 Medication by user:
-- <active ingredient> (reported as "<name>")[; dosage: <mg>][; timing: <timing>]
+- <active ingredient> (reported as "<name>")[; dosage: <mg>][; timing: <timing>][; used for: <duration>]
 For example:
-- topiramate (reported as "Topamax"); dosage: 50 mg; timing: every night
+- topiramate (reported as "Topamax"); dosage: 50 mg; timing: every night; used for: 3 months
 
 Rules:
 - One bullet line per medicine, in the same order provided.
-- Omit the "; dosage: <mg>" part if no dosage was reported. Omit the "; timing: <timing>" part if no timing was reported.
+- Omit the "; dosage: <mg>" part if no dosage was reported. Omit the "; timing: <timing>" part if no timing was reported. Omit the "; used for: <duration>" part if no duration of use was reported.
 - Use the resolved active ingredient name as the leading text of each line.
 
 Output rules:

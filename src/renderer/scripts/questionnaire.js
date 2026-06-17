@@ -20,9 +20,38 @@ document.addEventListener('DOMContentLoaded', async () => {
   const age = params.get('age') || '30';
 
   if (summaryEl) {
-    summaryEl.textContent = issue
-      ? `${age}-year-old ${gender} — ${issue}`
-      : `${age}-year-old ${gender}`;
+    const demoSpan = document.createElement('span');
+    demoSpan.className = 'patient-summary__demo';
+    demoSpan.textContent = `${age}-year-old ${gender}`;
+    summaryEl.innerHTML = '';
+    summaryEl.appendChild(demoSpan);
+
+    if (issue) {
+      const toggleBtn = document.createElement('button');
+      toggleBtn.type = 'button';
+      toggleBtn.className = 'patient-summary__toggle';
+      toggleBtn.setAttribute('aria-expanded', 'false');
+      toggleBtn.innerHTML = '<span>Patient Query</span>'
+        + '<svg class="patient-summary__arrow" width="12" height="12" viewBox="0 0 12 12"'
+        + ' fill="none" xmlns="http://www.w3.org/2000/svg">'
+        + '<path d="M2 4L6 8L10 4" stroke="currentColor" stroke-width="1.5"'
+        + ' stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+      const queryDiv = document.createElement('div');
+      queryDiv.className = 'patient-summary__query';
+      queryDiv.hidden = true;
+      queryDiv.textContent = issue;
+
+      toggleBtn.addEventListener('click', () => {
+        const isOpen = !queryDiv.hidden;
+        queryDiv.hidden = isOpen;
+        toggleBtn.setAttribute('aria-expanded', String(!isOpen));
+        toggleBtn.classList.toggle('is-open', !isOpen);
+      });
+
+      summaryEl.appendChild(toggleBtn);
+      summaryEl.appendChild(queryDiv);
+    }
   }
 
   if (!window.electronAPI?.startReportCollection) {
