@@ -1133,7 +1133,7 @@ ${web}`;
     })
     .join("\n\n");
 
-  return `You are a clinical pharmacist enhancing a patient's free-text health complaint by appending a clean, structured medication section.
+  return `You are a clinical pharmacist enhancing a patient's free-text health complaint by appending a clean, structured medication section that names each medicine's ACTIVE INGREDIENT.
 
 Original patient query:
 """
@@ -1145,17 +1145,21 @@ Reported medications with web research collected for each:
 ${evidence || "(no medicines provided)"}
 
 Your task:
-- For EACH reported medicine, determine its generic active ingredient(s) (the pharmacological "formula") using the web research as evidence. If the brand name maps to a known active ingredient (e.g. Panadol -> paracetamol (acetaminophen)), use the generic name. If a medicine is already a generic name, keep it. If the active ingredient genuinely cannot be determined, fall back to the reported name.
+- For EACH reported medicine, determine its generic ACTIVE INGREDIENT NAME (the drug substance), using the web research as the primary evidence. If the brand name maps to a known active ingredient (e.g. Panadol -> paracetamol, Topamax -> topiramate), use the active ingredient name. If a medicine is already an active ingredient name, keep it. If it genuinely cannot be determined, fall back to the reported name.
+- CONTEXT-AWARE DISAMBIGUATION: the reported name may be misspelled or ambiguous. Use the reported dosage, dosage-form, and timing as disambiguation context. When the literal name resolves to a drug whose typical form/dosing is INCONSISTENT with what the patient reported, and the reported name closely matches a more clinically plausible, similarly-spelled drug, treat the reported name as a likely misspelling and resolve to that plausible drug's active ingredient (use your pharmacological knowledge — you are not strictly limited to the web evidence for this judgment).
+  - Example: "Topagen 50 mg every night" — a literal match (a topical betamethasone + gentamicin product) is NOT taken as a 50 mg nightly oral dose; the 50 mg nightly oral pattern matches Topiramate (brands Topiragen / Topamax), so resolve the active ingredient to "topiramate".
 - Produce the FINAL ENHANCED QUERY: the patient's original query preserved verbatim (do NOT remove, summarize, or distort any of it), followed by a blank line and then a medication section.
 
 The medication section MUST be formatted EXACTLY like this:
 Medication by user:
-- <formula> (reported as "<name>")[; dosage: <mg>][; timing: <timing>]
+- <active ingredient> (reported as "<name>")[; dosage: <mg>][; timing: <timing>]
+For example:
+- topiramate (reported as "Topamax"); dosage: 50 mg; timing: every night
 
 Rules:
 - One bullet line per medicine, in the same order provided.
 - Omit the "; dosage: <mg>" part if no dosage was reported. Omit the "; timing: <timing>" part if no timing was reported.
-- Use the resolved generic formula as the leading text of each line.
+- Use the resolved active ingredient name as the leading text of each line.
 
 Output rules:
 - Return ONLY the final enhanced query text.

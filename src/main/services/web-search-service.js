@@ -1,3 +1,5 @@
+const logService = require('./log-service');
+
 const TAVILY_SEARCH_URL = 'https://api.tavily.com/search';
 const TAVILY_EXTRACT_URL = 'https://api.tavily.com/extract';
 
@@ -60,8 +62,16 @@ async function search(query, options = {}) {
       body: JSON.stringify(body),
     });
   } catch (err) {
+    const durationMs = Date.now() - startedAt;
     console.error('[web-search] search ✗ network error', {
-      elapsedMs: Date.now() - startedAt,
+      elapsedMs: durationMs,
+      error: err?.message || String(err),
+    });
+    logService.addLog({
+      type: 'web',
+      status: 'error',
+      query,
+      durationMs,
       error: err?.message || String(err),
     });
     throw err;
@@ -76,22 +86,32 @@ async function search(query, options = {}) {
 
   if (!res.ok) {
     const errText = await res.text();
+    const durationMs = Date.now() - startedAt;
+    const errMsg = `Tavily ${res.status}: ${errText.slice(0, 400)}`;
     console.error('[web-search] search ✗ HTTP error', {
       status: res.status,
       bodyPreview: errText.slice(0, 400),
     });
-    throw new Error(`Tavily ${res.status}: ${errText.slice(0, 400)}`);
+    logService.addLog({
+      type: 'web',
+      status: 'error',
+      query,
+      durationMs,
+      error: errMsg,
+    });
+    throw new Error(errMsg);
   }
 
   const json = await res.json();
   const results = Array.isArray(json?.results) ? json.results : [];
+  const durationMs = Date.now() - startedAt;
   console.log('[web-search] search ✓ done', {
     resultCount: results.length,
     hasAnswer: Boolean(json?.answer),
-    totalElapsedMs: Date.now() - startedAt,
+    totalElapsedMs: durationMs,
   });
 
-  return {
+  const response = {
     query,
     answer: json?.answer ?? null,
     results: results.map((r) => ({
@@ -104,6 +124,16 @@ async function search(query, options = {}) {
     images: Array.isArray(json?.images) ? json.images : [],
     responseTime: json?.response_time ?? null,
   };
+
+  logService.addLog({
+    type: 'web',
+    status: 'success',
+    query,
+    response,
+    durationMs,
+  });
+
+  return response;
 }
 
 async function extract(urls, options = {}) {
@@ -128,6 +158,8 @@ async function extract(urls, options = {}) {
     extractDepth,
   });
 
+  const extractQuery = urlList.join(', ');
+
   let res;
   try {
     res = await fetch(TAVILY_EXTRACT_URL, {
@@ -139,8 +171,16 @@ async function extract(urls, options = {}) {
       body: JSON.stringify(body),
     });
   } catch (err) {
+    const durationMs = Date.now() - startedAt;
     console.error('[web-search] extract ✗ network error', {
-      elapsedMs: Date.now() - startedAt,
+      elapsedMs: durationMs,
+      error: err?.message || String(err),
+    });
+    logService.addLog({
+      type: 'web',
+      status: 'error',
+      query: extractQuery,
+      durationMs,
       error: err?.message || String(err),
     });
     throw err;
@@ -155,21 +195,31 @@ async function extract(urls, options = {}) {
 
   if (!res.ok) {
     const errText = await res.text();
+    const durationMs = Date.now() - startedAt;
+    const errMsg = `Tavily ${res.status}: ${errText.slice(0, 400)}`;
     console.error('[web-search] extract ✗ HTTP error', {
       status: res.status,
       bodyPreview: errText.slice(0, 400),
     });
-    throw new Error(`Tavily ${res.status}: ${errText.slice(0, 400)}`);
+    logService.addLog({
+      type: 'web',
+      status: 'error',
+      query: extractQuery,
+      durationMs,
+      error: errMsg,
+    });
+    throw new Error(errMsg);
   }
 
   const json = await res.json();
   const results = Array.isArray(json?.results) ? json.results : [];
+  const durationMs = Date.now() - startedAt;
   console.log('[web-search] extract ✓ done', {
     resultCount: results.length,
-    totalElapsedMs: Date.now() - startedAt,
+    totalElapsedMs: durationMs,
   });
 
-  return {
+  const response = {
     results: results.map((r) => ({
       url: r?.url ?? '',
       rawContent: r?.raw_content ?? '',
@@ -178,6 +228,16 @@ async function extract(urls, options = {}) {
     failedResults: Array.isArray(json?.failed_results) ? json.failed_results : [],
     responseTime: json?.response_time ?? null,
   };
+
+  logService.addLog({
+    type: 'web',
+    status: 'success',
+    query: extractQuery,
+    response,
+    durationMs,
+  });
+
+  return response;
 }
 
 module.exports = {

@@ -12,6 +12,7 @@ const {
 } = require("../middlewares/collector-middleware");
 const { GetModelsConfig, UpdateModelsConfig } = require("../middlewares/cookie-middleware");
 const usageTracker = require("../services/usage-tracker");
+const logService = require("../services/log-service");
 
 function registerIpcHandlers() {
   ipcMain.handle(channels.PING, async () => "pong");
@@ -67,6 +68,13 @@ function registerIpcHandlers() {
 
   ipcMain.handle(channels.UPDATE_MODELS_CONFIG, (_event, payload) => {
     return UpdateModelsConfig(payload || {});
+  });
+
+  ipcMain.handle(channels.GET_LOGS, () => logService.getLogs());
+
+  ipcMain.handle(channels.CLEAR_LOGS, () => {
+    logService.clearLogs();
+    return { ok: true };
   });
 }
 

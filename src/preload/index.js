@@ -21,6 +21,9 @@ const CH = {
   OPEN_DEV_TOOLS: "neuroagi:open-dev-tools",
   GET_MODELS_CONFIG: "neuroagi:get-models-config",
   UPDATE_MODELS_CONFIG: "neuroagi:update-models-config",
+  GET_LOGS: "neuroagi:get-logs",
+  CLEAR_LOGS: "neuroagi:clear-logs",
+  LOG_UPDATE: "neuroagi:log-update",
 };
 
 function subscribe(channel, cb) {
@@ -69,4 +72,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   getModelsConfig: () => ipcRenderer.invoke(CH.GET_MODELS_CONFIG),
   updateModelsConfig: (payload) => ipcRenderer.invoke(CH.UPDATE_MODELS_CONFIG, payload),
+
+  getLogs: () => ipcRenderer.invoke(CH.GET_LOGS),
+  clearLogs: () => ipcRenderer.invoke(CH.CLEAR_LOGS),
+  onLogUpdate: (cb) => subscribe(CH.LOG_UPDATE, cb),
 });

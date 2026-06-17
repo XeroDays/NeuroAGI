@@ -194,10 +194,13 @@ async function EnhanceQuery({ issue, gender, age } = {}, sender) {
     for (const med of medicines) {
       emit(`Looking up ${med.name}…`);
       try {
-        const res = await webSearch.search(
-          `active ingredient and generic formula of the medication "${med.name}"`,
-          { includeAnswer: true, maxResults: 3 }
-        );
+        const searchQuery = `active ingredient of the medication "${med.name}"${
+          med.mg ? ` ${med.mg}` : ""
+        }${med.timing ? ` taken ${med.timing}` : ""}`;
+        const res = await webSearch.search(searchQuery, {
+          includeAnswer: true,
+          maxResults: 3,
+        });
         searchResults.push({
           name: med.name,
           answer: res?.answer || null,
