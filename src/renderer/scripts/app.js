@@ -2,6 +2,7 @@ import {
   APP_TITLE,
   LABEL_START_HUMAN_DIAGNOSTICS
 } from './constants.js';
+import { createWorkerProgressPanel } from './worker-progress-panel.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   document.title = APP_TITLE;
@@ -27,6 +28,36 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   let enhancing = false;
+
+  const progressPanel = createWorkerProgressPanel({
+    position: 'bottom-right',
+    attachToSelector: '#qe-toast-stack',
+  });
+
+  function ensureToastStack() {
+    let stack = document.getElementById('qe-toast-stack');
+    if (!stack) {
+      stack = document.createElement('div');
+      stack.id = 'qe-toast-stack';
+      stack.className = 'qe-toast-stack';
+      document.body.appendChild(stack);
+    }
+    return stack;
+  }
+
+  function showToast(message, status = 'active') {
+    const stack = ensureToastStack();
+
+    const toast = document.createElement('div');
+    toast.className = `qe-toast qe-toast--${status}`;
+    toast.textContent = message;
+    stack.appendChild(toast);
+
+    setTimeout(() => {
+      toast.classList.add('qe-toast--leaving');
+      setTimeout(() => toast.remove(), 280);
+    }, 3500);
+  }
 
   if (btn) {
     btn.addEventListener('click', async () => {
@@ -57,9 +88,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (input) input.disabled = true;
 
         let unsubscribe = () => {};
+        ensureToastStack();
         if (window.electronAPI?.onQueryEnhancerProgress) {
           unsubscribe = window.electronAPI.onQueryEnhancerProgress((payload) => {
-            if (payload?.message) showToast(payload.message, payload.status);
+            if (payload?.type) {
+              progressPanel.handleEvent(payload);
+            } else if (payload?.message) {
+              showToast(payload.message, payload.status);
+            }
           });
         }
 
@@ -71,6 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) {
           console.warn('[app] QueryEnhancer failed, continuing with original query:', err);
         } finally {
+          progressPanel.hide();
           unsubscribe();
         }
       }
@@ -90,26 +127,6 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.click();
       }
     });
-  }
-
-  function showToast(message, status = 'active') {
-    let stack = document.getElementById('qe-toast-stack');
-    if (!stack) {
-      stack = document.createElement('div');
-      stack.id = 'qe-toast-stack';
-      stack.className = 'qe-toast-stack';
-      document.body.appendChild(stack);
-    }
-
-    const toast = document.createElement('div');
-    toast.className = `qe-toast qe-toast--${status}`;
-    toast.textContent = message;
-    stack.appendChild(toast);
-
-    setTimeout(() => {
-      toast.classList.add('qe-toast--leaving');
-      setTimeout(() => toast.remove(), 280);
-    }, 3500);
   }
 
   const settingsBtn = document.getElementById('btn-settings');

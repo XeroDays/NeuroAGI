@@ -59,31 +59,65 @@ function markRowDone(row, ok) {
   }
 }
 
-export function createWorkerProgressPanel() {
+export function createWorkerProgressPanel(options = {}) {
+  const { position = 'bottom-left', attachToSelector = null } = options;
+  const ownedStack = !attachToSelector;
+
   let stackEl = null;
   const rowByModel = new Map();
+  const attachedSnackRows = new Set();
   let masterRow = null;
   let hideTimer = null;
 
+  function resolveAttachTarget() {
+    if (!attachToSelector) return null;
+    if (typeof attachToSelector === 'string') {
+      return document.querySelector(attachToSelector);
+    }
+    return attachToSelector;
+  }
+
+  function trackSnackRow(row) {
+    if (!ownedStack && row) {
+      row.dataset.workerProgressSnack = 'true';
+      attachedSnackRows.add(row);
+    }
+  }
+
   function ensureStack() {
     if (stackEl) return stackEl;
+
+    const attachTarget = resolveAttachTarget();
+    if (attachTarget) {
+      stackEl = attachTarget;
+      return stackEl;
+    }
+
     stackEl = document.createElement('div');
     stackEl.id = 'q-worker-stack';
-    stackEl.className = 'q-worker-stack';
+    stackEl.className =
+      position === 'bottom-right'
+        ? 'q-worker-stack q-worker-stack--bottom-right'
+        : 'q-worker-stack';
     stackEl.setAttribute('aria-live', 'polite');
     document.body.appendChild(stackEl);
     return stackEl;
   }
 
   function mountProgressStack(models) {
-    if (stackEl) return;
+    if (stackEl && ownedStack) return;
     const list = Array.isArray(models) ? models : [];
     const stack = ensureStack();
     rowByModel.clear();
-    masterRow = null;
+    if (ownedStack) {
+      masterRow = null;
+    } else {
+      clearMasterRow();
+    }
 
     for (const modelId of list) {
       const row = buildSnackRow(modelId);
+      trackSnackRow(row);
       rowByModel.set(modelId, row);
       stack.appendChild(row);
     }
@@ -93,10 +127,20 @@ export function createWorkerProgressPanel() {
     markRowDone(rowByModel.get(model), ok);
   }
 
+  function clearMasterRow() {
+    if (masterRow) {
+      attachedSnackRows.delete(masterRow);
+      masterRow.remove();
+      masterRow = null;
+    }
+  }
+
   function showMasterRow(model) {
-    if (masterRow || !model) return;
+    if (!model) return;
+    clearMasterRow();
     const stack = ensureStack();
     masterRow = buildSnackRow(model, { isMaster: true });
+    trackSnackRow(masterRow);
     stack.appendChild(masterRow);
   }
 
@@ -105,7 +149,20 @@ export function createWorkerProgressPanel() {
   }
 
   function hide() {
-    if (!stackEl || hideTimer) return;
+    if (hideTimer) return;
+
+    if (!ownedStack) {
+      for (const row of attachedSnackRows) {
+        row.remove();
+      }
+      attachedSnackRows.clear();
+      rowByModel.clear();
+      masterRow = null;
+      stackEl = null;
+      return;
+    }
+
+    if (!stackEl) return;
     stackEl.classList.add('q-worker-stack--leaving');
     hideTimer = setTimeout(() => {
       stackEl?.remove();

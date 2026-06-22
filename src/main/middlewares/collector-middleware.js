@@ -139,7 +139,7 @@ async function EnhanceQuery({ issue, gender, age } = {}, sender) {
   const safeIssue = String(issue || "").trim();
   console.log("[collector/enhance] EnhanceQuery:", { issue, gender, age });
 
-  const emit = (message, status = "active") => {
+  const emitToast = (message, status = "active") => {
     if (!sender) return;
     try {
       if (sender.isDestroyed && sender.isDestroyed()) return;
@@ -152,15 +152,37 @@ async function EnhanceQuery({ issue, gender, age } = {}, sender) {
     }
   };
 
+  const emitModel = (payload) => {
+    if (!sender) return;
+    try {
+      if (sender.isDestroyed && sender.isDestroyed()) return;
+      sender.send(channels.QUERY_ENHANCER_PROGRESS, payload);
+    } catch (err) {
+      console.warn(
+        "[collector/enhance] model progress emit failed:",
+        err?.message || String(err)
+      );
+    }
+  };
+
   if (!safeIssue) {
     return { ok: true, enhancedQuery: "" };
   }
 
   try {
     // Step 1 — detect medications the patient explicitly mentioned.
-    emit("Scanning your description for medications…");
+    const masterId = modelConfigService.getMasterModelRuntimeId() || "";
+    emitModel({ type: "master_start", model: masterId });
     const filterPrompt = GenerateMedicineFilterLLMQuery({ issue, gender, age });
-    const filterRaw = await AskMasterAgi(filterPrompt, JSON_LLM_OPTIONS);
+    let filterOk = true;
+    let filterRaw;
+    try {
+      filterRaw = await AskMasterAgi(filterPrompt, JSON_LLM_OPTIONS);
+    } catch (filterErr) {
+      filterOk = false;
+      emitModel({ type: "master_done", ok: false });
+      throw filterErr;
+    }
 
     let detected = [];
     try {
@@ -170,8 +192,10 @@ async function EnhanceQuery({ issue, gender, age } = {}, sender) {
         "[collector/enhance] medicine filter parse failed:",
         parseErr.message
       );
+      filterOk = false;
       detected = [];
     }
+    emitModel({ type: "master_done", ok: filterOk });
 
     const medicines = (Array.isArray(detected) ? detected : [])
       .map((m) => ({
@@ -184,7 +208,7 @@ async function EnhanceQuery({ issue, gender, age } = {}, sender) {
 
     if (medicines.length === 0) {
       console.log("[collector/enhance] no medications detected");
-      emit("No medications detected", "done");
+      emitToast("No medications detected", "done");
       return { ok: true, enhancedQuery: safeIssue };
     }
 
@@ -195,7 +219,7 @@ async function EnhanceQuery({ issue, gender, age } = {}, sender) {
     // Step 2 — Tavily lookup per medicine (sequential so each gets a toast).
     const searchResults = [];
     for (const med of medicines) {
-      emit(`Looking up ${med.name}…`);
+      emitToast(`Looking up ${med.name}…`);
       try {
         const searchQuery = `active ingredient of the medication "${med.name}"${
           med.mg ? ` ${med.mg}` : ""
@@ -221,8 +245,9 @@ async function EnhanceQuery({ issue, gender, age } = {}, sender) {
     }
 
     // Step 3 — rewrite the query, appending a resolved medication section.
-    emit("Enhancing your query with medication details…");
+    emitModel({ type: "master_start", model: masterId });
     let enhancedQuery;
+    let enhanceOk = true;
     try {
       const enhancePrompt = GenerateEnhancedQueryLLMQuery({
         issue: safeIssue,
@@ -235,21 +260,23 @@ async function EnhanceQuery({ issue, gender, age } = {}, sender) {
         throw new Error("Enhanced query was empty");
       }
     } catch (enhanceErr) {
+      enhanceOk = false;
       console.warn(
         "[collector/enhance] query enhancement unusable, falling back to built section:",
         enhanceErr.message
       );
       enhancedQuery = buildFallbackEnhancedQuery(safeIssue, medicines);
     }
+    emitModel({ type: "master_done", ok: enhanceOk });
 
     console.log(
       `[collector/enhance] enrichment complete (${medicines.length} medication(s), ${enhancedQuery.length} chars)`
     );
-    emit(`Found ${medicines.length} medication(s)`, "done");
+    emitToast(`Found ${medicines.length} medication(s)`, "done");
     return { ok: true, enhancedQuery };
   } catch (err) {
     console.error("[collector/enhance] EnhanceQuery failed:", err);
-    emit("Could not analyze medications — continuing", "error");
+    emitToast("Could not analyze medications — continuing", "error");
     return { ok: true, enhancedQuery: safeIssue };
   }
 }

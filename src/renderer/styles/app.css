@@ -311,6 +311,16 @@ body.app-shell::before {
   to   { opacity: 1; transform: translateX(0); }
 }
 
+/* Model snack pills appended inside the home toast stack slide in from the right */
+.qe-toast-stack .q-worker-snack {
+  animation: qe-worker-snack-in 0.28s ease;
+}
+
+@keyframes qe-worker-snack-in {
+  from { opacity: 0; transform: translateX(12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
 .glass-button {
   cursor: pointer;
   padding: 1.05rem 2.25rem;
