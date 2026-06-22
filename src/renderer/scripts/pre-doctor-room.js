@@ -1,4 +1,5 @@
 import { APP_TITLE, SCREEN_PRE_DOCTOR_ROOM } from './constants.js';
+import { createWorkerProgressPanel } from './worker-progress-panel.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
   document.title = `${SCREEN_PRE_DOCTOR_ROOM} — ${APP_TITLE}`;
@@ -88,6 +89,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   let loadedQuestions = [];
   let shouldAutoSubmit = false;
+  const progressPanel = createWorkerProgressPanel();
+
+  let unsubscribeProgress = () => {};
+  if (window.electronAPI?.onAgiFanoutProgress) {
+    unsubscribeProgress = window.electronAPI.onAgiFanoutProgress((payload) => {
+      progressPanel.handleEvent(payload);
+    });
+  }
+
+  function hideLoading() {
+    if (statusEl) statusEl.hidden = true;
+  }
+
+  function showForm() {
+    if (formEl) formEl.hidden = false;
+    if (actionsEl) actionsEl.hidden = false;
+  }
 
   try {
     const result = await window.electronAPI.gotoPreDoctorRoom({
@@ -107,6 +125,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       throw new Error(result?.error || 'Failed to load pre-doctor questions.');
     }
     const questions = Array.isArray(result.questions) ? result.questions : [];
+    progressPanel.hide();
     if (questions.length === 0) {
       loadedQuestions = [];
       if (statusEl) {
@@ -117,14 +136,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       shouldAutoSubmit = true;
     } else {
       loadedQuestions = questions;
+      hideLoading();
       renderQuestions(questions);
-      statusEl.hidden = true;
-      formEl.hidden = false;
-      actionsEl.hidden = false;
+      showForm();
     }
   } catch (err) {
     console.error('Failed to load pre-doctor room:', err);
+    progressPanel.hide();
+    hideLoading();
     showError(humanizeError(err));
+  } finally {
+    unsubscribeProgress();
   }
 
   submitBtn?.addEventListener('click', async () => {

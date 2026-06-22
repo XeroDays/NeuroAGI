@@ -29,16 +29,16 @@ function registerIpcHandlers() {
     return SubmitQuestionnaire(payload || {});
   });
 
-  ipcMain.handle(channels.GOTO_LABORATORY, async (_event, payload) => {
-    return GotoLaboratory(payload || {});
+  ipcMain.handle(channels.GOTO_LABORATORY, async (event, payload) => {
+    return GotoLaboratory(payload || {}, event.sender);
   });
 
   ipcMain.handle(channels.SUBMIT_LABORATORY, async (_event, payload) => {
     return SubmitLaboratory(payload || {});
   });
 
-  ipcMain.handle(channels.GOTO_PRE_DOCTOR_ROOM, async (_event, payload) => {
-    return GotoPreDoctorRoom(payload || {});
+  ipcMain.handle(channels.GOTO_PRE_DOCTOR_ROOM, async (event, payload) => {
+    return GotoPreDoctorRoom(payload || {}, event.sender);
   });
 
   ipcMain.handle(channels.SUBMIT_PRE_DOCTOR_ROOM, async (_event, payload) => {

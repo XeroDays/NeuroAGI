@@ -15,6 +15,7 @@ const {
   getActiveModels,
 } = require("../services/agi-service");
 const webSearch = require("../services/web-search-service");
+const modelConfigService = require("../services/model-config-service");
 const channels = require("../../shared/ipc/channels");
 const { jsonrepair } = require("jsonrepair");
   
@@ -283,88 +284,115 @@ function buildFallbackEnhancedQuery(issue, medicines = []) {
   return `${issue}\n\nMedication by user:\n${lines.join("\n")}`;
 }
 
-async function StartReportcollection({ issue, gender, age } = {}, sender) {
-  console.log("[collector] StartReportcollection:", { issue, gender, age });
-
-  const emit = (message, status = "active") => {
+function createFanoutProgressEmitter(sender) {
+  return (payload) => {
     if (!sender) return;
     try {
       if (sender.isDestroyed && sender.isDestroyed()) return;
-      sender.send(channels.REPORT_COLLECTION_PROGRESS, { message, status });
+      sender.send(channels.AGI_FANOUT_PROGRESS, payload);
     } catch (err) {
       console.warn(
-        "[collector] report-collection progress emit failed:",
+        "[collector] fanout progress emit failed:",
         err?.message || String(err)
       );
     }
   };
+}
+
+async function runFanoutMergePipeline({
+  initialPrompt,
+  issue,
+  gender,
+  age,
+  logPrefix = "[collector]",
+  sender,
+}) {
+  const emit = createFanoutProgressEmitter(sender);
+  const models = getActiveModels();
+  emit({ type: "workers_start", models });
+
+  const workerResults = await AskAllWorkerAgis(initialPrompt, JSON_LLM_OPTIONS, {
+    onWorkerSettled: ({ model, ok, error }) => {
+      emit({
+        type: "worker_done",
+        model,
+        ok,
+        ...(error ? { error } : {}),
+      });
+    },
+  });
+
+  const parsedSets = [];
+  for (const r of workerResults) {
+    if (!r.ok) {
+      console.warn(`${logPrefix} worker ${r.model} failed:`, r.error);
+      continue;
+    }
+    try {
+      const parsed = parseJsonArray(r.content);
+      parsedSets.push(parsed);
+      console.log(
+        `${logPrefix} worker ${r.model} parsed OK (${parsed.length} questions)`
+      );
+    } catch (e) {
+      console.warn(`${logPrefix} worker ${r.model} unparsable JSON:`, e.message);
+    }
+  }
+
+  if (parsedSets.length === 0) {
+    throw new Error("All worker models failed or returned unparsable JSON");
+  }
+  console.log(`${logPrefix} ${parsedSets.length} clean worker set(s) → master merge`);
+
+  const masterId = modelConfigService.getMasterModelRuntimeId();
+  emit({ type: "master_start", model: masterId || "" });
+
+  const mergePrompt = GenerateMergeQuestionnaireLLMQuery({
+    issue,
+    gender,
+    age,
+    questionnaireSets: parsedSets,
+  });
+  const mergedRaw = await AskMasterAgi(mergePrompt, JSON_LLM_OPTIONS);
+
+  let questions;
+  let masterOk = true;
+  try {
+    questions = parseJsonArray(mergedRaw);
+    console.log(
+      `${logPrefix} master merge parsed OK (${questions.length} questions)`
+    );
+  } catch (mergeErr) {
+    masterOk = false;
+    console.warn(
+      `${logPrefix} Master merge unusable, falling back to best worker set:`,
+      mergeErr.message
+    );
+    questions = pickBestWorkerSet(parsedSets);
+    console.log(
+      `${logPrefix} Master merge fallback: using worker set with ${questions.length} questions`
+    );
+  }
+
+  emit({ type: "master_done", ok: masterOk });
+  return questions;
+}
+
+async function StartReportcollection({ issue, gender, age } = {}, sender) {
+  console.log("[collector] StartReportcollection:", { issue, gender, age });
+  const emit = createFanoutProgressEmitter(sender);
 
   try {
     const initialPrompt = GenerateQuestionnaireLLMQuery({ issue, gender, age });
-
-    const workerCount = getActiveModels().length;
-    emit(`Querying ${workerCount} worker model(s)…`);
-
-    const workerResults = await AskAllWorkerAgis(
+    const questions = await runFanoutMergePipeline({
       initialPrompt,
-      JSON_LLM_OPTIONS,
-      {
-        onWorkerSettled: ({ completed, total, model, ok }) => {
-          const suffix = ok ? "done" : "failed";
-          emit(`Worker ${completed}/${total} ${suffix} (${model})…`);
-        },
-      }
-    );
-
-    const parsedSets = [];
-    for (const r of workerResults) {
-      if (!r.ok) {
-        console.warn(`[collector] worker ${r.model} failed:`, r.error);
-        continue;
-      }
-      try {
-        const parsed = parseJsonArray(r.content);
-        parsedSets.push(parsed);
-        console.log(
-          `[collector] worker ${r.model} parsed OK (${parsed.length} questions)`
-        );
-      } catch (e) {
-        console.warn(`[collector] worker ${r.model} unparsable JSON:`, e.message);
-      }
-    }
-
-    if (parsedSets.length === 0) {
-      throw new Error("All worker models failed or returned unparsable JSON");
-    }
-    console.log(`[collector] ${parsedSets.length} clean worker set(s) → master merge`);
-    emit("Merging with master model…");
-
-    const mergePrompt = GenerateMergeQuestionnaireLLMQuery({
       issue,
       gender,
       age,
-      questionnaireSets: parsedSets,
+      logPrefix: "[collector]",
+      sender,
     });
-    const mergedRaw = await AskMasterAgi(mergePrompt, JSON_LLM_OPTIONS);
 
-    let questions;
-    try {
-      questions = parseJsonArray(mergedRaw);
-      console.log(
-        `[collector] master merge parsed OK (${questions.length} questions)`
-      );
-    } catch (mergeErr) {
-      console.warn(
-        "[collector] Master merge unusable, falling back to best worker set:",
-        mergeErr.message
-      );
-      questions = pickBestWorkerSet(parsedSets);
-      console.log(
-        `[collector] Master merge fallback: using worker set with ${questions.length} questions`
-      );
-    }
-
-    emit(`Loaded ${questions.length} question(s)`, "done");
     console.log(
       `[collector] StartReportcollection returning ${questions.length} question(s) to renderer`
     );
@@ -378,7 +406,7 @@ async function StartReportcollection({ issue, gender, age } = {}, sender) {
     };
   } catch (err) {
     console.error("[collector] StartReportcollection failed:", err);
-    emit(err?.message || String(err), "error");
+    emit({ type: "error", message: err?.message || String(err) });
     return {
       ok: false,
       error: err?.message || String(err),
@@ -410,9 +438,10 @@ async function SubmitQuestionnaire({ issue, gender, age, questions = [], answers
   return { ok: true };
 }
 
-async function GotoLaboratory({ issue, gender, age, questions = [], answers = [] } = {}) {
+async function GotoLaboratory({ issue, gender, age, questions = [], answers = [] } = {}, sender) {
   const qList = Array.isArray(questions) ? questions : [];
   const aList = Array.isArray(answers) ? answers : [];
+  const emit = createFanoutProgressEmitter(sender);
 
   console.log("[collector] GotoLaboratory:", {
     issue,
@@ -431,54 +460,14 @@ async function GotoLaboratory({ issue, gender, age, questions = [], answers = []
       answers: aList,
     });
 
-    const workerResults = await AskAllWorkerAgis(initialPrompt, JSON_LLM_OPTIONS);
-
-    const parsedSets = [];
-    for (const r of workerResults) {
-      if (!r.ok) {
-        console.warn(`[collector/lab] worker ${r.model} failed:`, r.error);
-        continue;
-      }
-      try {
-        const parsed = parseJsonArray(r.content);
-        parsedSets.push(parsed);
-        console.log(
-          `[collector/lab] worker ${r.model} parsed OK (${parsed.length} questions)`
-        );
-      } catch (e) {
-        console.warn(`[collector/lab] worker ${r.model} unparsable JSON:`, e.message);
-      }
-    }
-
-    if (parsedSets.length === 0) {
-      throw new Error("All worker models failed or returned unparsable JSON");
-    }
-    console.log(`[collector/lab] ${parsedSets.length} clean worker set(s) → master merge`);
-
-    const mergePrompt = GenerateMergeQuestionnaireLLMQuery({
+    const labQuestions = await runFanoutMergePipeline({
+      initialPrompt,
       issue,
       gender,
       age,
-      questionnaireSets: parsedSets,
+      logPrefix: "[collector/lab]",
+      sender,
     });
-    const mergedRaw = await AskMasterAgi(mergePrompt, JSON_LLM_OPTIONS);
-
-    let labQuestions;
-    try {
-      labQuestions = parseJsonArray(mergedRaw);
-      console.log(
-        `[collector/lab] master merge parsed OK (${labQuestions.length} questions)`
-      );
-    } catch (mergeErr) {
-      console.warn(
-        "[collector/lab] Master merge unusable, falling back to best worker set:",
-        mergeErr.message
-      );
-      labQuestions = pickBestWorkerSet(parsedSets);
-      console.log(
-        `[collector/lab] Master merge fallback: using worker set with ${labQuestions.length} questions`
-      );
-    }
 
     return {
       ok: true,
@@ -489,6 +478,7 @@ async function GotoLaboratory({ issue, gender, age, questions = [], answers = []
     };
   } catch (err) {
     console.error("[collector] GotoLaboratory failed:", err);
+    emit({ type: "error", message: err?.message || String(err) });
     return {
       ok: false,
       error: err?.message || String(err),
@@ -521,12 +511,14 @@ async function SubmitLaboratory({ issue, gender, age, questions = [], answers = 
 }
 
 async function GotoPreDoctorRoom(
-  { issue, gender, age, questionnaire = {}, laboratory = {} } = {}
+  { issue, gender, age, questionnaire = {}, laboratory = {} } = {},
+  sender
 ) {
   const intakeQs = Array.isArray(questionnaire?.questions) ? questionnaire.questions : [];
   const intakeAs = Array.isArray(questionnaire?.answers) ? questionnaire.answers : [];
   const labQs = Array.isArray(laboratory?.questions) ? laboratory.questions : [];
   const labAs = Array.isArray(laboratory?.answers) ? laboratory.answers : [];
+  const emit = createFanoutProgressEmitter(sender);
 
   console.log("[collector/predoc] GotoPreDoctorRoom:", {
     issue,
@@ -547,59 +539,14 @@ async function GotoPreDoctorRoom(
       laboratory: { questions: labQs, answers: labAs },
     });
 
-    const workerResults = await AskAllWorkerAgis(initialPrompt, JSON_LLM_OPTIONS);
-
-    const parsedSets = [];
-    for (const r of workerResults) {
-      if (!r.ok) {
-        console.warn(`[collector/predoc] worker ${r.model} failed:`, r.error);
-        continue;
-      }
-      try {
-        const parsed = parseJsonArray(r.content);
-        parsedSets.push(parsed);
-        console.log(
-          `[collector/predoc] worker ${r.model} parsed OK (${parsed.length} questions)`
-        );
-      } catch (e) {
-        console.warn(
-          `[collector/predoc] worker ${r.model} unparsable JSON:`,
-          e.message
-        );
-      }
-    }
-
-    if (parsedSets.length === 0) {
-      throw new Error("All worker models failed or returned unparsable JSON");
-    }
-    console.log(
-      `[collector/predoc] ${parsedSets.length} clean worker set(s) → master merge`
-    );
-
-    const mergePrompt = GenerateMergeQuestionnaireLLMQuery({
+    const preDocQuestions = await runFanoutMergePipeline({
+      initialPrompt,
       issue,
       gender,
       age,
-      questionnaireSets: parsedSets,
+      logPrefix: "[collector/predoc]",
+      sender,
     });
-    const mergedRaw = await AskMasterAgi(mergePrompt, JSON_LLM_OPTIONS);
-
-    let preDocQuestions;
-    try {
-      preDocQuestions = parseJsonArray(mergedRaw);
-      console.log(
-        `[collector/predoc] master merge parsed OK (${preDocQuestions.length} questions)`
-      );
-    } catch (mergeErr) {
-      console.warn(
-        "[collector/predoc] Master merge unusable, falling back to best worker set:",
-        mergeErr.message
-      );
-      preDocQuestions = pickBestWorkerSet(parsedSets);
-      console.log(
-        `[collector/predoc] Master merge fallback: using worker set with ${preDocQuestions.length} questions`
-      );
-    }
 
     return {
       ok: true,
@@ -610,6 +557,7 @@ async function GotoPreDoctorRoom(
     };
   } catch (err) {
     console.error("[collector/predoc] GotoPreDoctorRoom failed:", err);
+    emit({ type: "error", message: err?.message || String(err) });
     return {
       ok: false,
       error: err?.message || String(err),

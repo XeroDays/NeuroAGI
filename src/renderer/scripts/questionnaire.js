@@ -1,4 +1,5 @@
 import { APP_TITLE, SCREEN_QUESTIONNAIRE } from './constants.js';
+import { createWorkerProgressPanel } from './worker-progress-panel.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
   document.title = `${SCREEN_QUESTIONNAIRE} — ${APP_TITLE}`;
@@ -60,14 +61,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   let loadedQuestions = [];
+  const progressPanel = createWorkerProgressPanel();
 
   let unsubscribeProgress = () => {};
-  if (window.electronAPI?.onReportCollectionProgress) {
-    unsubscribeProgress = window.electronAPI.onReportCollectionProgress((payload) => {
-      if (payload?.message) {
-        const label = statusEl?.querySelector('.q-status-label');
-        if (label) label.textContent = payload.message;
-      }
+  if (window.electronAPI?.onAgiFanoutProgress) {
+    unsubscribeProgress = window.electronAPI.onAgiFanoutProgress((payload) => {
+      progressPanel.handleEvent(payload);
     });
   }
 
@@ -92,15 +91,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     const questions = Array.isArray(result.questions) ? result.questions : [];
     if (questions.length === 0) {
+      progressPanel.hide();
       showError('No questions were returned. Please try again.');
       return;
     }
     loadedQuestions = questions;
+    progressPanel.hide();
     hideLoading();
     renderQuestions(questions);
     showForm();
   } catch (err) {
     console.error('Failed to load questionnaire:', err);
+    progressPanel.hide();
     hideLoading();
     showError(humanizeError(err));
   } finally {

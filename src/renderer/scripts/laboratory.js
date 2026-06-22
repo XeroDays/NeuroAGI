@@ -1,4 +1,5 @@
 import { APP_TITLE, SCREEN_LABORATORY } from './constants.js';
+import { createWorkerProgressPanel } from './worker-progress-panel.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
   document.title = `${SCREEN_LABORATORY} — ${APP_TITLE}`;
@@ -73,6 +74,23 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   let loadedQuestions = [];
+  const progressPanel = createWorkerProgressPanel();
+
+  let unsubscribeProgress = () => {};
+  if (window.electronAPI?.onAgiFanoutProgress) {
+    unsubscribeProgress = window.electronAPI.onAgiFanoutProgress((payload) => {
+      progressPanel.handleEvent(payload);
+    });
+  }
+
+  function hideLoading() {
+    if (statusEl) statusEl.hidden = true;
+  }
+
+  function showForm() {
+    if (formEl) formEl.hidden = false;
+    if (actionsEl) actionsEl.hidden = false;
+  }
 
   try {
     const result = await window.electronAPI.gotoLaboratory({
@@ -87,17 +105,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     const questions = Array.isArray(result.questions) ? result.questions : [];
     if (questions.length === 0) {
+      progressPanel.hide();
       showError('No laboratory tests were returned. Please try again.');
       return;
     }
     loadedQuestions = questions;
+    progressPanel.hide();
+    hideLoading();
     renderQuestions(questions);
-    statusEl.hidden = true;
-    formEl.hidden = false;
-    actionsEl.hidden = false;
+    showForm();
   } catch (err) {
     console.error('Failed to load laboratory:', err);
+    progressPanel.hide();
+    hideLoading();
     showError(humanizeError(err));
+  } finally {
+    unsubscribeProgress();
   }
 
   submitBtn?.addEventListener('click', async () => {
