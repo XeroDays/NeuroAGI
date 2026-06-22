@@ -271,7 +271,22 @@ async function chatCompletion(messages, model, options = {}) {
     ? messages.map((m) => (typeof m?.content === 'string' ? m.content : '')).join('\n\n')
     : '';
 
-  const { maxTokens, reasoning } = options || {};
+  const { maxTokens, reasoning, timeoutMs } = options || {};
+
+  let abortSignal;
+  if (typeof timeoutMs === 'number' && timeoutMs > 0) {
+    if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
+      abortSignal = AbortSignal.timeout(timeoutMs);
+    } else {
+      const controller = new AbortController();
+      setTimeout(() => {
+        const err = new Error('Request timed out');
+        err.name = 'TimeoutError';
+        controller.abort(err);
+      }, timeoutMs);
+      abortSignal = controller.signal;
+    }
+  }
 
   console.log('[api-helper] chatCompletion → request', {
     url: OPENROUTER_URL,
@@ -281,6 +296,7 @@ async function chatCompletion(messages, model, options = {}) {
     promptChars,
     maxTokens: maxTokens ?? null,
     reasoning: reasoning ?? null,
+    timeoutMs: timeoutMs ?? null,
   });
 
   let res;
@@ -299,7 +315,8 @@ async function chatCompletion(messages, model, options = {}) {
         stream: false,
         ...(typeof maxTokens === 'number' ? { max_tokens: maxTokens } : {}),
         ...(reasoning ? { reasoning } : {}),
-      })
+      }),
+      ...(abortSignal ? { signal: abortSignal } : {}),
     });
   } catch (err) {
     const durationMs = Date.now() - startedAt;

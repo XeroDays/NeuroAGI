@@ -1,6 +1,9 @@
 const { chatCompletion, streamChat } = require("./api-helper");
 const modelConfigService = require("./model-config-service");
 
+/** Per-worker timeout for parallel fanout (ms). Slow models are dropped, not blocking. */
+const WORKER_TIMEOUT_MS = 120_000;
+
 /** Returns the currently active model IDs from the user's saved selection. */
 function getActiveModels() {
   return modelConfigService.getActiveModelIds();
@@ -17,22 +20,39 @@ function previewPrompt(prompt, maxChars = 200) {
   return `${oneLine.slice(0, maxChars)}… (${text.length} chars total)`;
 }
 
-async function AskAllWorkerAgis(prompt, options = {}) {
+async function AskAllWorkerAgis(prompt, options = {}, callbacks = {}) {
+  const { onWorkerSettled = null } = callbacks;
   const models = getActiveModels();
   const messages = [{ role: "user", content: prompt }];
   const startedAt = Date.now();
-  console.log(`[agi] fanout → ${models.length} worker model(s)`);
+  const total = models.length;
+  console.log(`[agi] fanout → ${total} worker model(s): [${models.join(", ")}]`);
   console.log(`[agi] fanout prompt → ${previewPrompt(prompt)}`);
+
+  let completed = 0;
+  const workerOptions = {
+    ...options,
+    timeoutMs: WORKER_TIMEOUT_MS,
+  };
 
   const settled = await Promise.allSettled(
     models.map((model) =>
-      chatCompletion(messages, model, options)
-        .then((content) => ({ model, ok: true, content }))
-        .catch((err) => ({
-          model,
-          ok: false,
-          error: err?.message || String(err),
-        }))
+      chatCompletion(messages, model, workerOptions)
+        .then((content) => {
+          completed += 1;
+          if (typeof onWorkerSettled === "function") {
+            onWorkerSettled({ model, completed, total, ok: true });
+          }
+          return { model, ok: true, content };
+        })
+        .catch((err) => {
+          completed += 1;
+          const error = err?.message || String(err);
+          if (typeof onWorkerSettled === "function") {
+            onWorkerSettled({ model, completed, total, ok: false, error });
+          }
+          return { model, ok: false, error };
+        })
     )
   );
 

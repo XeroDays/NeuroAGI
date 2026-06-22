@@ -143,6 +143,7 @@ function updateState({ activeModels: activeNames, masterModel: newMaster } = {})
   if (!activeModels) init();
 
   const catalogNames = new Set(catalog.map((m) => m.name));
+  const previousMaster = masterModel;
 
   if (Array.isArray(activeNames)) {
     const validated = activeNames.filter((n) => catalogNames.has(n));
@@ -151,13 +152,23 @@ function updateState({ activeModels: activeNames, masterModel: newMaster } = {})
 
   if (newMaster !== undefined) {
     if (typeof newMaster === "string" && (newMaster === "" || catalogNames.has(newMaster))) {
+      if (
+        previousMaster &&
+        previousMaster !== newMaster &&
+        activeModels.has(previousMaster)
+      ) {
+        activeModels.delete(previousMaster);
+      }
       masterModel = newMaster;
+      if (newMaster && catalogNames.has(newMaster)) {
+        activeModels.add(newMaster);
+      }
     }
   }
 
   saveState();
   console.log(
-    `[model-config] State updated: ${activeModels.size} active model(s), master=${masterModel || "(none)"}`
+    `[model-config] State updated: master=${masterModel || "(none)"}, activeModels=[${Array.from(activeModels).join(", ")}]`
   );
 }
 

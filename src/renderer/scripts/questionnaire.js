@@ -61,8 +61,32 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   let loadedQuestions = [];
 
+  let unsubscribeProgress = () => {};
+  if (window.electronAPI?.onReportCollectionProgress) {
+    unsubscribeProgress = window.electronAPI.onReportCollectionProgress((payload) => {
+      if (payload?.message) {
+        const label = statusEl?.querySelector('.q-status-label');
+        if (label) label.textContent = payload.message;
+      }
+    });
+  }
+
+  function hideLoading() {
+    if (statusEl) statusEl.hidden = true;
+  }
+
+  function showForm() {
+    if (formEl) formEl.hidden = false;
+    if (actionsEl) actionsEl.hidden = false;
+  }
+
   try {
     const result = await window.electronAPI.startReportCollection({ issue, gender, age });
+    console.log('[questionnaire] startReportCollection resolved:', {
+      ok: result?.ok,
+      count: Array.isArray(result?.questions) ? result.questions.length : 0,
+    });
+
     if (!result || !result.ok) {
       throw new Error(result?.error || 'Failed to load questions.');
     }
@@ -72,13 +96,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
     loadedQuestions = questions;
+    hideLoading();
     renderQuestions(questions);
-    statusEl.hidden = true;
-    formEl.hidden = false;
-    actionsEl.hidden = false;
+    showForm();
   } catch (err) {
     console.error('Failed to load questionnaire:', err);
+    hideLoading();
     showError(humanizeError(err));
+  } finally {
+    unsubscribeProgress();
   }
 
   submitBtn?.addEventListener('click', async () => {
@@ -115,7 +141,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   function showError(msg) {
-    if (!statusEl) return;
+    if (!statusEl) {
+      console.error('[questionnaire] Error (no status element):', msg);
+      return;
+    }
     statusEl.classList.add('q-status--error');
     statusEl.innerHTML = '';
 
@@ -135,8 +164,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     card.append(p, retry);
     statusEl.append(card);
     statusEl.hidden = false;
-    formEl.hidden = true;
-    actionsEl.hidden = true;
+    if (formEl) formEl.hidden = true;
+    if (actionsEl) actionsEl.hidden = true;
   }
 });
 

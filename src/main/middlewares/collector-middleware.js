@@ -12,6 +12,7 @@ const {
   AskMasterAgi,
   StreamFromAllWorkerAgis,
   StreamFromAllDoctorAgis,
+  getActiveModels,
 } = require("../services/agi-service");
 const webSearch = require("../services/web-search-service");
 const channels = require("../../shared/ipc/channels");
@@ -282,12 +283,38 @@ function buildFallbackEnhancedQuery(issue, medicines = []) {
   return `${issue}\n\nMedication by user:\n${lines.join("\n")}`;
 }
 
-async function StartReportcollection({ issue, gender, age } = {}) {
+async function StartReportcollection({ issue, gender, age } = {}, sender) {
   console.log("[collector] StartReportcollection:", { issue, gender, age });
+
+  const emit = (message, status = "active") => {
+    if (!sender) return;
+    try {
+      if (sender.isDestroyed && sender.isDestroyed()) return;
+      sender.send(channels.REPORT_COLLECTION_PROGRESS, { message, status });
+    } catch (err) {
+      console.warn(
+        "[collector] report-collection progress emit failed:",
+        err?.message || String(err)
+      );
+    }
+  };
+
   try {
     const initialPrompt = GenerateQuestionnaireLLMQuery({ issue, gender, age });
 
-    const workerResults = await AskAllWorkerAgis(initialPrompt, JSON_LLM_OPTIONS);
+    const workerCount = getActiveModels().length;
+    emit(`Querying ${workerCount} worker model(s)…`);
+
+    const workerResults = await AskAllWorkerAgis(
+      initialPrompt,
+      JSON_LLM_OPTIONS,
+      {
+        onWorkerSettled: ({ completed, total, model, ok }) => {
+          const suffix = ok ? "done" : "failed";
+          emit(`Worker ${completed}/${total} ${suffix} (${model})…`);
+        },
+      }
+    );
 
     const parsedSets = [];
     for (const r of workerResults) {
@@ -310,6 +337,7 @@ async function StartReportcollection({ issue, gender, age } = {}) {
       throw new Error("All worker models failed or returned unparsable JSON");
     }
     console.log(`[collector] ${parsedSets.length} clean worker set(s) → master merge`);
+    emit("Merging with master model…");
 
     const mergePrompt = GenerateMergeQuestionnaireLLMQuery({
       issue,
@@ -336,6 +364,11 @@ async function StartReportcollection({ issue, gender, age } = {}) {
       );
     }
 
+    emit(`Loaded ${questions.length} question(s)`, "done");
+    console.log(
+      `[collector] StartReportcollection returning ${questions.length} question(s) to renderer`
+    );
+
     return {
       ok: true,
       issue: String(issue || ""),
@@ -345,6 +378,7 @@ async function StartReportcollection({ issue, gender, age } = {}) {
     };
   } catch (err) {
     console.error("[collector] StartReportcollection failed:", err);
+    emit(err?.message || String(err), "error");
     return {
       ok: false,
       error: err?.message || String(err),

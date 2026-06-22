@@ -138,13 +138,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function setMasterModel(modelName) {
     const entry = modelsState.find((m) => m.name === modelName);
-    const wasMaster = entry?.isMaster === true;
+    if (!entry) return;
+
+    const wasMaster = entry.isMaster === true;
+    const previousMaster = modelsState.find((m) => m.isMaster && m.name !== modelName);
+
     modelsState.forEach((m) => {
       m.isMaster = false;
     });
-    if (entry && !wasMaster) {
+
+    if (!wasMaster) {
       entry.isMaster = true;
+      // Master selection should drive which model is used next — enable the new
+      // master for worker fanout and stop calling the replaced master.
+      entry.enabled = true;
+      if (previousMaster) {
+        previousMaster.enabled = false;
+      }
     }
+
     renderModelsList();
   }
 
@@ -324,6 +336,7 @@ document.addEventListener('DOMContentLoaded', () => {
       modelsUpdateBtn.disabled = true;
       modelsUpdateBtn.textContent = 'Saving…';
       try {
+        console.log('[app] Saving models config:', { activeModels, masterModel });
         await window.electronAPI?.updateModelsConfig?.({ activeModels, masterModel });
         closeModelsPopup();
       } catch (err) {

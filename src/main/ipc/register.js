@@ -21,8 +21,8 @@ function registerIpcHandlers() {
     return EnhanceQuery(payload || {}, event.sender);
   });
 
-  ipcMain.handle(channels.START_REPORT_COLLECTION, async (_event, payload) => {
-    return StartReportcollection(payload || {});
+  ipcMain.handle(channels.START_REPORT_COLLECTION, async (event, payload) => {
+    return StartReportcollection(payload || {}, event.sender);
   });
 
   ipcMain.handle(channels.SUBMIT_QUESTIONNAIRE, async (_event, payload) => {
