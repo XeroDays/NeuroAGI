@@ -3,6 +3,44 @@ const logService = require('./log-service');
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
+function combineAbortSignals(...signals) {
+  const valid = signals.filter((s) => s && typeof s.aborted === 'boolean');
+  if (valid.length === 0) return undefined;
+  if (valid.length === 1) return valid[0];
+
+  for (const sig of valid) {
+    if (sig.aborted) return sig;
+  }
+
+  if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.any === 'function') {
+    return AbortSignal.any(valid);
+  }
+
+  const controller = new AbortController();
+  const onAbort = (evt) => {
+    if (!controller.signal.aborted) {
+      controller.abort(evt?.target?.reason);
+    }
+  };
+  for (const sig of valid) {
+    sig.addEventListener('abort', onAbort, { once: true });
+  }
+  return controller.signal;
+}
+
+function createTimeoutSignal(timeoutMs) {
+  if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
+    return AbortSignal.timeout(timeoutMs);
+  }
+  const controller = new AbortController();
+  setTimeout(() => {
+    const err = new Error('Request timed out');
+    err.name = 'TimeoutError';
+    controller.abort(err);
+  }, timeoutMs);
+  return controller.signal;
+}
+
 async function streamChat(
   messages,
   model,
@@ -271,22 +309,14 @@ async function chatCompletion(messages, model, options = {}) {
     ? messages.map((m) => (typeof m?.content === 'string' ? m.content : '')).join('\n\n')
     : '';
 
-  const { maxTokens, reasoning, timeoutMs } = options || {};
+  const { maxTokens, reasoning, timeoutMs, signal: externalSignal } = options || {};
 
-  let abortSignal;
+  let timeoutSignal;
   if (typeof timeoutMs === 'number' && timeoutMs > 0) {
-    if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
-      abortSignal = AbortSignal.timeout(timeoutMs);
-    } else {
-      const controller = new AbortController();
-      setTimeout(() => {
-        const err = new Error('Request timed out');
-        err.name = 'TimeoutError';
-        controller.abort(err);
-      }, timeoutMs);
-      abortSignal = controller.signal;
-    }
+    timeoutSignal = createTimeoutSignal(timeoutMs);
   }
+
+  const abortSignal = combineAbortSignals(externalSignal, timeoutSignal);
 
   console.log('[api-helper] chatCompletion → request', {
     url: OPENROUTER_URL,

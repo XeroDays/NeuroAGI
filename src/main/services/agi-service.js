@@ -20,6 +20,9 @@ function previewPrompt(prompt, maxChars = 200) {
   return `${oneLine.slice(0, maxChars)}… (${text.length} chars total)`;
 }
 
+/** Reason emitted when the user skips waiting for slow workers. */
+const SKIP_FANOUT_REASON = 'Skipped — merge with ready models';
+
 async function AskAllWorkerAgis(prompt, options = {}, callbacks = {}) {
   const { onWorkerSettled = null, shouldProceedEarly = () => false } = callbacks;
   const models = getActiveModels();
@@ -34,16 +37,39 @@ async function AskAllWorkerAgis(prompt, options = {}, callbacks = {}) {
     return [];
   }
 
-  const workerOptions = {
-    ...options,
-    timeoutMs: WORKER_TIMEOUT_MS,
-  };
+  const baseOptions = { ...options, timeoutMs: WORKER_TIMEOUT_MS };
 
   return new Promise((resolve) => {
     const results = [];
+    const pendingControllers = new Map();
+    const notifiedModels = new Set();
     let completed = 0;
     let okCount = 0;
     let resolved = false;
+
+    function notifySettled(model, payload) {
+      if (notifiedModels.has(model)) return;
+      notifiedModels.add(model);
+      pendingControllers.delete(model);
+      if (typeof onWorkerSettled === "function") {
+        onWorkerSettled(payload);
+      }
+    }
+
+    function abortPendingWorkers(reason) {
+      for (const [model, controller] of pendingControllers) {
+        controller.abort(new Error(reason));
+        completed += 1;
+        notifySettled(model, {
+          model,
+          completed,
+          total,
+          ok: false,
+          error: reason,
+        });
+      }
+      pendingControllers.clear();
+    }
 
     const tryFinish = (early) => {
       if (resolved) return;
@@ -51,6 +77,10 @@ async function AskAllWorkerAgis(prompt, options = {}, callbacks = {}) {
       const canProceedEarly =
         early && shouldProceedEarly() && okCount >= 1 && completed < total;
       if (!allDone && !canProceedEarly) return;
+
+      if (canProceedEarly) {
+        abortPendingWorkers(SKIP_FANOUT_REASON);
+      }
 
       resolved = true;
       clearInterval(pollId);
@@ -71,27 +101,31 @@ async function AskAllWorkerAgis(prompt, options = {}, callbacks = {}) {
     }, 100);
 
     for (const model of models) {
-      chatCompletion(messages, model, workerOptions)
+      const controller = new AbortController();
+      pendingControllers.set(model, controller);
+
+      chatCompletion(messages, model, {
+        ...baseOptions,
+        signal: controller.signal,
+      })
         .then((content) => {
           if (resolved) return;
+          pendingControllers.delete(model);
           completed += 1;
           okCount += 1;
           const result = { model, ok: true, content };
           results.push(result);
-          if (typeof onWorkerSettled === "function") {
-            onWorkerSettled({ model, completed, total, ok: true });
-          }
+          notifySettled(model, { model, completed, total, ok: true });
           tryFinish(true);
         })
         .catch((err) => {
-          if (resolved) return;
+          if (resolved || notifiedModels.has(model)) return;
+          pendingControllers.delete(model);
           completed += 1;
           const error = err?.message || String(err);
           const result = { model, ok: false, error };
           results.push(result);
-          if (typeof onWorkerSettled === "function") {
-            onWorkerSettled({ model, completed, total, ok: false, error });
-          }
+          notifySettled(model, { model, completed, total, ok: false, error });
           tryFinish(true);
         });
     }
