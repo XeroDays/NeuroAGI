@@ -59,64 +59,116 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 3500);
   }
 
-  if (btn) {
-    btn.addEventListener('click', async () => {
-      if (enhancing) return;
-      const issue = input?.value?.trim() || '';
-      const gender = genderSelect?.value || 'male';
-      const age = ageSelect?.value || '30';
-      const reasoningLevel = reasoningSelect?.value || 'medium';
+  const errorOverlay = document.getElementById('error-overlay');
+  const errorOkBtn = document.getElementById('btn-error-ok');
+  const errorOpenModelsBtn = document.getElementById('btn-error-open-models');
 
-      try {
-        sessionStorage.setItem('neuroagi:reasoningLevel', reasoningLevel);
-      } catch (err) {
-        console.warn('Failed to stash reasoning level:', err);
-      }
+  async function isMasterModelSelected() {
+    const config = await window.electronAPI?.getModelsConfig?.();
+    return Array.isArray(config) && config.some((m) => m.isMaster === true);
+  }
 
-      try {
-        await window.electronAPI?.resetUsageTotals?.();
-      } catch (err) {
-        console.warn('[app] Failed to reset usage totals:', err);
-      }
+  function closeErrorPopup() {
+    if (errorOverlay) errorOverlay.hidden = true;
+  }
 
-      let finalIssue = issue;
+  function showMasterRequiredError() {
+    if (!errorOverlay) return;
+    errorOverlay.hidden = false;
+    errorOkBtn?.focus();
+  }
 
-      if (issue && window.electronAPI?.enhanceQuery) {
-        enhancing = true;
-        btn.classList.add('is-loading');
-        btn.disabled = true;
-        if (input) input.disabled = true;
+  if (errorOkBtn) {
+    errorOkBtn.addEventListener('click', closeErrorPopup);
+  }
 
-        let unsubscribe = () => {};
-        ensureToastStack();
-        if (window.electronAPI?.onQueryEnhancerProgress) {
-          unsubscribe = window.electronAPI.onQueryEnhancerProgress((payload) => {
-            if (payload?.type) {
-              progressPanel.handleEvent(payload);
-            } else if (payload?.message) {
-              showToast(payload.message, payload.status);
-            }
-          });
-        }
+  if (errorOpenModelsBtn) {
+    errorOpenModelsBtn.addEventListener('click', () => {
+      closeErrorPopup();
+      openModelsPopup();
+    });
+  }
 
-        try {
-          const res = await window.electronAPI.enhanceQuery({ issue, gender, age });
-          if (typeof res?.enhancedQuery === 'string' && res.enhancedQuery.trim()) {
-            finalIssue = res.enhancedQuery;
+  if (errorOverlay) {
+    errorOverlay.addEventListener('click', (e) => {
+      if (e.target === errorOverlay) closeErrorPopup();
+    });
+  }
+
+  async function handleStartDiagnostics() {
+    if (enhancing) return;
+
+    let hasMaster = false;
+    try {
+      hasMaster = await isMasterModelSelected();
+    } catch (err) {
+      console.warn('[app] Failed to read models config:', err);
+    }
+    if (!hasMaster) {
+      showMasterRequiredError();
+      return;
+    }
+
+    const issue = input?.value?.trim() || '';
+    const gender = genderSelect?.value || 'male';
+    const age = ageSelect?.value || '30';
+    const reasoningLevel = reasoningSelect?.value || 'medium';
+
+    try {
+      sessionStorage.setItem('neuroagi:reasoningLevel', reasoningLevel);
+    } catch (err) {
+      console.warn('Failed to stash reasoning level:', err);
+    }
+
+    try {
+      await window.electronAPI?.resetUsageTotals?.();
+    } catch (err) {
+      console.warn('[app] Failed to reset usage totals:', err);
+    }
+
+    let finalIssue = issue;
+
+    if (issue && window.electronAPI?.enhanceQuery) {
+      enhancing = true;
+      btn.classList.add('is-loading');
+      btn.disabled = true;
+      if (input) input.disabled = true;
+
+      let unsubscribe = () => {};
+      ensureToastStack();
+      if (window.electronAPI?.onQueryEnhancerProgress) {
+        unsubscribe = window.electronAPI.onQueryEnhancerProgress((payload) => {
+          if (payload?.type) {
+            progressPanel.handleEvent(payload);
+          } else if (payload?.message) {
+            showToast(payload.message, payload.status);
           }
-        } catch (err) {
-          console.warn('[app] QueryEnhancer failed, continuing with original query:', err);
-        } finally {
-          progressPanel.hide();
-          unsubscribe();
-        }
+        });
       }
 
-      const query = new URLSearchParams();
-      if (finalIssue) query.set('issue', finalIssue);
-      query.set('gender', gender);
-      query.set('age', age);
-      window.location.href = `screens/questionnaire/index.html?${query}`;
+      try {
+        const res = await window.electronAPI.enhanceQuery({ issue, gender, age });
+        if (typeof res?.enhancedQuery === 'string' && res.enhancedQuery.trim()) {
+          finalIssue = res.enhancedQuery;
+        }
+      } catch (err) {
+        console.warn('[app] QueryEnhancer failed, continuing with original query:', err);
+      } finally {
+        progressPanel.hide();
+        unsubscribe();
+      }
+    }
+
+    const query = new URLSearchParams();
+    if (finalIssue) query.set('issue', finalIssue);
+    query.set('gender', gender);
+    query.set('age', age);
+    window.location.href = `screens/questionnaire/index.html?${query}`;
+  }
+
+  if (btn) {
+    btn.addEventListener('click', () => {
+      handleStartDiagnostics();
     });
   }
 
@@ -158,7 +210,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!entry) return;
 
     const wasMaster = entry.isMaster === true;
-    const previousMaster = modelsState.find((m) => m.isMaster && m.name !== modelName);
 
     modelsState.forEach((m) => {
       m.isMaster = false;
@@ -166,12 +217,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!wasMaster) {
       entry.isMaster = true;
-      // Master selection should drive which model is used next — enable the new
-      // master for worker fanout and stop calling the replaced master.
-      entry.enabled = true;
-      if (previousMaster) {
-        previousMaster.enabled = false;
-      }
     }
 
     renderModelsList();
@@ -337,7 +382,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     // Close on Escape key
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && !modelsOverlay.hidden) closeModelsPopup();
+      if (e.key !== 'Escape') return;
+      if (!modelsOverlay.hidden) closeModelsPopup();
+      if (errorOverlay && !errorOverlay.hidden) closeErrorPopup();
     });
   }
 

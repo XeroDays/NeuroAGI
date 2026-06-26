@@ -21,7 +21,7 @@
   <button type="button" id="btn-models" class="glass-models-btn" aria-label="Models">Models</button>
 
   <!-- Models popup -->
-  <div id="models-overlay" class="models-overlay" hidden aria-modal="true" role="dialog" aria-labelledby="models-modal-title">
+  <div id="models-overlay" class="glass-overlay models-overlay" hidden aria-modal="true" role="dialog" aria-labelledby="models-modal-title">
     <div class="models-modal">
       <div class="models-modal-header">
         <h2 class="models-modal-title" id="models-modal-title">Models</h2>
@@ -36,6 +36,20 @@
       <div class="models-modal-footer">
         <button type="button" id="btn-models-close" class="models-btn-close">Close</button>
         <button type="button" id="btn-models-update" class="models-btn-update">Update</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Master model required error -->
+  <div id="error-overlay" class="glass-overlay error-overlay" hidden aria-modal="true" role="dialog" aria-labelledby="error-modal-title">
+    <div class="error-modal">
+      <div class="error-modal-header">
+        <h2 class="error-modal-title" id="error-modal-title">Master model required</h2>
+        <p class="error-modal-message">No master model selected. Star a model in the Models popup.</p>
+      </div>
+      <div class="error-modal-footer">
+        <button type="button" id="btn-error-ok" class="models-btn-close">OK</button>
+        <button type="button" id="btn-error-open-models" class="models-btn-update">Open Models</button>
       </div>
     </div>
   </div>
