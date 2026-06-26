@@ -21,7 +21,7 @@ function previewPrompt(prompt, maxChars = 200) {
 }
 
 async function AskAllWorkerAgis(prompt, options = {}, callbacks = {}) {
-  const { onWorkerSettled = null } = callbacks;
+  const { onWorkerSettled = null, shouldProceedEarly = () => false } = callbacks;
   const models = getActiveModels();
   const messages = [{ role: "user", content: prompt }];
   const startedAt = Date.now();
@@ -29,39 +29,73 @@ async function AskAllWorkerAgis(prompt, options = {}, callbacks = {}) {
   console.log(`[agi] fanout → ${total} worker model(s): [${models.join(", ")}]`);
   console.log(`[agi] fanout prompt → ${previewPrompt(prompt)}`);
 
-  let completed = 0;
+  if (total === 0) {
+    console.warn("[agi] fanout: model list is empty");
+    return [];
+  }
+
   const workerOptions = {
     ...options,
     timeoutMs: WORKER_TIMEOUT_MS,
   };
 
-  const settled = await Promise.allSettled(
-    models.map((model) =>
+  return new Promise((resolve) => {
+    const results = [];
+    let completed = 0;
+    let okCount = 0;
+    let resolved = false;
+
+    const tryFinish = (early) => {
+      if (resolved) return;
+      const allDone = completed === total;
+      const canProceedEarly =
+        early && shouldProceedEarly() && okCount >= 1 && completed < total;
+      if (!allDone && !canProceedEarly) return;
+
+      resolved = true;
+      clearInterval(pollId);
+      if (canProceedEarly) {
+        console.log(
+          `[agi] fanout early exit: ${okCount}/${completed} ok of ${total} started in ${Date.now() - startedAt}ms`
+        );
+      } else {
+        console.log(
+          `[agi] fanout complete: ${okCount}/${results.length} succeeded in ${Date.now() - startedAt}ms`
+        );
+      }
+      resolve(results);
+    };
+
+    const pollId = setInterval(() => {
+      tryFinish(true);
+    }, 100);
+
+    for (const model of models) {
       chatCompletion(messages, model, workerOptions)
         .then((content) => {
+          if (resolved) return;
           completed += 1;
+          okCount += 1;
+          const result = { model, ok: true, content };
+          results.push(result);
           if (typeof onWorkerSettled === "function") {
             onWorkerSettled({ model, completed, total, ok: true });
           }
-          return { model, ok: true, content };
+          tryFinish(true);
         })
         .catch((err) => {
+          if (resolved) return;
           completed += 1;
           const error = err?.message || String(err);
+          const result = { model, ok: false, error };
+          results.push(result);
           if (typeof onWorkerSettled === "function") {
             onWorkerSettled({ model, completed, total, ok: false, error });
           }
-          return { model, ok: false, error };
-        })
-    )
-  );
-
-  const results = settled.map((r) => r.value);
-  const okCount = results.filter((r) => r.ok).length;
-  console.log(
-    `[agi] fanout complete: ${okCount}/${results.length} succeeded in ${Date.now() - startedAt}ms`
-  );
-  return results;
+          tryFinish(true);
+        });
+    }
+  });
 }
 
 async function AskMasterAgi(prompt, options = {}) {

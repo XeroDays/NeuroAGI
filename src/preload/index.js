@@ -5,6 +5,7 @@ const CH = {
   ENHANCE_QUERY: "neuroagi:enhance-query",
   QUERY_ENHANCER_PROGRESS: "neuroagi:query-enhancer-progress",
   AGI_FANOUT_PROGRESS: "neuroagi:agi-fanout-progress",
+  SKIP_FANOUT_WAIT: "neuroagi:skip-fanout-wait",
   START_REPORT_COLLECTION: "neuroagi:start-report-collection",
   SUBMIT_QUESTIONNAIRE: "neuroagi:submit-questionnaire",
   GOTO_LABORATORY: "neuroagi:goto-laboratory",
@@ -43,6 +44,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   startReportCollection: (payload) =>
     ipcRenderer.invoke(CH.START_REPORT_COLLECTION, payload),
   onAgiFanoutProgress: (cb) => subscribe(CH.AGI_FANOUT_PROGRESS, cb),
+
+  skipFanoutWait: () => ipcRenderer.invoke(CH.SKIP_FANOUT_WAIT),
 
   submitQuestionnaire: (payload) =>
     ipcRenderer.invoke(CH.SUBMIT_QUESTIONNAIRE, payload),

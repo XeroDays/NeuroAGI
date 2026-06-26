@@ -1,5 +1,6 @@
 import { APP_TITLE, SCREEN_QUESTIONNAIRE } from './constants.js';
 import { createWorkerProgressPanel } from './worker-progress-panel.js';
+import { wireFanoutEarlyContinue } from './fanout-early-continue.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
   document.title = `${SCREEN_QUESTIONNAIRE} — ${APP_TITLE}`;
@@ -62,15 +63,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   let loadedQuestions = [];
   const progressPanel = createWorkerProgressPanel();
+  const earlyContinue = wireFanoutEarlyContinue({
+    statusEl,
+    onSkip: () => window.electronAPI?.skipFanoutWait?.(),
+  });
 
   let unsubscribeProgress = () => {};
   if (window.electronAPI?.onAgiFanoutProgress) {
     unsubscribeProgress = window.electronAPI.onAgiFanoutProgress((payload) => {
+      earlyContinue.handleProgress(payload);
       progressPanel.handleEvent(payload);
     });
   }
 
   function hideLoading() {
+    earlyContinue.hide();
     if (statusEl) statusEl.hidden = true;
   }
 

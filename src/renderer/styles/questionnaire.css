@@ -221,6 +221,38 @@ body.q-shell::before {
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.15);
 }
 
+.q-status-continue {
+  margin: 0.15rem 0 0;
+  padding: 0.35rem 0.5rem;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.92);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 0;
+  cursor: pointer;
+  pointer-events: auto;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.15);
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.q-status-continue:hover {
+  color: #fff;
+  border-bottom-color: rgba(255, 255, 255, 0.85);
+}
+
+.q-status-continue:focus-visible {
+  outline: 2px solid rgba(34, 211, 238, 0.8);
+  outline-offset: 3px;
+}
+
+.q-status-continue:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .q-error-card {
   display: flex;
   flex-direction: column;

@@ -9,6 +9,7 @@ const {
   GotoPreDoctorRoom,
   SubmitPreDoctorRoom,
   StartDoctor,
+  RequestSkipFanout,
 } = require("../middlewares/collector-middleware");
 const { GetModelsConfig, UpdateModelsConfig } = require("../middlewares/cookie-middleware");
 const usageTracker = require("../services/usage-tracker");
@@ -23,6 +24,10 @@ function registerIpcHandlers() {
 
   ipcMain.handle(channels.START_REPORT_COLLECTION, async (event, payload) => {
     return StartReportcollection(payload || {}, event.sender);
+  });
+
+  ipcMain.handle(channels.SKIP_FANOUT_WAIT, (event) => {
+    return RequestSkipFanout(event.sender);
   });
 
   ipcMain.handle(channels.SUBMIT_QUESTIONNAIRE, async (_event, payload) => {
