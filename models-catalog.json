@@ -16,36 +16,12 @@
     "labels": "Translation #35"
   },
   {
-    "name": "openai/gpt-oss-120b:free",
-    "type": "Free",
-    "latency": "5.17s",
-    "throughput": "22tps",
-    "price": "",
-    "labels": null
-  },
-  {
     "name": "openai/gpt-oss-20b:free",
     "type": "Free",
     "latency": "6.15s",
     "throughput": "27tps",
     "price": "",
     "labels": null
-  },
-  {
-    "name": "openrouter/owl-alpha",
-    "type": "Free",
-    "latency": "6.52s",
-    "throughput": "9tps",
-    "price": "",
-    "labels": "Health #39; Science #2"
-  },
-  {
-    "name": "poolside/laguna-xs.2:free",
-    "type": "Free",
-    "latency": "11.01s",
-    "throughput": "91tps",
-    "price": "",
-    "labels": "Logic #27"
   },
   {
     "name": "nvidia/nemotron-3-super-120b-a12b:free",
@@ -56,20 +32,20 @@
     "labels": null
   },
   {
-    "name": "z-ai/glm-4.5-air:free",
-    "type": "Free",
-    "latency": "100.96s",
-    "throughput": "25tps",
-    "price": "",
-    "labels": null
-  },
-  {
     "name": "poolside/laguna-m.1:free",
     "type": "Free",
     "latency": "113.70s",
     "throughput": "9tps",
     "price": "",
     "labels": "Science #26; Logic #10"
+  },
+  {
+    "name": "tencent/hy3:free",
+    "type": "Free",
+    "latency": "2.74s",
+    "throughput": "54tps",
+    "price": "",
+    "labels": "Health #32"
   },
   {
     "name": "z-ai/glm-4-32b",
