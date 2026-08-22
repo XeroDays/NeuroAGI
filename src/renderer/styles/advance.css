@@ -151,7 +151,9 @@ body.adv-shell::before {
 }
 
 .adv-bubble--assistant {
-  align-self: flex-start;
+  align-self: stretch;
+  width: 100%;
+  max-width: none;
   color: rgba(255, 255, 255, 0.96);
   background: var(--glass-bg-strong);
   border: 1px solid var(--glass-border);
