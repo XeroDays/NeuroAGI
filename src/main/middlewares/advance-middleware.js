@@ -36,14 +36,19 @@ function emitProgress(sender, payload) {
 
 /**
  * Advance-screen chat turn. Uses the starred master model and the full
- * conversation so prior messages are remembered. May run web_search.
+ * conversation so prior messages are remembered. May run web_search or
+ * pause for ask_user.
  *
- * @param {{ messages?: unknown }} payload
+ * @param {{ messages?: unknown, resume?: object }} payload
  * @param {Electron.WebContents} [sender]
- * @returns {Promise<{ ok: true, reply: string, model: string } | { ok: false, error: string }>}
+ * @returns {Promise<object>}
  */
 async function SendAdvanceChat(payload = {}, sender) {
   const messages = sanitizeMessages(payload.messages);
+  const resume = payload.resume && typeof payload.resume === 'object'
+    ? payload.resume
+    : null;
+
   if (messages.length === 0) {
     return { ok: false, error: 'Message is required.' };
   }
@@ -54,11 +59,22 @@ async function SendAdvanceChat(payload = {}, sender) {
   emitProgress(sender, { status: 'loading' });
 
   try {
-    const { reply, model } = await askMasterChat(messages, {
+    const result = await askMasterChat(messages, {
       onProgress: (event) => emitProgress(sender, event),
-    });
+    }, resume);
+
+    if (result?.pendingAsk) {
+      emitProgress(sender, { status: 'asking' });
+      return {
+        ok: true,
+        model: result.model,
+        preface: result.preface || '',
+        pendingAsk: result.pendingAsk,
+      };
+    }
+
     emitProgress(sender, { status: 'done' });
-    return { ok: true, reply, model };
+    return { ok: true, reply: result?.reply ?? '', model: result?.model };
   } catch (err) {
     const error = err instanceof Error ? err.message : String(err);
     console.error('[advance] SendAdvanceChat failed:', error);

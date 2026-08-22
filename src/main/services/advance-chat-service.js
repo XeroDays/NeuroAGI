@@ -1,5 +1,5 @@
 const { chatCompletionWithTools } = require('./advance-llm');
-const { ADVANCE_TOOLS, executeTool } = require('./advance-tools');
+const { ADVANCE_TOOLS, executeTool, sanitizeQuestions } = require('./advance-tools');
 const modelConfigService = require('./model-config-service');
 
 const ADVANCE_LLM_OPTIONS = {
@@ -32,15 +32,98 @@ function toolQueryLabel(toolCalls) {
   return '';
 }
 
+function sanitizeAssistantMessage(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const toolCalls = Array.isArray(raw.tool_calls) ? raw.tool_calls : [];
+  const cleaned = [];
+  for (const call of toolCalls) {
+    if (!call || typeof call !== 'object') continue;
+    const fn = call.function && typeof call.function === 'object' ? call.function : {};
+    cleaned.push({
+      id: String(call.id || ''),
+      type: 'function',
+      function: {
+        name: String(fn.name || ''),
+        arguments: typeof fn.arguments === 'string'
+          ? fn.arguments
+          : JSON.stringify(fn.arguments ?? {}),
+      },
+    });
+  }
+  if (!cleaned.length) return null;
+  return {
+    role: 'assistant',
+    content: typeof raw.content === 'string' ? raw.content : null,
+    tool_calls: cleaned,
+  };
+}
+
+function sanitizeToolResults(raw) {
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue;
+    const id = String(item.tool_call_id || item.id || '');
+    if (!id) continue;
+    out.push({
+      role: 'tool',
+      tool_call_id: id,
+      name: String(item.name || ''),
+      content: typeof item.content === 'string'
+        ? item.content
+        : JSON.stringify(item.content ?? ''),
+    });
+  }
+  return out;
+}
+
+function sanitizeAnswers(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw.slice(0, 12).map((item) => {
+    if (!item || typeof item !== 'object') {
+      return { question: '', type: 'text', value: '' };
+    }
+    return {
+      question: typeof item.question === 'string' ? item.question : '',
+      type: typeof item.type === 'string' ? item.type : 'text',
+      value: item.value,
+    };
+  });
+}
+
+function applyResume(working, resume) {
+  if (!resume || typeof resume !== 'object') return false;
+  const askUserCallId = typeof resume.askUserCallId === 'string'
+    ? resume.askUserCallId
+    : '';
+  if (!askUserCallId) return false;
+
+  const assistantMessage = sanitizeAssistantMessage(resume.assistantMessage);
+  if (assistantMessage) working.push(assistantMessage);
+
+  for (const result of sanitizeToolResults(resume.priorToolResults)) {
+    working.push(result);
+  }
+
+  working.push({
+    role: 'tool',
+    tool_call_id: askUserCallId,
+    name: 'ask_user',
+    content: JSON.stringify(sanitizeAnswers(resume.answers)),
+  });
+  return true;
+}
+
 /**
- * Send a multi-turn chat to the starred master model, with an optional
- * web_search tool loop. Progress stays on the main side for this request.
+ * Send a multi-turn chat to the starred master model, with web_search and
+ * ask_user. ask_user pauses the loop until the renderer resumes with answers.
  *
  * @param {{ role: string, content: string }[]} messages
  * @param {{ onProgress?: (payload: { status: string, query?: string }) => void }} [hooks]
- * @returns {Promise<{ reply: string, model: string }>}
+ * @param {object|null} [resume]
+ * @returns {Promise<{ reply: string|null, model: string, preface?: string, pendingAsk?: object }>}
  */
-async function askMasterChat(messages, hooks = {}) {
+async function askMasterChat(messages, hooks = {}, resume = null) {
   const masterId = modelConfigService.getMasterModelRuntimeId();
   if (!masterId) {
     throw new Error('No master model selected. Star a model in the Models popup.');
@@ -48,8 +131,11 @@ async function askMasterChat(messages, hooks = {}) {
 
   const onProgress = typeof hooks.onProgress === 'function' ? hooks.onProgress : () => {};
   const working = messages.map((m) => ({ role: m.role, content: m.content }));
+  const resumed = applyResume(working, resume);
 
-  console.log(`[advance-chat] master query → ${masterId} (${working.length} messages)`);
+  console.log(
+    `[advance-chat] master query → ${masterId} (${working.length} messages${resumed ? ', resume' : ''})`
+  );
   onProgress({ status: 'loading' });
 
   for (let round = 0; round <= MAX_TOOL_ROUNDS; round += 1) {
@@ -67,30 +153,70 @@ async function askMasterChat(messages, hooks = {}) {
     if (round === MAX_TOOL_ROUNDS) {
       onProgress({ status: 'done' });
       return {
-        reply: content || 'I reached the search limit before I could finish. Please try again.',
+        reply: content || 'I reached the tool limit before I could finish. Please try again.',
         model: masterId,
       };
     }
 
-    const query = toolQueryLabel(toolCalls);
-    onProgress({ status: 'searching', query });
-
-    working.push({
+    const assistantMessage = {
       role: 'assistant',
       content: typeof message.content === 'string' ? message.content : null,
       tool_calls: toolCalls,
-    });
+    };
+    working.push(assistantMessage);
+
+    const priorToolResults = [];
+    let askUserCall = null;
+    const hasWebSearch = toolCalls.some((c) => c?.function?.name === 'web_search');
+    if (hasWebSearch) {
+      onProgress({ status: 'searching', query: toolQueryLabel(toolCalls) });
+    }
 
     for (const call of toolCalls) {
       const name = call?.function?.name || '';
+      if (name === 'ask_user') {
+        if (!askUserCall) askUserCall = call;
+        continue;
+      }
+
       const args = parseToolArgs(call?.function?.arguments);
       const toolResult = await executeTool(name, args);
-      working.push({
+      const resultMsg = {
         role: 'tool',
         tool_call_id: call?.id || '',
         name,
         content: toolResult,
-      });
+      };
+      working.push(resultMsg);
+      priorToolResults.push(resultMsg);
+    }
+
+    if (askUserCall) {
+      const args = parseToolArgs(askUserCall.function?.arguments);
+      const questions = sanitizeQuestions(args.questions);
+      if (questions.length === 0) {
+        working.push({
+          role: 'tool',
+          tool_call_id: askUserCall.id || '',
+          name: 'ask_user',
+          content: JSON.stringify({ error: 'No valid questions were provided.' }),
+        });
+        onProgress({ status: 'loading' });
+        continue;
+      }
+
+      onProgress({ status: 'asking' });
+      return {
+        reply: null,
+        preface: typeof content === 'string' ? content : '',
+        pendingAsk: {
+          id: askUserCall.id || '',
+          questions,
+          assistantMessage,
+          priorToolResults,
+        },
+        model: masterId,
+      };
     }
 
     onProgress({ status: 'loading' });

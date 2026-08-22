@@ -1,5 +1,6 @@
 import { APP_TITLE, SCREEN_ADVANCE } from './constants.js';
 import { marked } from './vendor/marked.esm.js';
+import { renderQuestionForm, collectAnswers, setFormDisabled } from './advance-questions.js';
 
 marked.setOptions({
   gfm: true,
@@ -36,6 +37,9 @@ document.addEventListener('DOMContentLoaded', () => {
   /** @type {{ role: 'user'|'assistant', content: string }[]} */
   const messages = [];
   let inFlight = false;
+  let awaitingAnswers = false;
+  /** @type {object|null} */
+  let pendingAsk = null;
 
   function appendBubble(role, content, isError = false) {
     if (!threadEl) return;
@@ -58,16 +62,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     threadEl.appendChild(bubble);
     threadEl.scrollTop = threadEl.scrollHeight;
+    return bubble;
   }
 
   function setPopupLabel(text) {
     if (popupLabelEl) popupLabelEl.textContent = text;
   }
 
+  function setComposerEnabled(enabled) {
+    if (inputEl) inputEl.disabled = !enabled;
+    if (sendBtn) sendBtn.disabled = !enabled;
+  }
+
   function setBusy(busy) {
     inFlight = busy;
-    if (inputEl) inputEl.disabled = busy;
-    if (sendBtn) sendBtn.disabled = busy;
+    setComposerEnabled(!busy && !awaitingAnswers);
     if (popupEl) popupEl.hidden = !busy;
     if (busy) setPopupLabel('Loading…');
   }
@@ -86,6 +95,10 @@ document.addEventListener('DOMContentLoaded', () => {
         setPopupLabel(query ? `Searching: ${query}` : 'Searching…');
         return;
       }
+      if (payload.status === 'asking') {
+        setPopupLabel('Asking questions…');
+        return;
+      }
       if (payload.status === 'loading') {
         setPopupLabel('Loading…');
         return;
@@ -96,23 +109,43 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  async function handleSend() {
-    if (inFlight || !inputEl) return;
-    const text = inputEl.value.trim();
-    if (!text) return;
+  function showPendingAsk(result) {
+    pendingAsk = result.pendingAsk;
+    awaitingAnswers = true;
 
+    if (typeof result.preface === 'string' && result.preface.trim()) {
+      appendBubble('assistant', result.preface);
+    }
+
+    const wrap = document.createElement('div');
+    wrap.className = 'adv-q-form-wrap';
+    const form = renderQuestionForm(wrap, result.pendingAsk.questions);
+    threadEl.appendChild(wrap);
+    threadEl.scrollTop = threadEl.scrollHeight;
+
+    const submitBtn = form.querySelector('.adv-q-submit');
+    submitBtn?.addEventListener('click', () => {
+      handleFormSubmit(form);
+    });
+
+    setBusy(false);
+  }
+
+  async function runModel(payload) {
     if (typeof window.electronAPI?.advanceSend !== 'function') {
       appendBubble('assistant', 'Advance chat is not available.', true);
       return;
     }
 
-    inputEl.value = '';
-    messages.push({ role: 'user', content: text });
-    appendBubble('user', text);
     setBusy(true);
-
     try {
-      const result = await window.electronAPI.advanceSend({ messages });
+      const result = await window.electronAPI.advanceSend(payload);
+      if (result?.ok && result.pendingAsk) {
+        showPendingAsk(result);
+        return;
+      }
+      awaitingAnswers = false;
+      pendingAsk = null;
       if (result?.ok && typeof result.reply === 'string') {
         messages.push({ role: 'assistant', content: result.reply });
         appendBubble('assistant', result.reply);
@@ -121,12 +154,42 @@ document.addEventListener('DOMContentLoaded', () => {
         appendBubble('assistant', error, true);
       }
     } catch (err) {
+      awaitingAnswers = false;
+      pendingAsk = null;
       const error = err instanceof Error ? err.message : String(err);
       appendBubble('assistant', error, true);
     } finally {
-      setBusy(false);
-      inputEl.focus();
+      if (!awaitingAnswers) {
+        setBusy(false);
+        inputEl?.focus();
+      }
     }
+  }
+
+  async function handleFormSubmit(form) {
+    if (inFlight || !pendingAsk) return;
+    const answers = collectAnswers(form);
+    const resume = {
+      assistantMessage: pendingAsk.assistantMessage,
+      priorToolResults: pendingAsk.priorToolResults,
+      askUserCallId: pendingAsk.id,
+      answers,
+    };
+    setFormDisabled(form, true);
+    awaitingAnswers = false;
+    pendingAsk = null;
+    await runModel({ messages, resume });
+  }
+
+  async function handleSend() {
+    if (inFlight || awaitingAnswers || !inputEl) return;
+    const text = inputEl.value.trim();
+    if (!text) return;
+
+    inputEl.value = '';
+    messages.push({ role: 'user', content: text });
+    appendBubble('user', text);
+    await runModel({ messages });
   }
 
   if (sendBtn) {
