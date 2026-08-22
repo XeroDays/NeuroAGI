@@ -63,8 +63,6 @@ async function SendAdvanceChat(payload = {}, sender) {
     return { ok: false, error: 'Last message must be from the user.' };
   }
 
-  emitProgress(sender, { status: 'loading' });
-
   try {
     const result = await askMasterChat(messages, {
       onProgress: (event) => emitProgress(sender, event),
@@ -72,7 +70,6 @@ async function SendAdvanceChat(payload = {}, sender) {
     }, resume);
 
     if (result?.pendingAsk) {
-      emitProgress(sender, { status: 'asking' });
       return {
         ok: true,
         model: result.model,
@@ -81,12 +78,17 @@ async function SendAdvanceChat(payload = {}, sender) {
       };
     }
 
-    emitProgress(sender, { status: 'done' });
     return { ok: true, reply: result?.reply ?? '', model: result?.model };
   } catch (err) {
     const error = err instanceof Error ? err.message : String(err);
     console.error('[advance] SendAdvanceChat failed:', error);
-    emitProgress(sender, { status: 'error', message: error });
+    emitProgress(sender, {
+      type: 'step',
+      id: '',
+      tool: 'model',
+      state: 'error',
+      label: error,
+    });
     return { ok: false, error };
   }
 }

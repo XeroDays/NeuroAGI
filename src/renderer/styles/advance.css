@@ -436,46 +436,73 @@ body.adv-shell::before {
   color: #fff;
 }
 
-.adv-task-popup {
-  position: fixed;
-  top: 4.25rem;
-  right: 1rem;
-  z-index: 12;
+.adv-status {
+  align-self: flex-start;
+  width: fit-content;
+  max-width: 100%;
   display: flex;
   align-items: center;
-  gap: 0.55rem;
-  padding: 0.45rem 0.85rem;
-  border-radius: 999px;
-  background: var(--glass-bg-strong);
-  border: 1px solid var(--glass-border);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  box-shadow: var(--glass-shadow);
-  color: var(--text-primary);
+  gap: 0.6rem;
+  padding: 0.55rem 0.85rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  color: rgba(255, 255, 255, 0.94);
 }
 
-.adv-task-spinner {
+.adv-status-icon {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.adv-status-spinner {
   width: 14px;
   height: 14px;
   border-radius: 50%;
   border: 2px solid rgba(255, 255, 255, 0.3);
   border-top-color: rgba(255, 255, 255, 0.95);
   animation: adv-spin 0.7s linear infinite;
-  flex-shrink: 0;
 }
 
 @keyframes adv-spin {
   to { transform: rotate(360deg); }
 }
 
-.adv-task-label {
-  font-size: 0.78rem;
+.adv-status-check,
+.adv-status-fail {
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.adv-status-check {
+  color: #b8f0c8;
+}
+
+.adv-status-fail {
+  color: #ffc4c4;
+}
+
+.adv-status-text {
+  min-width: 0;
+  font-size: 0.82rem;
   font-weight: 600;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  max-width: 22rem;
+  letter-spacing: 0.01em;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adv-status.is-error {
+  border-color: rgba(255, 160, 160, 0.45);
+  background: rgba(140, 40, 50, 0.22);
 }
 
 .adv-composer {

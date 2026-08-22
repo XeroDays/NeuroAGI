@@ -24,6 +24,12 @@ function resolveLlmOptions(level) {
 }
 
 const MAX_TOOL_ROUNDS = 3;
+let stepClock = 0;
+
+function nextStepId(prefix) {
+  stepClock += 1;
+  return `${prefix}-${stepClock}`;
+}
 
 function parseToolArgs(raw) {
   if (typeof raw !== 'string' || !raw.trim()) return {};
@@ -35,15 +41,45 @@ function parseToolArgs(raw) {
   }
 }
 
-function toolQueryLabel(toolCalls) {
-  for (const call of toolCalls) {
-    if (call?.function?.name !== 'web_search') continue;
-    const args = parseToolArgs(call.function.arguments);
-    if (typeof args.query === 'string' && args.query.trim()) {
-      return args.query.trim();
-    }
+function emitStep(onProgress, { id, tool, state, label, detail }) {
+  onProgress({
+    type: 'step',
+    id: String(id || ''),
+    tool,
+    state,
+    label,
+    ...(typeof detail === 'string' && detail.trim() ? { detail: detail.trim() } : {}),
+  });
+}
+
+function toolDetail(name, args) {
+  if (name === 'web_search' && typeof args.query === 'string') {
+    return args.query.trim();
+  }
+  if (name === 'extract_url') {
+    const urls = Array.isArray(args.urls) ? args.urls : [];
+    const first = urls.find((u) => typeof u === 'string' && u.trim());
+    return first ? String(first).trim() : '';
   }
   return '';
+}
+
+function toolLabel(name, state) {
+  if (name === 'web_search') return state === 'running' ? 'Searching…' : 'Searched';
+  if (name === 'extract_url') return state === 'running' ? 'Extracting…' : 'Extracted';
+  if (name === 'ask_user') return state === 'running' ? 'Asking questions…' : 'Questions asked';
+  if (name === 'model') return state === 'running' ? 'Loading…' : 'Loaded';
+  return state === 'running' ? `${name}…` : name;
+}
+
+function toolResultHasError(content) {
+  if (typeof content !== 'string' || !content.trim()) return false;
+  try {
+    const parsed = JSON.parse(content);
+    return Boolean(parsed && typeof parsed === 'object' && parsed.error);
+  } catch {
+    return false;
+  }
 }
 
 function sanitizeAssistantMessage(raw) {
@@ -134,7 +170,7 @@ function applyResume(working, resume) {
  * resumes with answers.
  *
  * @param {{ role: string, content: string }[]} messages
- * @param {{ onProgress?: (payload: { status: string, query?: string }) => void, reasoningLevel?: string }} [hooks]
+ * @param {{ onProgress?: (payload: object) => void, reasoningLevel?: string }} [hooks]
  * @param {object|null} [resume]
  * @returns {Promise<{ reply: string|null, model: string, preface?: string, pendingAsk?: object }>}
  */
@@ -155,22 +191,47 @@ async function askMasterChat(messages, hooks = {}, resume = null) {
   console.log(
     `[advance-chat] master query → ${masterId} (${working.length} messages${resumed ? ', resume' : ''}, reasoning=${hooks.reasoningLevel || DEFAULT_REASONING_LEVEL})`
   );
-  onProgress({ status: 'loading' });
 
   for (let round = 0; round <= MAX_TOOL_ROUNDS; round += 1) {
-    const { content, toolCalls, message } = await chatCompletionWithTools(
-      working,
-      masterId,
-      llmOptions
-    );
+    const modelId = nextStepId('model');
+    emitStep(onProgress, {
+      id: modelId,
+      tool: 'model',
+      state: 'running',
+      label: toolLabel('model', 'running'),
+    });
+
+    let content;
+    let toolCalls;
+    let message;
+    try {
+      ({ content, toolCalls, message } = await chatCompletionWithTools(
+        working,
+        masterId,
+        llmOptions
+      ));
+    } catch (err) {
+      emitStep(onProgress, {
+        id: modelId,
+        tool: 'model',
+        state: 'error',
+        label: 'Failed',
+      });
+      throw err;
+    }
+
+    emitStep(onProgress, {
+      id: modelId,
+      tool: 'model',
+      state: 'done',
+      label: toolLabel('model', 'done'),
+    });
 
     if (!toolCalls.length) {
-      onProgress({ status: 'done' });
       return { reply: content, model: masterId };
     }
 
     if (round === MAX_TOOL_ROUNDS) {
-      onProgress({ status: 'done' });
       return {
         reply: content || 'I reached the tool limit before I could finish. Please try again.',
         model: masterId,
@@ -186,23 +247,35 @@ async function askMasterChat(messages, hooks = {}, resume = null) {
 
     const priorToolResults = [];
     let askUserCall = null;
-    const hasWebSearch = toolCalls.some((c) => c?.function?.name === 'web_search');
-    const hasExtract = toolCalls.some((c) => c?.function?.name === 'extract_url');
-    if (hasWebSearch) {
-      onProgress({ status: 'searching', query: toolQueryLabel(toolCalls) });
-    } else if (hasExtract) {
-      onProgress({ status: 'extracting' });
-    }
 
-    for (const call of toolCalls) {
+    for (const [index, call] of toolCalls.entries()) {
       const name = call?.function?.name || '';
       if (name === 'ask_user') {
         if (!askUserCall) askUserCall = call;
         continue;
       }
 
+      const stepId = nextStepId(call?.id || `tool-${index}`);
       const args = parseToolArgs(call?.function?.arguments);
+      const detail = toolDetail(name, args);
+      emitStep(onProgress, {
+        id: stepId,
+        tool: name || 'tool',
+        state: 'running',
+        label: toolLabel(name, 'running'),
+        detail,
+      });
+
       const toolResult = await executeTool(name, args);
+      const failed = toolResultHasError(toolResult);
+      emitStep(onProgress, {
+        id: stepId,
+        tool: name || 'tool',
+        state: failed ? 'error' : 'done',
+        label: failed ? 'Failed' : toolLabel(name, 'done'),
+        detail,
+      });
+
       const resultMsg = {
         role: 'tool',
         tool_call_id: call?.id || '',
@@ -214,20 +287,38 @@ async function askMasterChat(messages, hooks = {}, resume = null) {
     }
 
     if (askUserCall) {
+      const askId = nextStepId(askUserCall.id || 'ask');
+      emitStep(onProgress, {
+        id: askId,
+        tool: 'ask_user',
+        state: 'running',
+        label: toolLabel('ask_user', 'running'),
+      });
+
       const args = parseToolArgs(askUserCall.function?.arguments);
       const questions = sanitizeQuestions(args.questions);
       if (questions.length === 0) {
+        emitStep(onProgress, {
+          id: askId,
+          tool: 'ask_user',
+          state: 'error',
+          label: 'Failed',
+        });
         working.push({
           role: 'tool',
           tool_call_id: askUserCall.id || '',
           name: 'ask_user',
           content: JSON.stringify({ error: 'No valid questions were provided.' }),
         });
-        onProgress({ status: 'loading' });
         continue;
       }
 
-      onProgress({ status: 'asking' });
+      emitStep(onProgress, {
+        id: askId,
+        tool: 'ask_user',
+        state: 'done',
+        label: toolLabel('ask_user', 'done'),
+      });
       return {
         reply: null,
         preface: typeof content === 'string' ? content : '',
@@ -240,11 +331,8 @@ async function askMasterChat(messages, hooks = {}, resume = null) {
         model: masterId,
       };
     }
-
-    onProgress({ status: 'loading' });
   }
 
-  onProgress({ status: 'done' });
   return { reply: '', model: masterId };
 }
 

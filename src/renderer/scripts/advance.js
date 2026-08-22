@@ -34,8 +34,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const reasoningSelect = document.getElementById('adv-reasoning');
   const settingsOverlay = document.getElementById('adv-settings-overlay');
   const settingsCloseBtn = document.getElementById('adv-settings-close');
-  const popupEl = document.getElementById('adv-task-popup');
-  const popupLabelEl = document.getElementById('adv-task-label');
 
   if (titleEl) titleEl.textContent = APP_TITLE;
   if (screenTitleEl) screenTitleEl.textContent = SCREEN_ADVANCE;
@@ -153,10 +151,6 @@ document.addEventListener('DOMContentLoaded', () => {
     return bubble;
   }
 
-  function setPopupLabel(text) {
-    if (popupLabelEl) popupLabelEl.textContent = text;
-  }
-
   function setComposerEnabled(enabled) {
     if (inputEl) inputEl.disabled = !enabled;
     if (sendBtn) sendBtn.disabled = !enabled;
@@ -166,43 +160,131 @@ document.addEventListener('DOMContentLoaded', () => {
   function setBusy(busy) {
     inFlight = busy;
     setComposerEnabled(!busy && !awaitingAnswers);
-    if (popupEl) popupEl.hidden = !busy;
-    if (busy) setPopupLabel('Loading…');
   }
 
-  function truncateQuery(query) {
-    const text = typeof query === 'string' ? query.trim() : '';
+  function truncateDetail(detail) {
+    const text = typeof detail === 'string' ? detail.trim() : '';
     if (!text) return '';
-    return text.length > 48 ? `${text.slice(0, 48)}…` : text;
+    return text.length > 64 ? `${text.slice(0, 64)}…` : text;
+  }
+
+  function statusCaption(label, detail) {
+    const title = typeof label === 'string' && label.trim() ? label.trim() : 'Working…';
+    const extra = truncateDetail(detail);
+    return extra ? `${title} ${extra}` : title;
+  }
+
+  /** @type {Map<string, HTMLElement>} */
+  const statusBlocks = new Map();
+
+  function renderStatusIcon(el, state) {
+    el.className = 'adv-status-icon';
+    el.replaceChildren();
+    if (state === 'running') {
+      const spinner = document.createElement('div');
+      spinner.className = 'adv-status-spinner';
+      spinner.setAttribute('aria-hidden', 'true');
+      el.appendChild(spinner);
+      return;
+    }
+    const mark = document.createElement('span');
+    mark.setAttribute('aria-hidden', 'true');
+    if (state === 'error') {
+      mark.className = 'adv-status-fail';
+      mark.textContent = '✕';
+    } else {
+      mark.className = 'adv-status-check';
+      mark.textContent = '✓';
+    }
+    el.appendChild(mark);
+  }
+
+  function upsertStatusBlock(payload) {
+    if (!threadEl || !payload || payload.type !== 'step') return;
+    const id = typeof payload.id === 'string' && payload.id
+      ? payload.id
+      : '';
+    const state = payload.state === 'error' || payload.state === 'done'
+      ? payload.state
+      : 'running';
+
+    if (!id) {
+      if (state === 'error') failRunningStatusBlocks(payload.label);
+      return;
+    }
+
+    let block = statusBlocks.get(id);
+    const prior = block?.dataset.state;
+    if (block && (prior === 'done' || prior === 'error') && state === 'running') {
+      return;
+    }
+
+    if (!block) {
+      block = document.createElement('div');
+      block.className = 'adv-status';
+      block.dataset.stepId = id;
+      const icon = document.createElement('div');
+      icon.className = 'adv-status-icon';
+      const text = document.createElement('span');
+      text.className = 'adv-status-text';
+      block.append(icon, text);
+      threadEl.appendChild(block);
+      statusBlocks.set(id, block);
+    }
+
+    block.classList.toggle('is-error', state === 'error');
+    block.dataset.state = state;
+    renderStatusIcon(block.querySelector('.adv-status-icon'), state);
+    const textEl = block.querySelector('.adv-status-text');
+    if (textEl) textEl.textContent = statusCaption(payload.label, payload.detail);
+    threadEl.scrollTop = threadEl.scrollHeight;
+  }
+
+  function failRunningStatusBlocks(message) {
+    for (const block of statusBlocks.values()) {
+      if (block.dataset.state !== 'running') continue;
+      block.dataset.state = 'error';
+      block.classList.add('is-error');
+      renderStatusIcon(block.querySelector('.adv-status-icon'), 'error');
+      const textEl = block.querySelector('.adv-status-text');
+      if (textEl) {
+        textEl.textContent = typeof message === 'string' && message.trim()
+          ? message.trim()
+          : 'Failed';
+      }
+    }
+  }
+
+  function completedLabel(current) {
+    const text = typeof current === 'string' ? current.trim() : '';
+    if (text.startsWith('Loading')) return 'AI call complete';
+    if (text.startsWith('Searching')) return text.replace(/^Searching…?/, 'Searched').trim();
+    if (text.startsWith('Extracting')) return text.replace(/^Extracting…?/, 'Extracted').trim();
+    if (text.startsWith('Asking questions')) return 'Questions asked';
+    if (text.endsWith('…')) return text.slice(0, -1).trim();
+    return text || 'Complete';
+  }
+
+  function completeRunningStatusBlocks() {
+    for (const block of statusBlocks.values()) {
+      if (block.dataset.state !== 'running') continue;
+      block.dataset.state = 'done';
+      block.classList.remove('is-error');
+      renderStatusIcon(block.querySelector('.adv-status-icon'), 'done');
+      const textEl = block.querySelector('.adv-status-text');
+      if (textEl) textEl.textContent = completedLabel(textEl.textContent);
+    }
   }
 
   if (typeof window.electronAPI?.onAdvanceProgress === 'function') {
     window.electronAPI.onAdvanceProgress((payload) => {
-      if (!inFlight || !payload) return;
-      if (payload.status === 'searching') {
-        const query = truncateQuery(payload.query);
-        setPopupLabel(query ? `Searching: ${query}` : 'Searching…');
-        return;
-      }
-      if (payload.status === 'extracting') {
-        setPopupLabel('Extracting…');
-        return;
-      }
-      if (payload.status === 'asking') {
-        setPopupLabel('Asking questions…');
-        return;
-      }
-      if (payload.status === 'loading') {
-        setPopupLabel('Loading…');
-        return;
-      }
-      if (payload.status === 'error' && payload.message) {
-        setPopupLabel(payload.message);
-      }
+      if (!payload) return;
+      upsertStatusBlock(payload);
     });
   }
 
   function showPendingAsk(result) {
+    completeRunningStatusBlocks();
     pendingAsk = result.pendingAsk;
     awaitingAnswers = true;
 
@@ -243,16 +325,19 @@ document.addEventListener('DOMContentLoaded', () => {
       awaitingAnswers = false;
       pendingAsk = null;
       if (result?.ok && typeof result.reply === 'string') {
+        completeRunningStatusBlocks();
         messages.push({ role: 'assistant', content: result.reply });
         appendBubble('assistant', result.reply);
       } else {
         const error = result?.error || 'The model did not return a reply.';
+        failRunningStatusBlocks(error);
         appendBubble('assistant', error, true);
       }
     } catch (err) {
       awaitingAnswers = false;
       pendingAsk = null;
       const error = err instanceof Error ? err.message : String(err);
+      failRunningStatusBlocks(error);
       appendBubble('assistant', error, true);
     } finally {
       if (!awaitingAnswers) {
