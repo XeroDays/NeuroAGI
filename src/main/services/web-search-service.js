@@ -143,12 +143,21 @@ async function extract(urls, options = {}) {
     throw new Error('webSearch.extract requires one or more non-empty URL strings');
   }
 
-  const { extractDepth = 'basic', includeImages = false } = options || {};
+  const {
+    extractDepth = 'basic',
+    includeImages = false,
+    query,
+    includeFavicon,
+    includeUsage,
+  } = options || {};
 
   const body = {
     urls: urlList,
     extract_depth: extractDepth,
     include_images: includeImages,
+    ...(typeof query === 'string' && query.trim() ? { query: query.trim() } : {}),
+    ...(includeFavicon === true ? { include_favicon: true } : {}),
+    ...(includeUsage === true ? { include_usage: true } : {}),
   };
 
   const startedAt = Date.now();
@@ -224,9 +233,11 @@ async function extract(urls, options = {}) {
       url: r?.url ?? '',
       rawContent: r?.raw_content ?? '',
       images: Array.isArray(r?.images) ? r.images : [],
+      ...(r?.favicon ? { favicon: r.favicon } : {}),
     })),
     failedResults: Array.isArray(json?.failed_results) ? json.failed_results : [],
     responseTime: json?.response_time ?? null,
+    ...(json?.usage ? { usage: json.usage } : {}),
   };
 
   logService.addLog({

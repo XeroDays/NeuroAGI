@@ -1,5 +1,6 @@
 const { chatCompletionWithTools } = require('./advance-llm');
 const { ADVANCE_TOOLS, executeTool, sanitizeQuestions } = require('./advance-tools');
+const { ADVANCE_SYSTEM_PROMPT } = require('./advance-system-prompt');
 const modelConfigService = require('./model-config-service');
 
 const ADVANCE_LLM_OPTIONS = {
@@ -115,8 +116,9 @@ function applyResume(working, resume) {
 }
 
 /**
- * Send a multi-turn chat to the starred master model, with web_search and
- * ask_user. ask_user pauses the loop until the renderer resumes with answers.
+ * Send a multi-turn chat to the starred master model, with web_search,
+ * extract_url, and ask_user. ask_user pauses the loop until the renderer
+ * resumes with answers.
  *
  * @param {{ role: string, content: string }[]} messages
  * @param {{ onProgress?: (payload: { status: string, query?: string }) => void }} [hooks]
@@ -130,7 +132,10 @@ async function askMasterChat(messages, hooks = {}, resume = null) {
   }
 
   const onProgress = typeof hooks.onProgress === 'function' ? hooks.onProgress : () => {};
-  const working = messages.map((m) => ({ role: m.role, content: m.content }));
+  const working = [
+    { role: 'system', content: ADVANCE_SYSTEM_PROMPT },
+    ...messages.map((m) => ({ role: m.role, content: m.content })),
+  ];
   const resumed = applyResume(working, resume);
 
   console.log(
@@ -168,8 +173,11 @@ async function askMasterChat(messages, hooks = {}, resume = null) {
     const priorToolResults = [];
     let askUserCall = null;
     const hasWebSearch = toolCalls.some((c) => c?.function?.name === 'web_search');
+    const hasExtract = toolCalls.some((c) => c?.function?.name === 'extract_url');
     if (hasWebSearch) {
       onProgress({ status: 'searching', query: toolQueryLabel(toolCalls) });
+    } else if (hasExtract) {
+      onProgress({ status: 'extracting' });
     }
 
     for (const call of toolCalls) {

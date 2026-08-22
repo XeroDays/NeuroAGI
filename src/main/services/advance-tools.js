@@ -22,6 +22,22 @@ const WEB_SEARCH_TOOL = {
   },
 };
 
+const EXTRACT_URL_TOOL = {
+  type: 'function',
+  function: {
+    name: 'extract_url',
+    description: 'Extract content from one or more specific web URLs the user provided or asked to read.',
+    parameters: {
+      type: 'object',
+      required: ['urls'],
+      properties: {
+        urls: { type: 'array', items: { type: 'string' } },
+        query: { type: 'string', description: 'Optional focus query for the extract' },
+      },
+    },
+  },
+};
+
 const ASK_USER_TOOL = {
   type: 'function',
   function: {
@@ -61,7 +77,32 @@ const ASK_USER_TOOL = {
   },
 };
 
-const ADVANCE_TOOLS = [WEB_SEARCH_TOOL, ASK_USER_TOOL];
+const ADVANCE_TOOLS = [WEB_SEARCH_TOOL, EXTRACT_URL_TOOL, ASK_USER_TOOL];
+
+const MAX_EXTRACT_URLS = 5;
+
+function sanitizeExtractUrls(raw) {
+  const list = Array.isArray(raw) ? raw : [];
+  const out = [];
+  const seen = new Set();
+  for (const item of list) {
+    if (out.length >= MAX_EXTRACT_URLS) break;
+    if (typeof item !== 'string') continue;
+    const url = item.trim();
+    if (!url) continue;
+    let parsed;
+    try {
+      parsed = new URL(url);
+    } catch {
+      continue;
+    }
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') continue;
+    if (seen.has(parsed.href)) continue;
+    seen.add(parsed.href);
+    out.push(parsed.href);
+  }
+  return out;
+}
 
 /**
  * Normalize model-emitted questions into the questionnaire control schema.
@@ -145,23 +186,61 @@ async function executeWebSearch(args = {}) {
 }
 
 /**
+ * Extract page content for specific URLs via Tavily.
+ * @param {{ urls?: unknown, query?: unknown }} args
+ * @returns {Promise<string>}
+ */
+async function executeExtractUrl(args = {}) {
+  const urls = sanitizeExtractUrls(args.urls);
+  if (!urls.length) {
+    return JSON.stringify({ error: 'extract_url requires one or more http(s) URLs.' });
+  }
+
+  const query = typeof args.query === 'string' ? args.query.trim() : '';
+
+  try {
+    const res = await webSearch.extract(urls, {
+      ...(query ? { query } : {}),
+      extractDepth: 'advanced',
+      includeImages: true,
+      includeFavicon: true,
+      includeUsage: true,
+    });
+    return JSON.stringify({
+      results: Array.isArray(res?.results) ? res.results : [],
+      failedResults: Array.isArray(res?.failedResults) ? res.failedResults : [],
+    });
+  } catch (err) {
+    const error = err instanceof Error ? err.message : String(err);
+    console.error('[advance-tools] extract_url failed:', error);
+    return JSON.stringify({ error });
+  }
+}
+
+/**
  * Dispatch a single immediate tool. ask_user is handled by the chat loop, not here.
  * @param {string} name
  * @param {unknown} args
  * @returns {Promise<string>}
  */
 async function executeTool(name, args) {
+  const payload = args && typeof args === 'object' ? args : {};
   if (name === 'web_search') {
-    return executeWebSearch(args && typeof args === 'object' ? args : {});
+    return executeWebSearch(payload);
+  }
+  if (name === 'extract_url') {
+    return executeExtractUrl(payload);
   }
   return JSON.stringify({ error: `Unknown tool: ${name}` });
 }
 
 module.exports = {
   WEB_SEARCH_TOOL,
+  EXTRACT_URL_TOOL,
   ASK_USER_TOOL,
   ADVANCE_TOOLS,
   sanitizeQuestions,
   executeWebSearch,
+  executeExtractUrl,
   executeTool,
 };

@@ -1,6 +1,6 @@
 import { APP_TITLE, SCREEN_ADVANCE } from './constants.js';
 import { marked } from './vendor/marked.esm.js';
-import { renderQuestionForm, collectAnswers, setFormDisabled } from './advance-questions.js';
+import { renderQuestionForm, collectAnswers, setFormDisabled, collapseQuestionForm } from './advance-questions.js';
 
 marked.setOptions({
   gfm: true,
@@ -95,6 +95,10 @@ document.addEventListener('DOMContentLoaded', () => {
         setPopupLabel(query ? `Searching: ${query}` : 'Searching…');
         return;
       }
+      if (payload.status === 'extracting') {
+        setPopupLabel('Extracting…');
+        return;
+      }
       if (payload.status === 'asking') {
         setPopupLabel('Asking questions…');
         return;
@@ -176,6 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
       answers,
     };
     setFormDisabled(form, true);
+    collapseQuestionForm(form.closest('.adv-q-form-wrap'), answers);
     awaitingAnswers = false;
     pendingAsk = null;
     await runModel({ messages, resume });

@@ -350,3 +350,33 @@ export function setFormDisabled(formEl, disabled) {
     el.disabled = disabled;
   });
 }
+
+/**
+ * Collapse a submitted form wrap into an expandable summary bar.
+ * Cards stay in the DOM (read-only) and toggle when the bar is clicked.
+ * @param {HTMLElement} wrap
+ * @param {{ question?: string }[]} answers
+ */
+export function collapseQuestionForm(wrap, answers) {
+  if (!wrap) return;
+  const count = Array.isArray(answers) ? answers.length : 0;
+  wrap.classList.add('is-collapsed', 'is-submitted');
+
+  let summary = wrap.querySelector('.adv-q-summary');
+  if (!summary) {
+    summary = document.createElement('button');
+    summary.type = 'button';
+    summary.className = 'adv-q-summary';
+    wrap.insertBefore(summary, wrap.firstChild);
+    summary.addEventListener('click', () => {
+      wrap.classList.toggle('is-collapsed');
+      const expanded = !wrap.classList.contains('is-collapsed');
+      summary.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    });
+  }
+
+  summary.textContent = count === 1
+    ? '1 question answered'
+    : `${count} questions answered`;
+  summary.setAttribute('aria-expanded', 'false');
+}
