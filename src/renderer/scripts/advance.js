@@ -1,4 +1,22 @@
 import { APP_TITLE, SCREEN_ADVANCE } from './constants.js';
+import { marked } from './vendor/marked.esm.js';
+
+marked.setOptions({
+  gfm: true,
+  breaks: true,
+});
+
+const SCRIPT_TAG_RE = /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi;
+const ON_EVENT_ATTR_RE = /\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi;
+const JS_HREF_RE = /\s(href|src)\s*=\s*("javascript:[^"]*"|'javascript:[^']*')/gi;
+
+function sanitizeHtml(html) {
+  if (typeof html !== 'string') return '';
+  return html
+    .replace(SCRIPT_TAG_RE, '')
+    .replace(ON_EVENT_ATTR_RE, '')
+    .replace(JS_HREF_RE, ' $1="#"');
+}
 
 document.addEventListener('DOMContentLoaded', () => {
   document.title = `${SCREEN_ADVANCE} — ${APP_TITLE}`;
@@ -25,7 +43,19 @@ document.addEventListener('DOMContentLoaded', () => {
     bubble.className = isError
       ? 'adv-bubble adv-bubble--error'
       : `adv-bubble adv-bubble--${role}`;
-    bubble.textContent = content;
+
+    if (!isError && role === 'assistant') {
+      bubble.classList.add('adv-prose');
+      try {
+        bubble.innerHTML = sanitizeHtml(marked.parse(content || ''));
+      } catch (err) {
+        console.warn('[advance] marked.parse failed; falling back to text:', err);
+        bubble.textContent = content;
+      }
+    } else {
+      bubble.textContent = content;
+    }
+
     threadEl.appendChild(bubble);
     threadEl.scrollTop = threadEl.scrollHeight;
   }

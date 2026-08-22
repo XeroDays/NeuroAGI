@@ -135,8 +135,12 @@ body.adv-shell::before {
   border-radius: 14px;
   font-size: 0.92rem;
   line-height: 1.5;
-  white-space: pre-wrap;
   word-wrap: break-word;
+}
+
+.adv-bubble--user,
+.adv-bubble--error {
+  white-space: pre-wrap;
 }
 
 .adv-bubble--user {
@@ -161,6 +165,135 @@ body.adv-shell::before {
   color: #fff;
   background: rgba(180, 50, 70, 0.45);
   border: 1px solid rgba(255, 180, 190, 0.4);
+}
+
+.adv-prose {
+  overflow-x: auto;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.96);
+  overflow-wrap: anywhere;
+}
+
+.adv-prose > :first-child { margin-top: 0; }
+.adv-prose > :last-child { margin-bottom: 0; }
+
+.adv-prose h1,
+.adv-prose h2,
+.adv-prose h3,
+.adv-prose h4,
+.adv-prose h5,
+.adv-prose h6 {
+  margin: 1.1rem 0 0.5rem;
+  color: #fff;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.18);
+  letter-spacing: -0.01em;
+  font-weight: 700;
+}
+
+.adv-prose h1 { font-size: 1.35rem; }
+.adv-prose h2 { font-size: 1.15rem; }
+.adv-prose h3 {
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+}
+.adv-prose h4 { font-size: 0.95rem; }
+
+.adv-prose p {
+  margin: 0.6rem 0;
+}
+
+.adv-prose strong {
+  color: #fff;
+  font-weight: 700;
+}
+
+.adv-prose em {
+  color: rgba(255, 255, 255, 0.92);
+  font-style: italic;
+}
+
+.adv-prose a {
+  color: #fce8ff;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.adv-prose ul,
+.adv-prose ol {
+  margin: 0.5rem 0;
+  padding-left: 1.4rem;
+}
+
+.adv-prose li {
+  margin: 0.25rem 0;
+}
+
+.adv-prose li::marker {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.adv-prose blockquote {
+  margin: 0.75rem 0;
+  padding: 0.5rem 0.9rem;
+  border-left: 3px solid rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 0 10px 10px 0;
+  color: rgba(255, 255, 255, 0.92);
+  font-style: italic;
+}
+
+.adv-prose code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85em;
+  padding: 0.1em 0.35em;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.25);
+  color: #ffe9f5;
+}
+
+.adv-prose pre {
+  margin: 0.75rem 0;
+  padding: 0.85rem 1rem;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  overflow-x: auto;
+}
+
+.adv-prose pre code {
+  background: transparent;
+  color: #fff;
+  padding: 0;
+  font-size: 0.85rem;
+}
+
+.adv-prose hr {
+  margin: 1rem 0;
+  border: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.adv-prose table {
+  width: 100%;
+  margin: 0.75rem 0;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.adv-prose th,
+.adv-prose td {
+  padding: 0.45rem 0.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  text-align: left;
+}
+
+.adv-prose th {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
 }
 
 .adv-task-popup {

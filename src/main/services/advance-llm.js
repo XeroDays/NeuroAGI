@@ -42,19 +42,29 @@ function createTimeoutSignal(timeoutMs) {
 }
 
 function summarizeMessages(messages) {
-  if (!Array.isArray(messages)) return { messageCount: 0, promptChars: 0, queryText: '' };
+  if (!Array.isArray(messages)) return { messageCount: 0, promptChars: 0 };
   let promptChars = 0;
-  const parts = [];
   for (const m of messages) {
     if (typeof m?.content === 'string') {
       promptChars += m.content.length;
-      parts.push(m.content);
     }
   }
   return {
     messageCount: messages.length,
     promptChars,
-    queryText: parts.join('\n\n'),
+  };
+}
+
+function buildRequestBody(messages, model, options = {}) {
+  const { maxTokens, reasoning, tools, toolChoice } = options;
+  return {
+    model,
+    messages,
+    stream: false,
+    ...(typeof maxTokens === 'number' ? { max_tokens: maxTokens } : {}),
+    ...(reasoning ? { reasoning } : {}),
+    ...(Array.isArray(tools) && tools.length > 0 ? { tools } : {}),
+    ...(toolChoice ? { tool_choice: toolChoice } : {}),
   };
 }
 
@@ -78,8 +88,10 @@ async function chatCompletionWithTools(messages, model, options = {}) {
   }
 
   const startedAt = Date.now();
-  const { messageCount, promptChars, queryText } = summarizeMessages(messages);
-  const { maxTokens, reasoning, timeoutMs, signal: externalSignal, tools, toolChoice } = options || {};
+  const { messageCount, promptChars } = summarizeMessages(messages);
+  const { maxTokens, reasoning, timeoutMs, signal: externalSignal, tools } = options || {};
+  const requestBody = buildRequestBody(messages, model, options || {});
+  const requestQuery = JSON.stringify(requestBody, null, 2);
 
   let timeoutSignal;
   if (typeof timeoutMs === 'number' && timeoutMs > 0) {
@@ -109,15 +121,7 @@ async function chatCompletionWithTools(messages, model, options = {}) {
         'HTTP-Referer': 'https://github.com/xerodays/neuroAGI',
         'X-Title': 'NeuroAGI',
       },
-      body: JSON.stringify({
-        model,
-        messages,
-        stream: false,
-        ...(typeof maxTokens === 'number' ? { max_tokens: maxTokens } : {}),
-        ...(reasoning ? { reasoning } : {}),
-        ...(Array.isArray(tools) && tools.length > 0 ? { tools } : {}),
-        ...(toolChoice ? { tool_choice: toolChoice } : {}),
-      }),
+      body: JSON.stringify(requestBody),
       ...(abortSignal ? { signal: abortSignal } : {}),
     });
   } catch (err) {
@@ -131,7 +135,7 @@ async function chatCompletionWithTools(messages, model, options = {}) {
       type: 'ai',
       status: 'error',
       model,
-      query: queryText,
+      query: requestQuery,
       reasoningEffort: reasoning?.effort ?? null,
       maxTokens: maxTokens ?? null,
       durationMs,
@@ -153,7 +157,7 @@ async function chatCompletionWithTools(messages, model, options = {}) {
       type: 'ai',
       status: 'error',
       model,
-      query: queryText,
+      query: requestQuery,
       reasoningEffort: reasoning?.effort ?? null,
       maxTokens: maxTokens ?? null,
       durationMs,
@@ -171,7 +175,7 @@ async function chatCompletionWithTools(messages, model, options = {}) {
       type: 'ai',
       status: 'error',
       model,
-      query: queryText,
+      query: requestQuery,
       reasoningEffort: reasoning?.effort ?? null,
       maxTokens: maxTokens ?? null,
       durationMs,
@@ -201,7 +205,7 @@ async function chatCompletionWithTools(messages, model, options = {}) {
     type: 'ai',
     status: 'success',
     model,
-    query: queryText,
+    query: requestQuery,
     reasoningEffort: reasoning?.effort ?? null,
     maxTokens: maxTokens ?? null,
     promptTokens: usage?.prompt_tokens ?? null,
