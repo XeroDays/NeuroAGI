@@ -22,6 +22,21 @@ const WEB_SEARCH_TOOL = {
   },
 };
 
+const FIND_TOPIC_URLS_TOOL = {
+  type: 'function',
+  function: {
+    name: 'find_topic_urls',
+    description: 'Find web URLs related to the user issue or topic. Always use this first in research mode, then extract_url on the best URLs.',
+    parameters: {
+      type: 'object',
+      required: ['topic'],
+      properties: {
+        topic: { type: 'string', description: 'The user issue or subject to find related pages for' },
+      },
+    },
+  },
+};
+
 const EXTRACT_URL_TOOL = {
   type: 'function',
   function: {
@@ -77,9 +92,11 @@ const ASK_USER_TOOL = {
   },
 };
 
-const ADVANCE_TOOLS = [WEB_SEARCH_TOOL, EXTRACT_URL_TOOL, ASK_USER_TOOL];
+const ADVANCE_TOOLS = [FIND_TOPIC_URLS_TOOL, WEB_SEARCH_TOOL, EXTRACT_URL_TOOL, ASK_USER_TOOL];
 
 const MAX_EXTRACT_URLS = 5;
+const MAX_TOPIC_URLS = 8;
+const TOPIC_SEARCH_PREFIX = 'authoritative medical sources and research related to: ';
 
 function sanitizeExtractUrls(raw) {
   const list = Array.isArray(raw) ? raw : [];
@@ -185,6 +202,61 @@ async function executeWebSearch(args = {}) {
   }
 }
 
+function sanitizeTopicUrl(raw) {
+  if (typeof raw !== 'string') return '';
+  const url = raw.trim();
+  if (!url) return '';
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return '';
+    return parsed.href;
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Search for URLs related to a topic using a fixed Tavily query.
+ * @param {{ topic?: unknown }} args
+ * @returns {Promise<string>}
+ */
+async function executeFindTopicUrls(args = {}) {
+  const topic = typeof args.topic === 'string' ? args.topic.trim() : '';
+  if (!topic) {
+    return JSON.stringify({ error: 'find_topic_urls requires a non-empty topic string.' });
+  }
+
+  const query = `${TOPIC_SEARCH_PREFIX}${topic}`;
+
+  try {
+    const res = await webSearch.search(query, {
+      searchDepth: 'advanced',
+      includeAnswer: false,
+      maxResults: MAX_TOPIC_URLS,
+    });
+
+    const seen = new Set();
+    const urls = [];
+    const results = Array.isArray(res?.results) ? res.results : [];
+    for (const item of results) {
+      if (urls.length >= MAX_TOPIC_URLS) break;
+      const href = sanitizeTopicUrl(item?.url);
+      if (!href || seen.has(href)) continue;
+      seen.add(href);
+      urls.push({
+        title: typeof item?.title === 'string' ? item.title : '',
+        url: href,
+      });
+    }
+
+    return JSON.stringify({ topic, query, urls });
+  } catch (err) {
+    const error = err instanceof Error ? err.message : String(err);
+    console.error('[advance-tools] find_topic_urls failed:', error);
+    return JSON.stringify({ error });
+  }
+}
+
 /**
  * Extract page content for specific URLs via Tavily.
  * @param {{ urls?: unknown, query?: unknown }} args
@@ -225,6 +297,9 @@ async function executeExtractUrl(args = {}) {
  */
 async function executeTool(name, args) {
   const payload = args && typeof args === 'object' ? args : {};
+  if (name === 'find_topic_urls') {
+    return executeFindTopicUrls(payload);
+  }
   if (name === 'web_search') {
     return executeWebSearch(payload);
   }
@@ -236,11 +311,13 @@ async function executeTool(name, args) {
 
 module.exports = {
   WEB_SEARCH_TOOL,
+  FIND_TOPIC_URLS_TOOL,
   EXTRACT_URL_TOOL,
   ASK_USER_TOOL,
   ADVANCE_TOOLS,
   sanitizeQuestions,
   executeWebSearch,
+  executeFindTopicUrls,
   executeExtractUrl,
   executeTool,
 };

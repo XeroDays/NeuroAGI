@@ -219,10 +219,20 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    const tool = typeof payload.tool === 'string' ? payload.tool : '';
+    if (tool === 'model' && (state === 'done' || state === 'error')) {
+      if (block) {
+        block.remove();
+        statusBlocks.delete(id);
+      }
+      return;
+    }
+
     if (!block) {
       block = document.createElement('div');
       block.className = 'adv-status';
       block.dataset.stepId = id;
+      if (tool) block.dataset.tool = tool;
       const icon = document.createElement('div');
       icon.className = 'adv-status-icon';
       const text = document.createElement('span');
@@ -232,6 +242,7 @@ document.addEventListener('DOMContentLoaded', () => {
       statusBlocks.set(id, block);
     }
 
+    if (tool) block.dataset.tool = tool;
     block.classList.toggle('is-error', state === 'error');
     block.dataset.state = state;
     renderStatusIcon(block.querySelector('.adv-status-icon'), state);
@@ -241,8 +252,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function failRunningStatusBlocks(message) {
-    for (const block of statusBlocks.values()) {
+    for (const [id, block] of statusBlocks.entries()) {
       if (block.dataset.state !== 'running') continue;
+      const text = block.querySelector('.adv-status-text')?.textContent || '';
+      if (block.dataset.tool === 'model' || text.startsWith('Loading')) {
+        hideStatusBlock(id, block);
+        continue;
+      }
       block.dataset.state = 'error';
       block.classList.add('is-error');
       renderStatusIcon(block.querySelector('.adv-status-icon'), 'error');
@@ -257,7 +273,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function completedLabel(current) {
     const text = typeof current === 'string' ? current.trim() : '';
-    if (text.startsWith('Loading')) return 'AI call complete';
+    if (text.startsWith('Finding sources')) return text.replace(/^Finding sources…?/, 'Found sources').trim();
     if (text.startsWith('Searching')) return text.replace(/^Searching…?/, 'Searched').trim();
     if (text.startsWith('Extracting')) return text.replace(/^Extracting…?/, 'Extracted').trim();
     if (text.startsWith('Asking questions')) return 'Questions asked';
@@ -265,9 +281,19 @@ document.addEventListener('DOMContentLoaded', () => {
     return text || 'Complete';
   }
 
+  function hideStatusBlock(id, block) {
+    block.remove();
+    statusBlocks.delete(id);
+  }
+
   function completeRunningStatusBlocks() {
-    for (const block of statusBlocks.values()) {
+    for (const [id, block] of statusBlocks.entries()) {
       if (block.dataset.state !== 'running') continue;
+      const text = block.querySelector('.adv-status-text')?.textContent || '';
+      if (block.dataset.tool === 'model' || text.startsWith('Loading')) {
+        hideStatusBlock(id, block);
+        continue;
+      }
       block.dataset.state = 'done';
       block.classList.remove('is-error');
       renderStatusIcon(block.querySelector('.adv-status-icon'), 'done');

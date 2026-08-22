@@ -23,7 +23,7 @@ function resolveLlmOptions(level) {
   };
 }
 
-const MAX_TOOL_ROUNDS = 3;
+const MAX_TOOL_ROUNDS = 4;
 let stepClock = 0;
 
 function nextStepId(prefix) {
@@ -53,6 +53,9 @@ function emitStep(onProgress, { id, tool, state, label, detail }) {
 }
 
 function toolDetail(name, args) {
+  if (name === 'find_topic_urls' && typeof args.topic === 'string') {
+    return args.topic.trim();
+  }
   if (name === 'web_search' && typeof args.query === 'string') {
     return args.query.trim();
   }
@@ -65,6 +68,7 @@ function toolDetail(name, args) {
 }
 
 function toolLabel(name, state) {
+  if (name === 'find_topic_urls') return state === 'running' ? 'Finding sources…' : 'Found sources';
   if (name === 'web_search') return state === 'running' ? 'Searching…' : 'Searched';
   if (name === 'extract_url') return state === 'running' ? 'Extracting…' : 'Extracted';
   if (name === 'ask_user') return state === 'running' ? 'Asking questions…' : 'Questions asked';
