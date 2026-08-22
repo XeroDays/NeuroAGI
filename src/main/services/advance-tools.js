@@ -8,7 +8,7 @@ const WEB_SEARCH_TOOL = {
   type: 'function',
   function: {
     name: 'web_search',
-    description: 'Search the live web only for an unknown or likely-misspelled medicine, a time-sensitive fact, or when you are not confident. Not a default first step. Do not use for simple definitions you already know.',
+    description: 'On a new personal/diagnostic issue, use after find_topic_urls + extract_url for extra targeted facts (guidelines, differentials, named medicines). Also use for an unknown or likely-misspelled medicine, a time-sensitive fact, or when you are not confident. Not a replacement for find + extract. Do not use for simple definitions.',
     parameters: {
       type: 'object',
       properties: {
@@ -26,7 +26,7 @@ const FIND_TOPIC_URLS_TOOL = {
   type: 'function',
   function: {
     name: 'find_topic_urls',
-    description: 'Find web URLs when researching a user’s personal issue or when sources are actually needed. Then extract_url on the best URLs. Do not use for simple definitions or general “what is X” questions.',
+    description: 'Required first step on a new personal/diagnostic issue. Pass topic as the user’s issue, then extract_url on the best URLs. Do not use for simple definitions or general “what is X” questions.',
     parameters: {
       type: 'object',
       required: ['topic'],
@@ -41,7 +41,7 @@ const EXTRACT_URL_TOOL = {
   type: 'function',
   function: {
     name: 'extract_url',
-    description: 'Extract content from one or more specific web URLs the user provided or asked to read.',
+    description: 'Required after find_topic_urls on a diagnostic turn (up to 5 URLs). Also extract URLs the user pasted or asked to read.',
     parameters: {
       type: 'object',
       required: ['urls'],
@@ -57,7 +57,7 @@ const ASK_USER_TOOL = {
   type: 'function',
   function: {
     name: 'ask_user',
-    description: 'Ask the user structured questions only when they are presenting their own problem and you still need answers to reason about their case. Do not use on definitions or general-education questions.',
+    description: 'Required on the first message of a new personal/diagnostic issue. Ask issue-specific investigation questions (onset, severity, associated symptoms, meds, labs, age/context). Do not skip because they already named a few symptoms. Do not use on definitions or general-education questions. Do not re-ask after they just submitted answers.',
     parameters: {
       type: 'object',
       required: ['questions'],
