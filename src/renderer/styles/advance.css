@@ -14,11 +14,11 @@
 }
 
 body.adv-shell {
-  --grad-1: #b8578b;
-  --grad-2: #9d57b1;
-  --grad-3: #8878b8;
-  --grad-4: #487db8;
-  --grad-5: #3e85a2;
+  --grad-1: #ca6099;
+  --grad-2: #ad60c3;
+  --grad-3: #9684ca;
+  --grad-4: #4f8aca;
+  --grad-5: #4492b2;
   margin: 0;
   min-height: 100vh;
   display: flex;
@@ -52,9 +52,9 @@ body.adv-shell::before {
   z-index: -1;
   pointer-events: none;
   background:
-    radial-gradient(ellipse 80% 60% at 10% 30%, rgba(232, 160, 200, 0.26), transparent 55%),
-    radial-gradient(ellipse 70% 50% at 90% 70%, rgba(160, 216, 240, 0.26), transparent 50%),
-    rgba(0, 0, 0, 0.12);
+    radial-gradient(ellipse 80% 60% at 10% 30%, rgba(232, 160, 200, 0.29), transparent 55%),
+    radial-gradient(ellipse 70% 50% at 90% 70%, rgba(160, 216, 240, 0.29), transparent 50%),
+    rgba(0, 0, 0, 0.11);
   opacity: 0.7;
 }
 

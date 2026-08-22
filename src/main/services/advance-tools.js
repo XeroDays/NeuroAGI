@@ -8,7 +8,7 @@ const WEB_SEARCH_TOOL = {
   type: 'function',
   function: {
     name: 'web_search',
-    description: 'Search the live web when current facts, news, or sources are needed.',
+    description: 'Search the live web only for an unknown or likely-misspelled medicine, a time-sensitive fact, or when you are not confident. Not a default first step. Do not use for simple definitions you already know.',
     parameters: {
       type: 'object',
       properties: {
@@ -26,7 +26,7 @@ const FIND_TOPIC_URLS_TOOL = {
   type: 'function',
   function: {
     name: 'find_topic_urls',
-    description: 'Find web URLs related to the user issue or topic. Always use this first in research mode, then extract_url on the best URLs.',
+    description: 'Find web URLs when researching a user’s personal issue or when sources are actually needed. Then extract_url on the best URLs. Do not use for simple definitions or general “what is X” questions.',
     parameters: {
       type: 'object',
       required: ['topic'],
@@ -57,7 +57,7 @@ const ASK_USER_TOOL = {
   type: 'function',
   function: {
     name: 'ask_user',
-    description: 'Ask the user one or more questions with form controls. Use when you need structured answers.',
+    description: 'Ask the user structured questions only when they are presenting their own problem and you still need answers to reason about their case. Do not use on definitions or general-education questions.',
     parameters: {
       type: 'object',
       required: ['questions'],
