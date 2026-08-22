@@ -2,6 +2,12 @@ const channels = require('../../shared/ipc/channels');
 const { askMasterChat } = require('../services/advance-chat-service');
 
 const ALLOWED_ROLES = new Set(['user', 'assistant']);
+const REASONING_LEVELS = new Set(['none', 'low', 'medium', 'high', 'very_high']);
+const DEFAULT_REASONING_LEVEL = 'medium';
+
+function sanitizeReasoningLevel(raw) {
+  return REASONING_LEVELS.has(raw) ? raw : DEFAULT_REASONING_LEVEL;
+}
 
 /**
  * Keep only well-formed chat turns. Drops unknown roles and non-string content.
@@ -39,7 +45,7 @@ function emitProgress(sender, payload) {
  * conversation so prior messages are remembered. May run web_search or
  * pause for ask_user.
  *
- * @param {{ messages?: unknown, resume?: object }} payload
+ * @param {{ messages?: unknown, resume?: object, reasoningLevel?: unknown }} payload
  * @param {Electron.WebContents} [sender]
  * @returns {Promise<object>}
  */
@@ -48,6 +54,7 @@ async function SendAdvanceChat(payload = {}, sender) {
   const resume = payload.resume && typeof payload.resume === 'object'
     ? payload.resume
     : null;
+  const reasoningLevel = sanitizeReasoningLevel(payload.reasoningLevel);
 
   if (messages.length === 0) {
     return { ok: false, error: 'Message is required.' };
@@ -61,6 +68,7 @@ async function SendAdvanceChat(payload = {}, sender) {
   try {
     const result = await askMasterChat(messages, {
       onProgress: (event) => emitProgress(sender, event),
+      reasoningLevel,
     }, resume);
 
     if (result?.pendingAsk) {

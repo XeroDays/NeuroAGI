@@ -3,12 +3,25 @@ const { ADVANCE_TOOLS, executeTool, sanitizeQuestions } = require('./advance-too
 const { ADVANCE_SYSTEM_PROMPT } = require('./advance-system-prompt');
 const modelConfigService = require('./model-config-service');
 
-const ADVANCE_LLM_OPTIONS = {
-  maxTokens: 16384,
-  reasoning: { effort: 'medium' },
-  tools: ADVANCE_TOOLS,
-  toolChoice: 'auto',
+const LLM_OPTIONS_BY_LEVEL = {
+  none: { maxTokens: 4096, reasoning: { effort: 'none' } },
+  low: { maxTokens: 8192, reasoning: { effort: 'low' } },
+  medium: { maxTokens: 16384, reasoning: { effort: 'medium' } },
+  high: { maxTokens: 32768, reasoning: { effort: 'high' } },
+  very_high: { maxTokens: 65536, reasoning: { effort: 'high' } },
 };
+
+const DEFAULT_REASONING_LEVEL = 'medium';
+
+function resolveLlmOptions(level) {
+  const mapped = LLM_OPTIONS_BY_LEVEL[level] || LLM_OPTIONS_BY_LEVEL[DEFAULT_REASONING_LEVEL];
+  return {
+    maxTokens: mapped.maxTokens,
+    reasoning: mapped.reasoning,
+    tools: ADVANCE_TOOLS,
+    toolChoice: 'auto',
+  };
+}
 
 const MAX_TOOL_ROUNDS = 3;
 
@@ -121,7 +134,7 @@ function applyResume(working, resume) {
  * resumes with answers.
  *
  * @param {{ role: string, content: string }[]} messages
- * @param {{ onProgress?: (payload: { status: string, query?: string }) => void }} [hooks]
+ * @param {{ onProgress?: (payload: { status: string, query?: string }) => void, reasoningLevel?: string }} [hooks]
  * @param {object|null} [resume]
  * @returns {Promise<{ reply: string|null, model: string, preface?: string, pendingAsk?: object }>}
  */
@@ -132,6 +145,7 @@ async function askMasterChat(messages, hooks = {}, resume = null) {
   }
 
   const onProgress = typeof hooks.onProgress === 'function' ? hooks.onProgress : () => {};
+  const llmOptions = resolveLlmOptions(hooks.reasoningLevel);
   const working = [
     { role: 'system', content: ADVANCE_SYSTEM_PROMPT },
     ...messages.map((m) => ({ role: m.role, content: m.content })),
@@ -139,7 +153,7 @@ async function askMasterChat(messages, hooks = {}, resume = null) {
   const resumed = applyResume(working, resume);
 
   console.log(
-    `[advance-chat] master query → ${masterId} (${working.length} messages${resumed ? ', resume' : ''})`
+    `[advance-chat] master query → ${masterId} (${working.length} messages${resumed ? ', resume' : ''}, reasoning=${hooks.reasoningLevel || DEFAULT_REASONING_LEVEL})`
   );
   onProgress({ status: 'loading' });
 
@@ -147,7 +161,7 @@ async function askMasterChat(messages, hooks = {}, resume = null) {
     const { content, toolCalls, message } = await chatCompletionWithTools(
       working,
       masterId,
-      ADVANCE_LLM_OPTIONS
+      llmOptions
     );
 
     if (!toolCalls.length) {

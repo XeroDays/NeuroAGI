@@ -92,6 +92,144 @@ body.adv-shell::before {
   text-align: center;
 }
 
+.adv-settings-bubble {
+  gap: 0.4rem;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  font: inherit;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.adv-settings-bubble:focus-visible {
+  outline: 2px solid rgba(34, 211, 238, 0.8);
+  outline-offset: 2px;
+}
+
+.adv-settings-bubble-icon {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+}
+
+.adv-settings-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(20, 10, 40, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.adv-settings-overlay[hidden] {
+  display: none !important;
+}
+
+.adv-settings-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: min(22rem, calc(100vw - 2rem));
+  padding: 1.25rem 1.35rem;
+  border-radius: 16px;
+  background: rgba(30, 20, 55, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.28);
+}
+
+.adv-settings-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.96);
+}
+
+.adv-reasoning-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.45rem;
+}
+
+.adv-settings-close {
+  align-self: flex-end;
+  height: 2.25rem;
+  padding: 0 0.95rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.95);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.adv-settings-close:hover {
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.adv-select-label {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.18);
+  letter-spacing: 0.01em;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.adv-select {
+  width: 100%;
+  height: 2.5rem;
+  padding: 0 2.2rem 0 0.9rem;
+  font: inherit;
+  font-size: 0.8rem;
+  color: #555;
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='rgba(100,100,100,0.6)' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+}
+
+.adv-select:focus {
+  border-color: rgba(180, 140, 210, 0.6);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06), 0 0 0 3px rgba(180, 140, 210, 0.15);
+}
+
+.adv-select:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.adv-select option {
+  background: #fff;
+  color: #444;
+  padding: 0.5rem 0.75rem;
+}
+
+.adv-select option:checked {
+  background: #f0e6f6;
+}
+
 .adv-brand {
   margin: 0;
   font-size: 1.1rem;

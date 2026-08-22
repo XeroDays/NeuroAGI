@@ -7,6 +7,10 @@ marked.setOptions({
   breaks: true,
 });
 
+const REASONING_LEVELS = new Set(['none', 'low', 'medium', 'high', 'very_high']);
+const REASONING_STORAGE_KEY = 'neuroagi:advanceReasoningLevel';
+const DEFAULT_REASONING_LEVEL = 'medium';
+
 const SCRIPT_TAG_RE = /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi;
 const ON_EVENT_ATTR_RE = /\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi;
 const JS_HREF_RE = /\s(href|src)\s*=\s*("javascript:[^"]*"|'javascript:[^']*')/gi;
@@ -27,12 +31,96 @@ document.addEventListener('DOMContentLoaded', () => {
   const threadEl = document.getElementById('adv-thread');
   const inputEl = document.getElementById('adv-input');
   const sendBtn = document.getElementById('adv-send');
+  const reasoningSelect = document.getElementById('adv-reasoning');
+  const settingsOverlay = document.getElementById('adv-settings-overlay');
+  const settingsCloseBtn = document.getElementById('adv-settings-close');
   const popupEl = document.getElementById('adv-task-popup');
   const popupLabelEl = document.getElementById('adv-task-label');
 
   if (titleEl) titleEl.textContent = APP_TITLE;
   if (screenTitleEl) screenTitleEl.textContent = SCREEN_ADVANCE;
   if (inputEl) inputEl.focus();
+
+  function readStoredReasoningLevel() {
+    try {
+      const stored = sessionStorage.getItem(REASONING_STORAGE_KEY);
+      if (REASONING_LEVELS.has(stored)) return stored;
+    } catch {
+      /* sessionStorage may be unavailable */
+    }
+    return DEFAULT_REASONING_LEVEL;
+  }
+
+  function persistReasoningLevel(level) {
+    try {
+      sessionStorage.setItem(REASONING_STORAGE_KEY, level);
+    } catch {
+      /* sessionStorage may be unavailable */
+    }
+  }
+
+  function getReasoningLevel() {
+    const value = reasoningSelect?.value || DEFAULT_REASONING_LEVEL;
+    return REASONING_LEVELS.has(value) ? value : DEFAULT_REASONING_LEVEL;
+  }
+
+  if (reasoningSelect) {
+    reasoningSelect.value = readStoredReasoningLevel();
+    reasoningSelect.addEventListener('change', () => {
+      persistReasoningLevel(getReasoningLevel());
+    });
+  }
+
+  function setSettingsOpen(open) {
+    if (!settingsOverlay) return;
+    settingsOverlay.hidden = !open;
+  }
+
+  function onSettingsKeydown(event) {
+    if (event.key === 'Escape' && settingsOverlay && !settingsOverlay.hidden) {
+      setSettingsOpen(false);
+    }
+  }
+
+  settingsOverlay?.addEventListener('click', (event) => {
+    if (event.target === settingsOverlay) setSettingsOpen(false);
+  });
+  settingsCloseBtn?.addEventListener('click', () => setSettingsOpen(false));
+  document.addEventListener('keydown', onSettingsKeydown);
+
+  async function mountSettingsChip() {
+    if (document.getElementById('adv-settings')) return;
+
+    let logsBubble = null;
+    for (let i = 0; i < 30; i += 1) {
+      logsBubble = document.querySelector('.usage-bubbles .logs-bubble');
+      if (logsBubble) break;
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+
+    const container = document.querySelector('.usage-bubbles');
+    if (!container) return;
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = 'adv-settings';
+    btn.className = 'usage-bubble adv-settings-bubble';
+    btn.setAttribute('aria-label', 'Settings');
+    btn.setAttribute('title', 'Advance settings');
+    btn.innerHTML = `<svg class="adv-settings-bubble-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </svg><span>Settings</span>`;
+    btn.addEventListener('click', () => setSettingsOpen(true));
+
+    if (logsBubble) {
+      container.insertBefore(btn, logsBubble);
+    } else {
+      container.insertBefore(btn, container.firstChild);
+    }
+  }
+
+  mountSettingsChip();
 
   /** @type {{ role: 'user'|'assistant', content: string }[]} */
   const messages = [];
@@ -72,6 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function setComposerEnabled(enabled) {
     if (inputEl) inputEl.disabled = !enabled;
     if (sendBtn) sendBtn.disabled = !enabled;
+    if (reasoningSelect) reasoningSelect.disabled = !enabled;
   }
 
   function setBusy(busy) {
@@ -143,7 +232,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setBusy(true);
     try {
-      const result = await window.electronAPI.advanceSend(payload);
+      const result = await window.electronAPI.advanceSend({
+        ...payload,
+        reasoningLevel: getReasoningLevel(),
+      });
       if (result?.ok && result.pendingAsk) {
         showPendingAsk(result);
         return;
