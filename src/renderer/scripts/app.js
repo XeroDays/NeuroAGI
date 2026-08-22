@@ -188,6 +188,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  const advanceBtn = document.getElementById('btn-advance');
+  if (advanceBtn) {
+    advanceBtn.addEventListener('click', () => {
+      window.location.href = 'screens/advance/index.html';
+    });
+  }
+
   // ── Models popup ──────────────────────────────────────────────────────────
   const modelsBtn       = document.getElementById('btn-models');
   const modelsOverlay   = document.getElementById('models-overlay');

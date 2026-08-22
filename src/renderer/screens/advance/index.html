@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'">
+  <title>NeuroAGI</title>
+  <link rel="stylesheet" href="../../styles/tokens.css">
+  <link rel="stylesheet" href="../../styles/usage-bubbles.css">
+  <link rel="stylesheet" href="../../styles/logs-panel.css">
+  <link rel="stylesheet" href="../../styles/worker-snack.css">
+  <link rel="stylesheet" href="../../styles/advance.css">
+</head>
+<body class="adv-shell">
+  <header class="adv-header">
+    <a class="adv-back" href="../../index.html">Back</a>
+    <div class="adv-header-titles">
+      <h1 id="app-title" class="adv-brand"></h1>
+      <span id="screen-title" class="adv-screen"></span>
+    </div>
+  </header>
+  <main class="adv-main">
+    <div id="adv-thread" class="adv-thread" aria-live="polite"></div>
+  </main>
+  <div id="adv-task-popup" class="adv-task-popup" hidden role="status" aria-live="polite">
+    <div class="adv-task-spinner" aria-hidden="true"></div>
+    <span id="adv-task-label" class="adv-task-label">Loading…</span>
+  </div>
+  <footer class="adv-composer">
+    <div class="adv-composer-wrap">
+      <input type="text" id="adv-input" class="adv-input"
+        placeholder="Type a message…" aria-label="Message" autocomplete="off">
+      <button type="button" id="adv-send" class="adv-send" aria-label="Send">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </button>
+    </div>
+  </footer>
+  <script type="module" src="../../scripts/usage-bubbles.js"></script>
+  <script type="module" src="../../scripts/logs-panel.js"></script>
+  <script type="module" src="../../scripts/advance.js"></script>
+</body>
+</html>

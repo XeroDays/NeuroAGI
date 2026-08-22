@@ -48,6 +48,22 @@
     "labels": "Health #32"
   },
   {
+    "name": "dots-studio/dots-3-note-preview:free",
+    "type": "Free",
+    "latency": "1.88s",
+    "throughput": "80tps",
+    "price": "",
+    "labels": ""
+  },
+  {
+    "name": "nvidia/nemotron-3.5-lightning:free",
+    "type": "Free",
+    "latency": "1.03s",
+    "throughput": "85tps",
+    "price": "",
+    "labels": ""
+  },
+  {
     "name": "z-ai/glm-4-32b",
     "type": "Paid",
     "latency": "4.45s",

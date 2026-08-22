@@ -26,6 +26,8 @@ const CH = {
   GET_LOGS: "neuroagi:get-logs",
   CLEAR_LOGS: "neuroagi:clear-logs",
   LOG_UPDATE: "neuroagi:log-update",
+  ADVANCE_SEND: "neuroagi:advance-send",
+  ADVANCE_PROGRESS: "neuroagi:advance-progress",
 };
 
 function subscribe(channel, cb) {
@@ -81,4 +83,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getLogs: () => ipcRenderer.invoke(CH.GET_LOGS),
   clearLogs: () => ipcRenderer.invoke(CH.CLEAR_LOGS),
   onLogUpdate: (cb) => subscribe(CH.LOG_UPDATE, cb),
+
+  advanceSend: (payload) => ipcRenderer.invoke(CH.ADVANCE_SEND, payload),
+  onAdvanceProgress: (cb) => subscribe(CH.ADVANCE_PROGRESS, cb),
 });

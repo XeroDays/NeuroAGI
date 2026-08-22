@@ -405,11 +405,17 @@ body.app-shell::before {
   outline-offset: 2px;
 }
 
-.glass-icon-btn {
+.home-top-actions {
   position: fixed;
   top: 1rem;
   left: 1rem;
   z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.glass-icon-btn {
   width: 2.5rem;
   height: 2.5rem;
   display: flex;
@@ -441,12 +447,8 @@ body.app-shell::before {
   outline-offset: 2px;
 }
 
-/* ── Models trigger button (fixed, right of gear) ─────────────────────────── */
+/* ── Models / Advance trigger buttons (in .home-top-actions) ─────────────── */
 .glass-models-btn {
-  position: fixed;
-  top: 1rem;
-  left: calc(1rem + 2.5rem + 0.5rem);
-  z-index: 10;
   height: 2.5rem;
   padding: 0 0.9rem;
   display: flex;

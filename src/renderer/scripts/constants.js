@@ -16,6 +16,9 @@ export const SCREEN_PRE_DOCTOR_ROOM = 'Pre-doctor Room';
 /** Doctor screen (shown after submitting the pre-doctor room clarifying answers). */
 export const SCREEN_DOCTOR = 'Doctor';
 
+/** Advance screen (opened from the home Advance button). */
+export const SCREEN_ADVANCE = 'Advance';
+
 /** Home screen primary action. */
 export const LABEL_START_HUMAN_DIAGNOSTICS = 'Diagnose me';
 

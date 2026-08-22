@@ -24,4 +24,6 @@ module.exports = {
   GET_LOGS: "neuroagi:get-logs",
   CLEAR_LOGS: "neuroagi:clear-logs",
   LOG_UPDATE: "neuroagi:log-update",
+  ADVANCE_SEND: "neuroagi:advance-send",
+  ADVANCE_PROGRESS: "neuroagi:advance-progress",
 };
