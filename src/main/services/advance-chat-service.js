@@ -24,6 +24,26 @@ function resolveLlmOptions(level) {
 }
 
 const MAX_TOOL_ROUNDS = 4;
+
+class AdvanceAbortError extends Error {
+  constructor() {
+    super('Aborted');
+    this.name = 'AdvanceAbortError';
+    this.aborted = true;
+  }
+}
+
+function isAbortError(err) {
+  if (!err) return false;
+  if (err.name === 'AdvanceAbortError' || err.aborted === true) return true;
+  if (err.name === 'AbortError') return true;
+  const message = err instanceof Error ? err.message : String(err);
+  return /aborted|abort/i.test(message);
+}
+
+function throwIfAborted(signal) {
+  if (signal?.aborted) throw new AdvanceAbortError();
+}
 let stepClock = 0;
 
 function nextStepId(prefix) {
@@ -174,7 +194,7 @@ function applyResume(working, resume) {
  * resumes with answers.
  *
  * @param {{ role: string, content: string }[]} messages
- * @param {{ onProgress?: (payload: object) => void, reasoningLevel?: string }} [hooks]
+ * @param {{ onProgress?: (payload: object) => void, reasoningLevel?: string, signal?: AbortSignal }} [hooks]
  * @param {object|null} [resume]
  * @returns {Promise<{ reply: string|null, model: string, preface?: string, pendingAsk?: object }>}
  */
@@ -185,7 +205,11 @@ async function askMasterChat(messages, hooks = {}, resume = null) {
   }
 
   const onProgress = typeof hooks.onProgress === 'function' ? hooks.onProgress : () => {};
-  const llmOptions = resolveLlmOptions(hooks.reasoningLevel);
+  const signal = hooks.signal;
+  const llmOptions = {
+    ...resolveLlmOptions(hooks.reasoningLevel),
+    ...(signal ? { signal } : {}),
+  };
   const working = [
     { role: 'system', content: ADVANCE_SYSTEM_PROMPT },
     ...messages.map((m) => ({ role: m.role, content: m.content })),
@@ -197,6 +221,7 @@ async function askMasterChat(messages, hooks = {}, resume = null) {
   );
 
   for (let round = 0; round <= MAX_TOOL_ROUNDS; round += 1) {
+    throwIfAborted(signal);
     const modelId = nextStepId('model');
     emitStep(onProgress, {
       id: modelId,
@@ -215,6 +240,15 @@ async function askMasterChat(messages, hooks = {}, resume = null) {
         llmOptions
       ));
     } catch (err) {
+      if (isAbortError(err) || signal?.aborted) {
+        emitStep(onProgress, {
+          id: modelId,
+          tool: 'model',
+          state: 'done',
+          label: toolLabel('model', 'done'),
+        });
+        throw new AdvanceAbortError();
+      }
       emitStep(onProgress, {
         id: modelId,
         tool: 'model',
@@ -253,6 +287,7 @@ async function askMasterChat(messages, hooks = {}, resume = null) {
     let askUserCall = null;
 
     for (const [index, call] of toolCalls.entries()) {
+      throwIfAborted(signal);
       const name = call?.function?.name || '';
       if (name === 'ask_user') {
         if (!askUserCall) askUserCall = call;
@@ -340,4 +375,4 @@ async function askMasterChat(messages, hooks = {}, resume = null) {
   return { reply: '', model: masterId };
 }
 
-module.exports = { askMasterChat };
+module.exports = { askMasterChat, isAbortError, AdvanceAbortError };

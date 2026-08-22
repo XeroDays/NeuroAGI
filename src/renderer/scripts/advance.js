@@ -11,6 +11,9 @@ const REASONING_LEVELS = new Set(['none', 'low', 'medium', 'high', 'very_high'])
 const REASONING_STORAGE_KEY = 'neuroagi:advanceReasoningLevel';
 const DEFAULT_REASONING_LEVEL = 'medium';
 
+const SEND_ICON_HTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
+const PAUSE_ICON_HTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>';
+
 const SCRIPT_TAG_RE = /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi;
 const ON_EVENT_ATTR_RE = /\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi;
 const JS_HREF_RE = /\s(href|src)\s*=\s*("javascript:[^"]*"|'javascript:[^']*')/gi;
@@ -126,6 +129,10 @@ document.addEventListener('DOMContentLoaded', () => {
   let awaitingAnswers = false;
   /** @type {object|null} */
   let pendingAsk = null;
+  let lastSentText = '';
+  /** @type {HTMLElement|null} */
+  let lastUserBubble = null;
+  let restoreOnAbort = false;
 
   function appendBubble(role, content, isError = false) {
     if (!threadEl) return;
@@ -151,15 +158,22 @@ document.addEventListener('DOMContentLoaded', () => {
     return bubble;
   }
 
+  function setSendBusy(busy) {
+    if (!sendBtn) return;
+    sendBtn.classList.toggle('is-busy', busy);
+    sendBtn.setAttribute('aria-label', busy ? 'Pause' : 'Send');
+    sendBtn.innerHTML = busy ? PAUSE_ICON_HTML : SEND_ICON_HTML;
+  }
+
   function setComposerEnabled(enabled) {
     if (inputEl) inputEl.disabled = !enabled;
-    if (sendBtn) sendBtn.disabled = !enabled;
     if (reasoningSelect) reasoningSelect.disabled = !enabled;
   }
 
   function setBusy(busy) {
     inFlight = busy;
     setComposerEnabled(!busy && !awaitingAnswers);
+    setSendBusy(busy);
   }
 
   function truncateDetail(detail) {
@@ -286,6 +300,35 @@ document.addEventListener('DOMContentLoaded', () => {
     statusBlocks.delete(id);
   }
 
+  function hideRunningStatusBlocks() {
+    for (const [id, block] of statusBlocks.entries()) {
+      if (block.dataset.state === 'running') hideStatusBlock(id, block);
+    }
+  }
+
+  function restorePausedQuery() {
+    if (!restoreOnAbort) {
+      hideRunningStatusBlocks();
+      return;
+    }
+    if (lastUserBubble) {
+      lastUserBubble.remove();
+      lastUserBubble = null;
+    }
+    if (
+      lastSentText
+      && messages.length
+      && messages[messages.length - 1].role === 'user'
+      && messages[messages.length - 1].content === lastSentText
+    ) {
+      messages.pop();
+    }
+    if (inputEl && lastSentText) inputEl.value = lastSentText;
+    lastSentText = '';
+    restoreOnAbort = false;
+    hideRunningStatusBlocks();
+  }
+
   function completeRunningStatusBlocks() {
     for (const [id, block] of statusBlocks.entries()) {
       if (block.dataset.state !== 'running') continue;
@@ -344,6 +387,13 @@ document.addEventListener('DOMContentLoaded', () => {
         ...payload,
         reasoningLevel: getReasoningLevel(),
       });
+      if (result?.aborted) {
+        restorePausedQuery();
+        return;
+      }
+      restoreOnAbort = false;
+      lastSentText = '';
+      lastUserBubble = null;
       if (result?.ok && result.pendingAsk) {
         showPendingAsk(result);
         return;
@@ -362,6 +412,10 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (err) {
       awaitingAnswers = false;
       pendingAsk = null;
+      if (restoreOnAbort) {
+        restorePausedQuery();
+        return;
+      }
       const error = err instanceof Error ? err.message : String(err);
       failRunningStatusBlocks(error);
       appendBubble('assistant', error, true);
@@ -386,22 +440,45 @@ document.addEventListener('DOMContentLoaded', () => {
     collapseQuestionForm(form.closest('.adv-q-form-wrap'), answers);
     awaitingAnswers = false;
     pendingAsk = null;
+    lastSentText = '';
+    lastUserBubble = null;
+    restoreOnAbort = false;
     await runModel({ messages, resume });
   }
 
+  function handlePause() {
+    if (!inFlight) return;
+    if (typeof window.electronAPI?.advanceCancel === 'function') {
+      window.electronAPI.advanceCancel();
+    }
+    restorePausedQuery();
+    setBusy(false);
+    inputEl?.focus();
+  }
+
   async function handleSend() {
-    if (inFlight || awaitingAnswers || !inputEl) return;
+    if (inFlight) {
+      handlePause();
+      return;
+    }
+    if (awaitingAnswers || !inputEl) return;
     const text = inputEl.value.trim();
     if (!text) return;
 
     inputEl.value = '';
+    lastSentText = text;
+    restoreOnAbort = true;
     messages.push({ role: 'user', content: text });
-    appendBubble('user', text);
+    lastUserBubble = appendBubble('user', text);
     await runModel({ messages });
   }
 
   if (sendBtn) {
     sendBtn.addEventListener('click', () => {
+      if (inFlight) {
+        handlePause();
+        return;
+      }
       handleSend();
     });
   }

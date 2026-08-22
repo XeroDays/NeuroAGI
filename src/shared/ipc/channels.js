@@ -26,4 +26,5 @@ module.exports = {
   LOG_UPDATE: "neuroagi:log-update",
   ADVANCE_SEND: "neuroagi:advance-send",
   ADVANCE_PROGRESS: "neuroagi:advance-progress",
+  ADVANCE_CANCEL: "neuroagi:advance-cancel",
 };

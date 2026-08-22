@@ -12,7 +12,7 @@ const {
   RequestSkipFanout,
 } = require("../middlewares/collector-middleware");
 const { GetModelsConfig, UpdateModelsConfig } = require("../middlewares/cookie-middleware");
-const { SendAdvanceChat } = require("../middlewares/advance-middleware");
+const { SendAdvanceChat, CancelAdvanceChat } = require("../middlewares/advance-middleware");
 const usageTracker = require("../services/usage-tracker");
 const logService = require("../services/log-service");
 
@@ -85,6 +85,10 @@ function registerIpcHandlers() {
 
   ipcMain.handle(channels.ADVANCE_SEND, async (event, payload) => {
     return SendAdvanceChat(payload || {}, event.sender);
+  });
+
+  ipcMain.handle(channels.ADVANCE_CANCEL, (event) => {
+    return CancelAdvanceChat(event.sender);
   });
 }
 

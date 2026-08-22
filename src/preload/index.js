@@ -28,6 +28,7 @@ const CH = {
   LOG_UPDATE: "neuroagi:log-update",
   ADVANCE_SEND: "neuroagi:advance-send",
   ADVANCE_PROGRESS: "neuroagi:advance-progress",
+  ADVANCE_CANCEL: "neuroagi:advance-cancel",
 };
 
 function subscribe(channel, cb) {
@@ -85,5 +86,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onLogUpdate: (cb) => subscribe(CH.LOG_UPDATE, cb),
 
   advanceSend: (payload) => ipcRenderer.invoke(CH.ADVANCE_SEND, payload),
+  advanceCancel: () => ipcRenderer.invoke(CH.ADVANCE_CANCEL),
   onAdvanceProgress: (cb) => subscribe(CH.ADVANCE_PROGRESS, cb),
 });

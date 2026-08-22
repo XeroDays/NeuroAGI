@@ -1,5 +1,8 @@
 const channels = require('../../shared/ipc/channels');
-const { askMasterChat } = require('../services/advance-chat-service');
+const { askMasterChat, isAbortError } = require('../services/advance-chat-service');
+
+/** @type {Map<number, AbortController>} */
+const controllers = new Map();
 
 const ALLOWED_ROLES = new Set(['user', 'assistant']);
 const REASONING_LEVELS = new Set(['none', 'low', 'medium', 'high', 'very_high']);
@@ -63,11 +66,23 @@ async function SendAdvanceChat(payload = {}, sender) {
     return { ok: false, error: 'Last message must be from the user.' };
   }
 
+  const senderId = sender?.id;
+  const prior = senderId != null ? controllers.get(senderId) : null;
+  if (prior) prior.abort();
+
+  const controller = new AbortController();
+  if (senderId != null) controllers.set(senderId, controller);
+
   try {
     const result = await askMasterChat(messages, {
       onProgress: (event) => emitProgress(sender, event),
       reasoningLevel,
+      signal: controller.signal,
     }, resume);
+
+    if (controller.signal.aborted) {
+      return { ok: false, aborted: true };
+    }
 
     if (result?.pendingAsk) {
       return {
@@ -80,6 +95,9 @@ async function SendAdvanceChat(payload = {}, sender) {
 
     return { ok: true, reply: result?.reply ?? '', model: result?.model };
   } catch (err) {
+    if (isAbortError(err) || controller.signal.aborted) {
+      return { ok: false, aborted: true };
+    }
     const error = err instanceof Error ? err.message : String(err);
     console.error('[advance] SendAdvanceChat failed:', error);
     emitProgress(sender, {
@@ -90,7 +108,18 @@ async function SendAdvanceChat(payload = {}, sender) {
       label: error,
     });
     return { ok: false, error };
+  } finally {
+    if (senderId != null && controllers.get(senderId) === controller) {
+      controllers.delete(senderId);
+    }
   }
 }
 
-module.exports = { SendAdvanceChat };
+function CancelAdvanceChat(sender) {
+  const senderId = sender?.id;
+  const controller = senderId != null ? controllers.get(senderId) : null;
+  if (controller) controller.abort();
+  return { ok: true };
+}
+
+module.exports = { SendAdvanceChat, CancelAdvanceChat };

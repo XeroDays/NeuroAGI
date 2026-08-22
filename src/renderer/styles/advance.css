@@ -572,6 +572,28 @@ body.adv-shell::before {
   cursor: default;
 }
 
+.adv-send.is-busy {
+  border-radius: 50%;
+  background: #3d3d3d;
+}
+
+.adv-send.is-busy::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.22);
+  border-top-color: #fff;
+  animation: adv-spin 0.7s linear infinite;
+  pointer-events: none;
+}
+
+.adv-send-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .adv-q-form-wrap,
 .adv-q-form {
   align-self: stretch;
