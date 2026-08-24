@@ -5,7 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'">
   <title>NeuroAGI</title>
+  <script src="scripts/theme.js"></script>
   <link rel="stylesheet" href="styles/tokens.css">
+  <link rel="stylesheet" href="styles/themes.css">
+  <link rel="stylesheet" href="styles/shell.css">
   <link rel="stylesheet" href="styles/usage-bubbles.css">
   <link rel="stylesheet" href="styles/logs-panel.css">
   <link rel="stylesheet" href="styles/app.css">
@@ -19,7 +22,32 @@
     </svg>
     </button>
     <button type="button" id="btn-models" class="glass-models-btn" aria-label="Models">Models</button>
-    <button type="button" id="btn-advance" class="glass-models-btn" aria-label="Advance">Advance</button>
+  </div>
+
+  <!-- Settings popup -->
+  <div id="settings-overlay" class="glass-overlay settings-overlay" hidden aria-modal="true" role="dialog" aria-labelledby="settings-modal-title">
+    <div class="settings-modal">
+      <div class="settings-modal-header">
+        <h2 class="settings-modal-title" id="settings-modal-title">Settings</h2>
+        <p class="settings-modal-subtitle">Choose a theme for Home and Advance.</p>
+      </div>
+      <div class="settings-modal-body">
+        <label for="select-theme" class="settings-theme-label">Theme</label>
+        <select id="select-theme" class="glass-select" aria-label="Theme">
+          <option value="aurora" selected>Aurora</option>
+          <option value="warm-clinic">Warm Clinic</option>
+          <option value="clinical-teal">Clinical Teal</option>
+          <option value="midnight-indigo">Midnight Indigo</option>
+          <option value="arctic-slate">Arctic Slate</option>
+          <option value="forest-sage">Forest Sage</option>
+        </select>
+      </div>
+      <div class="settings-modal-footer">
+        <button type="button" id="btn-settings-devtools" class="settings-btn-devtools">Open DevTools</button>
+        <button type="button" id="btn-settings-close" class="models-btn-close">Close</button>
+        <button type="button" id="btn-settings-apply" class="models-btn-update">Apply</button>
+      </div>
+    </div>
   </div>
 
   <!-- Models popup -->

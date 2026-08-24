@@ -1,16 +1,5 @@
 const { ipcMain, BrowserWindow } = require("electron");
 const channels = require("../../shared/ipc/channels");
-const {
-  EnhanceQuery,
-  StartReportcollection,
-  SubmitQuestionnaire,
-  GotoLaboratory,
-  SubmitLaboratory,
-  GotoPreDoctorRoom,
-  SubmitPreDoctorRoom,
-  StartDoctor,
-  RequestSkipFanout,
-} = require("../middlewares/collector-middleware");
 const { GetModelsConfig, UpdateModelsConfig } = require("../middlewares/cookie-middleware");
 const { SendAdvanceChat, CancelAdvanceChat } = require("../middlewares/advance-middleware");
 const usageTracker = require("../services/usage-tracker");
@@ -18,42 +7,6 @@ const logService = require("../services/log-service");
 
 function registerIpcHandlers() {
   ipcMain.handle(channels.PING, async () => "pong");
-
-  ipcMain.handle(channels.ENHANCE_QUERY, (event, payload) => {
-    return EnhanceQuery(payload || {}, event.sender);
-  });
-
-  ipcMain.handle(channels.START_REPORT_COLLECTION, async (event, payload) => {
-    return StartReportcollection(payload || {}, event.sender);
-  });
-
-  ipcMain.handle(channels.SKIP_FANOUT_WAIT, (event) => {
-    return RequestSkipFanout(event.sender);
-  });
-
-  ipcMain.handle(channels.SUBMIT_QUESTIONNAIRE, async (_event, payload) => {
-    return SubmitQuestionnaire(payload || {});
-  });
-
-  ipcMain.handle(channels.GOTO_LABORATORY, async (event, payload) => {
-    return GotoLaboratory(payload || {}, event.sender);
-  });
-
-  ipcMain.handle(channels.SUBMIT_LABORATORY, async (_event, payload) => {
-    return SubmitLaboratory(payload || {});
-  });
-
-  ipcMain.handle(channels.GOTO_PRE_DOCTOR_ROOM, async (event, payload) => {
-    return GotoPreDoctorRoom(payload || {}, event.sender);
-  });
-
-  ipcMain.handle(channels.SUBMIT_PRE_DOCTOR_ROOM, async (_event, payload) => {
-    return SubmitPreDoctorRoom(payload || {});
-  });
-
-  ipcMain.handle(channels.START_DOCTOR, (event, payload) => {
-    return StartDoctor(payload || {}, event.sender);
-  });
 
   ipcMain.handle(channels.GET_USAGE_TOTALS, () => usageTracker.getTotals());
 

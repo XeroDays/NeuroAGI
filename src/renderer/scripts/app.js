@@ -1,7 +1,4 @@
-import {
-  APP_TITLE,
-  LABEL_START_HUMAN_DIAGNOSTICS
-} from './constants.js';
+import { APP_TITLE } from './constants.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   document.title = APP_TITLE;
@@ -25,6 +22,180 @@ document.addEventListener('DOMContentLoaded', () => {
   if (input) {
     input.focus();
   }
+
+  const openCustomSelects = new Set();
+
+  function closeAllCustomSelects() {
+    for (const close of openCustomSelects) close();
+  }
+
+  function enhanceGlassSelect(selectEl) {
+    if (!selectEl || selectEl.dataset.enhanced === '1') return;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'custom-select';
+    selectEl.parentNode.insertBefore(wrap, selectEl);
+    wrap.appendChild(selectEl);
+    selectEl.hidden = true;
+    selectEl.dataset.enhanced = '1';
+    selectEl.tabIndex = -1;
+
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.className = 'custom-select-trigger';
+    if (selectEl.id) trigger.id = `${selectEl.id}-trigger`;
+    trigger.setAttribute('aria-haspopup', 'listbox');
+    trigger.setAttribute('aria-expanded', 'false');
+    trigger.setAttribute('aria-label', selectEl.getAttribute('aria-label') || 'Select');
+    if (selectEl.id) {
+      const label = document.querySelector(`label[for="${selectEl.id}"]`);
+      if (label) label.setAttribute('for', trigger.id);
+    }
+
+    const menu = document.createElement('ul');
+    menu.className = 'custom-select-menu';
+    menu.setAttribute('role', 'listbox');
+    menu.hidden = true;
+
+    function selectedOption() {
+      return selectEl.options[selectEl.selectedIndex] || selectEl.options[0];
+    }
+
+    function syncTrigger() {
+      const opt = selectedOption();
+      trigger.textContent = opt ? opt.textContent : '';
+    }
+
+    function setValue(value) {
+      if (selectEl.value === value) {
+        syncTrigger();
+        highlightActive();
+        return;
+      }
+      selectEl.value = value;
+      selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+      syncTrigger();
+    }
+
+    selectEl.addEventListener('change', () => {
+      syncTrigger();
+      highlightActive();
+    });
+
+    function highlightActive() {
+      const value = selectEl.value;
+      for (const li of menu.querySelectorAll('[role="option"]')) {
+        const on = li.dataset.value === value;
+        li.classList.toggle('is-selected', on);
+        li.setAttribute('aria-selected', on ? 'true' : 'false');
+      }
+    }
+
+    function rebuildMenu() {
+      menu.replaceChildren();
+      for (const opt of selectEl.options) {
+        const li = document.createElement('li');
+        li.setAttribute('role', 'option');
+        li.dataset.value = opt.value;
+        li.textContent = opt.textContent;
+        li.addEventListener('click', () => {
+          setValue(opt.value);
+          closeMenu();
+          trigger.focus();
+        });
+        menu.appendChild(li);
+      }
+      highlightActive();
+    }
+
+    function scrollSelectedIntoView() {
+      const selected = menu.querySelector('.is-selected');
+      selected?.scrollIntoView({ block: 'nearest' });
+    }
+
+    function closeMenu() {
+      if (menu.hidden) return;
+      menu.hidden = true;
+      wrap.classList.remove('is-open');
+      trigger.setAttribute('aria-expanded', 'false');
+      openCustomSelects.delete(closeMenu);
+    }
+
+    function openMenu() {
+      if (!menu.hidden) return;
+      closeAllCustomSelects();
+      rebuildMenu();
+      menu.hidden = false;
+      wrap.classList.add('is-open');
+      trigger.setAttribute('aria-expanded', 'true');
+      openCustomSelects.add(closeMenu);
+      scrollSelectedIntoView();
+    }
+
+    function moveSelection(delta) {
+      const opts = Array.from(selectEl.options);
+      if (!opts.length) return;
+      let index = selectEl.selectedIndex;
+      if (index < 0) index = 0;
+      index = Math.max(0, Math.min(opts.length - 1, index + delta));
+      setValue(opts[index].value);
+      highlightActive();
+      scrollSelectedIntoView();
+    }
+
+    trigger.addEventListener('click', () => {
+      if (menu.hidden) openMenu();
+      else closeMenu();
+    });
+
+    trigger.addEventListener('keydown', (event) => {
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        if (menu.hidden) openMenu();
+        else moveSelection(1);
+      } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        if (menu.hidden) openMenu();
+        else moveSelection(-1);
+      } else if (event.key === 'Home') {
+        event.preventDefault();
+        if (selectEl.options.length) setValue(selectEl.options[0].value);
+        highlightActive();
+        scrollSelectedIntoView();
+      } else if (event.key === 'End') {
+        event.preventDefault();
+        const last = selectEl.options[selectEl.options.length - 1];
+        if (last) setValue(last.value);
+        highlightActive();
+        scrollSelectedIntoView();
+      } else if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        if (menu.hidden) openMenu();
+        else closeMenu();
+      } else if (event.key === 'Escape') {
+        if (!menu.hidden) {
+          event.preventDefault();
+          closeMenu();
+        }
+      }
+    });
+
+    wrap.appendChild(trigger);
+    wrap.appendChild(menu);
+    syncTrigger();
+  }
+
+  document.addEventListener('pointerdown', (event) => {
+    if (event.target.closest('.custom-select')) return;
+    closeAllCustomSelects();
+  });
+
+  enhanceGlassSelect(reasoningSelect);
+  enhanceGlassSelect(genderSelect);
+  enhanceGlassSelect(ageSelect);
+
+  const themeSelect = document.getElementById('select-theme');
+  enhanceGlassSelect(themeSelect);
 
   const errorOverlay = document.getElementById('error-overlay');
   const errorOkBtn = document.getElementById('btn-error-ok');
@@ -116,16 +287,50 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   const settingsBtn = document.getElementById('btn-settings');
+  const settingsOverlay = document.getElementById('settings-overlay');
+  const settingsCloseBtn = document.getElementById('btn-settings-close');
+  const settingsApplyBtn = document.getElementById('btn-settings-apply');
+  const settingsDevtoolsBtn = document.getElementById('btn-settings-devtools');
+
+  function closeSettingsPopup() {
+    if (settingsOverlay) settingsOverlay.hidden = true;
+  }
+
+  function openSettingsPopup() {
+    if (!settingsOverlay) return;
+    const current = window.NeuroAGITheme?.current?.() || 'aurora';
+    if (themeSelect) {
+      themeSelect.value = current;
+      themeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    settingsOverlay.hidden = false;
+  }
+
   if (settingsBtn) {
-    settingsBtn.addEventListener('click', () => {
+    settingsBtn.addEventListener('click', openSettingsPopup);
+  }
+
+  if (settingsCloseBtn) {
+    settingsCloseBtn.addEventListener('click', closeSettingsPopup);
+  }
+
+  if (settingsApplyBtn) {
+    settingsApplyBtn.addEventListener('click', () => {
+      const id = themeSelect?.value || 'aurora';
+      window.NeuroAGITheme?.apply?.(id, true);
+      closeSettingsPopup();
+    });
+  }
+
+  if (settingsDevtoolsBtn) {
+    settingsDevtoolsBtn.addEventListener('click', () => {
       window.electronAPI?.openDevTools?.();
     });
   }
 
-  const advanceBtn = document.getElementById('btn-advance');
-  if (advanceBtn) {
-    advanceBtn.addEventListener('click', () => {
-      window.location.href = 'screens/advance/index.html';
+  if (settingsOverlay) {
+    settingsOverlay.addEventListener('click', (e) => {
+      if (e.target === settingsOverlay) closeSettingsPopup();
     });
   }
 
@@ -326,6 +531,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (e.key !== 'Escape') return;
       if (!modelsOverlay.hidden) closeModelsPopup();
       if (errorOverlay && !errorOverlay.hidden) closeErrorPopup();
+      if (settingsOverlay && !settingsOverlay.hidden) closeSettingsPopup();
     });
   }
 

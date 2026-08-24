@@ -4,19 +4,7 @@
  */
 export const APP_TITLE = 'Neuro AGI';
 
-/** Questionnaire screen (shown after submit from home). */
-export const SCREEN_QUESTIONNAIRE = 'Questionnaire';
-
-/** Laboratory screen (shown after submitting the questionnaire). */
-export const SCREEN_LABORATORY = 'Laboratory';
-
-/** Pre-doctor Room screen (shown after submitting the laboratory results, before Doctor). */
-export const SCREEN_PRE_DOCTOR_ROOM = 'Pre-doctor Room';
-
-/** Doctor screen (shown after submitting the pre-doctor room clarifying answers). */
-export const SCREEN_DOCTOR = 'Doctor';
-
-/** Advance screen (opened from the home Advance button). */
+/** Advance screen (opened from Home submit). */
 export const SCREEN_ADVANCE = 'Advance';
 
 /** Home screen primary action. */

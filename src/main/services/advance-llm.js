@@ -70,8 +70,7 @@ function buildRequestBody(messages, model, options = {}) {
 
 /**
  * Advance-only OpenRouter completion that can carry tools.
- * Does not change api-helper.js. Returns the full assistant message so the
- * caller can run a tool loop.
+ * Returns the full assistant message so the caller can run a tool loop.
  *
  * @param {object[]} messages
  * @param {string} model

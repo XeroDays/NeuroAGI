@@ -1,0 +1,52 @@
+@keyframes gradient-rotate {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to   { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body.app-shell,
+body.adv-shell {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--text-primary);
+  position: relative;
+  overflow-x: hidden;
+  background: var(--grad-3);
+  -webkit-font-smoothing: antialiased;
+}
+
+body.app-shell::after,
+body.adv-shell::after {
+  content: '';
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 200vmax;
+  height: 200vmax;
+  z-index: -2;
+  pointer-events: none;
+  background: linear-gradient(135deg, var(--grad-1) 0%, var(--grad-2) 25%, var(--grad-3) 50%, var(--grad-4) 75%, var(--grad-5) 100%);
+  animation: gradient-rotate var(--grad-speed) linear infinite;
+  will-change: transform;
+}
+
+body.app-shell::before,
+body.adv-shell::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 80% 60% at 10% 30%, var(--glow-a), transparent 55%),
+    radial-gradient(ellipse 70% 50% at 90% 70%, var(--glow-b), transparent 50%);
+  opacity: 0.7;
+}

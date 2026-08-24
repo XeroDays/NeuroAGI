@@ -25,6 +25,7 @@ function createMainWindow() {
       const { app } = require("electron");
       app.dock.setIcon(iconPath);
     }
+    win.maximize();
     win.show();
     win.focus();
   });

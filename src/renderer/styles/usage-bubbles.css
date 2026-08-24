@@ -36,17 +36,17 @@
 }
 
 .cost-bubble {
-  background: rgba(120, 200, 140, 0.22);
-  border: 1px solid rgba(180, 230, 195, 0.55);
-  color: #e6ffe9;
-  text-shadow: 0 1px 6px rgba(0, 80, 30, 0.25);
+  background: var(--bubble-cost-bg);
+  border: 1px solid rgba(var(--hairline-rgb), 0.55);
+  color: var(--bubble-text);
+  text-shadow: 0 1px 6px var(--bubble-shadow);
 }
 
 .tokens-bubble {
-  background: rgba(140, 180, 230, 0.22);
-  border: 1px solid rgba(190, 215, 245, 0.55);
-  color: #eaf3ff;
-  text-shadow: 0 1px 6px rgba(20, 50, 110, 0.25);
+  background: var(--bubble-tokens-bg);
+  border: 1px solid rgba(var(--hairline-rgb), 0.5);
+  color: var(--bubble-text);
+  text-shadow: 0 1px 6px var(--bubble-shadow);
 }
 
 .prompt-copy-bubble {
@@ -60,6 +60,6 @@
 }
 
 .prompt-copy-bubble:focus-visible {
-  outline: 2px solid rgba(34, 211, 238, 0.8);
+  outline: 2px solid rgba(var(--accent-rgb), 0.8);
   outline-offset: 2px;
 }
