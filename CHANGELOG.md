@@ -15,6 +15,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Security
 
+## [1.0.2] - 2026-08-24
+
+Home → Advance chat is now the live product. The old Questionnaire / Laboratory / Pre-doctor Room / Doctor chain is gone.
+
+### Added
+
+- Advance chat with a starred-master tool loop (find topic URLs, extract page, web search, ask the user)
+- Tavily search and extract, plus a session Logs overlay for AI and web calls
+- Sunset Bloom theme, custom glass dropdowns, and Markdown assistant replies
+- Cancel for an in-flight Advance turn
+
+### Changed
+
+- Home submit is the only path into Advance; reasoning level is chosen on Home
+- Settings is Open DevTools only; the starred model is the exclusive Advance master
+- Window maximizes on show (title bar stays; not fullscreen)
+
+### Fixed
+
+### Security
+
 ## [1.0.0] - 2026-06-01
 
 First stable release of the NeuroAGI multi-screen diagnostic flow.
@@ -57,5 +78,6 @@ First stable release of the NeuroAGI multi-screen diagnostic flow.
 - Logo display and asset path corrections
 - Master-merge fallback when master model JSON parse fails or returns empty results
 
-[Unreleased]: https://github.com/XeroDays/Open-Health/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/XeroDays/Open-Health/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/XeroDays/Open-Health/compare/v1.0.0...v1.0.2
 [1.0.0]: https://github.com/XeroDays/Open-Health/releases/tag/v1.0.0

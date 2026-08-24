@@ -11,6 +11,13 @@
 
 ---
 
+## Agent rules
+
+1. **Never git.** Do not run `git commit`, `git push`, `git tag`, `gh release`, workflow dispatch, or any other git/GitHub publish step — **even if the user explicitly asks**. Tell them to do it locally. The user owns commits, tags, and GitHub Releases.
+2. **Changelog on every change.** Whenever a feature, change, fix, or bugfix is made in the same session, append a **short high-level note** under [`CHANGELOG.md`](CHANGELOG.md) `## [Unreleased]` in the matching subsection (`Added` / `Changed` / `Fixed` / `Security`). Notes stay simple so they can later be moved into a versioned release.
+
+---
+
 ## Project context
 
 **NeuroAGI** is an Electron + JavaScript desktop app for health diagnostics. The live product is **Home → Advance chat**. The old Questionnaire / Laboratory / Pre-doctor Room / Doctor chain (and its collector/fanout IPC) has been deleted.
@@ -159,6 +166,17 @@ Records every Advance OpenRouter call (`advance-llm.js`, type `"ai"`) and every 
 2. Link `tokens.css` + `themes.css` + `shell.css` (and usage/logs if needed) with `../../styles/` paths
 3. Add a screen script in `src/renderer/scripts/`
 4. Navigate via relative HTML paths
+
+### Preparing a release (user publishes)
+
+**“Create a release” / “new release” means local version prep only** — not a git commit, tag, push, or GitHub Release. Current shipped version is `1.0.2` in [`package.json`](package.json).
+
+1. Do **not** commit, push, tag, or publish
+2. Choose the next SemVer from [`package.json`](package.json) (breaking product change → major)
+3. Bump `"version"` in [`package.json`](package.json) and both root version fields in [`package-lock.json`](package-lock.json)
+4. Move filled `[Unreleased]` notes — especially **Added** and **Fixed** — into `## [X.Y.Z] - YYYY-MM-DD` in [`CHANGELOG.md`](CHANGELOG.md); restore empty Unreleased stubs; update the compare links at the bottom
+5. If the major line changed, update the supported-versions table in [`SECURITY.md`](SECURITY.md)
+6. Stop. The user commits, tags, and creates the GitHub Release (including [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml) if they want the Windows installer)
 
 ---
 
