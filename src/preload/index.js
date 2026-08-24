@@ -6,6 +6,11 @@ const CH = {
   RESET_USAGE_TOTALS: "neuroagi:reset-usage-totals",
   USAGE_UPDATE: "neuroagi:usage-update",
   OPEN_DEV_TOOLS: "neuroagi:open-dev-tools",
+  GET_CREDENTIALS: "neuroagi:get-credentials",
+  UPDATE_CREDENTIALS: "neuroagi:update-credentials",
+  OPEN_EXTERNAL_URL: "neuroagi:open-external-url",
+  TEST_OPENROUTER_KEY: "neuroagi:test-openrouter-key",
+  TEST_TAVILY_KEY: "neuroagi:test-tavily-key",
   GET_MODELS_CONFIG: "neuroagi:get-models-config",
   UPDATE_MODELS_CONFIG: "neuroagi:update-models-config",
   GET_LOGS: "neuroagi:get-logs",
@@ -31,6 +36,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onUsageUpdate: (cb) => subscribe(CH.USAGE_UPDATE, cb),
 
   openDevTools: () => ipcRenderer.invoke(CH.OPEN_DEV_TOOLS),
+  getCredentials: () => ipcRenderer.invoke(CH.GET_CREDENTIALS),
+  updateCredentials: (payload) => ipcRenderer.invoke(CH.UPDATE_CREDENTIALS, payload),
+  openExternalUrl: (url) => ipcRenderer.invoke(CH.OPEN_EXTERNAL_URL, url),
+  testOpenRouterKey: (payload) => ipcRenderer.invoke(CH.TEST_OPENROUTER_KEY, payload),
+  testTavilyKey: (payload) => ipcRenderer.invoke(CH.TEST_TAVILY_KEY, payload),
 
   getModelsConfig: () => ipcRenderer.invoke(CH.GET_MODELS_CONFIG),
   updateModelsConfig: (payload) => ipcRenderer.invoke(CH.UPDATE_MODELS_CONFIG, payload),

@@ -9,6 +9,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- Settings Credentials tab: save OpenRouter and Tavily keys to `.env` from the app
+- Test key buttons in Settings to check OpenRouter and Tavily keys without saving
+
 ### Changed
 
 ### Fixed

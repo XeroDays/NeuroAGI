@@ -30,7 +30,7 @@
 | Entry | `src/main/index.js` |
 | Start | `npm start` → `scripts/start-electron.js` |
 | API | OpenRouter (chat completions) + Tavily (search / extract) |
-| Env | `.env` file at project root (git-ignored); loads via `dotenv` at top of `src/main/index.js`. Keys: `OPENROUTER_API_KEY` (OpenRouter), `TAVILY_API_KEY` (Tavily web search) |
+| Env | `.env` file (git-ignored). Loaded at startup via [`env-file-service.js`](src/main/services/env-file-service.js) (`loadEnv()` from `src/main/index.js`). Keys: `OPENROUTER_API_KEY` (OpenRouter), `TAVILY_API_KEY` (Tavily web search). Settings → Credentials can create or update this file |
 | Dependencies | `electron` (devDep), `dotenv` (dep), `jsonrepair` (dep — leftover, unused after the collector delete), `marked` (dep — vendored into renderer at `src/renderer/scripts/vendor/marked.esm.js` so the renderer CSP `default-src 'self'` keeps holding; Advance imports the local copy) |
 
 ---
@@ -40,9 +40,9 @@
 ```
 src/
 ├── main/
-│   ├── index.js              # Bootstrap: dotenv config, hide menu, register IPC, create window
+│   ├── index.js              # Bootstrap: loadEnv(), hide menu, register IPC, create window
 │   ├── ipc/
-│   │   └── register.js       # IPC: ping, advanceSend / advanceCancel, getUsageTotals, resetUsageTotals, openDevTools, getModelsConfig, updateModelsConfig, getLogs, clearLogs. USAGE_UPDATE / LOG_UPDATE / ADVANCE_PROGRESS are broadcast, not handle-invoked
+│   │   └── register.js       # IPC: ping, advanceSend / advanceCancel, getUsageTotals, resetUsageTotals, openDevTools, getCredentials, updateCredentials, openExternalUrl, testOpenRouterKey, testTavilyKey, getModelsConfig, updateModelsConfig, getLogs, clearLogs. USAGE_UPDATE / LOG_UPDATE / ADVANCE_PROGRESS are broadcast, not handle-invoked
 │   ├── middlewares/
 │   │   ├── advance-middleware.js   # SendAdvanceChat({ messages, resume?, reasoningLevel }, sender) — starred-master chat turn for Advance. CancelAdvanceChat(sender) aborts the in-flight turn
 │   │   └── cookie-middleware.js    # GetModelsConfig() / UpdateModelsConfig({ activeModels, masterModel }) — thin wrapper around model-config-service
@@ -53,12 +53,14 @@ src/
 │   │   ├── advance-system-prompt.js # ADVANCE_SYSTEM_PROMPT — clinical assistant + diagnostic vs informational turn rules
 │   │   ├── model-config-service.js # Catalog + persisted { activeModels, masterModel } under Electron userData. Advance uses getMasterModelRuntimeId()
 │   │   ├── web-search-service.js   # Tavily search() + extract(); type:"web" log items on every success/error
+│   │   ├── env-file-service.js     # resolve/read/write `.env`; loadEnv() at startup; GET/UPDATE credentials. Create: project root unpackaged, next to exe when packaged
+│   │   ├── credential-test-service.js # Probe OpenRouter GET /api/v1/key and Tavily POST /search (basic ping). No logs, no usage, never echoes the key
 │   │   ├── log-service.js          # In-memory tool-call logger. addLog / getLogs / clearLogs; broadcasts LOG_UPDATE. Instrumented at advance-llm.js and web-search-service.js
 │   │   └── usage-tracker.js        # Running cost + token totals; broadcasts USAGE_UPDATE
 │   └── windows/
 │       └── main-window.js    # BrowserWindow 800×600 (restore size). On ready-to-show: maximize() then show(). Not fullscreen
 ├── preload/
-│   └── index.js              # contextBridge → window.electronAPI { ping, getUsageTotals, resetUsageTotals, onUsageUpdate, openDevTools, getModelsConfig, updateModelsConfig, getLogs, clearLogs, onLogUpdate, advanceSend, advanceCancel, onAdvanceProgress }
+│   └── index.js              # contextBridge → window.electronAPI { ping, getUsageTotals, resetUsageTotals, onUsageUpdate, openDevTools, getCredentials, updateCredentials, openExternalUrl, testOpenRouterKey, testTavilyKey, getModelsConfig, updateModelsConfig, getLogs, clearLogs, onLogUpdate, advanceSend, advanceCancel, onAdvanceProgress }
 ├── renderer/
 │   ├── index.html            # Home. Top bar: Settings + Models only (no Advance shortcut). Submit is the only entry to Advance
 │   ├── screens/
@@ -66,7 +68,7 @@ src/
 │   │       └── index.html    # Advance chat. Thread + composer; no settings overlay. Does not link worker-snack.css
 │   ├── scripts/
 │   │   ├── constants.js      # APP_TITLE, SCREEN_ADVANCE, LABEL_START_HUMAN_DIAGNOSTICS, PLACEHOLDER_HEALTH_INPUT
-│   │   ├── app.js            # Home: enhanceGlassSelect() wraps reasoning/gender/age native <select>s. Gear opens Settings (Open DevTools). handleStartDiagnostics() — empty issue is a no-op; master-model guard; stashes reasoning; resetUsageTotals(); navigates to Advance with issue/gender/age
+│   │   ├── app.js            # Home: enhanceGlassSelect() wraps reasoning/gender/age native <select>s. Gear opens Settings (Credentials tab, Save writes `.env`, Test key probes the current input). handleStartDiagnostics() — empty issue is a no-op; master-model guard; stashes reasoning; resetUsageTotals(); navigates to Advance with issue/gender/age
 │   │   ├── advance.js        # Advance chat: getReasoningLevel() from sessionStorage['neuroagi:advanceReasoningLevel'] (default medium). URL `issue` auto-composes the first message and calls handleSend()
 │   │   ├── advance-questions.js # ask_user form renderer (text / single_select / multi_select / slider / range)
 │   │   ├── usage-bubbles.js  # Global top-right tokens + cost pills (Home + Advance)
@@ -84,7 +86,7 @@ src/
 │   └── assets/
 └── shared/
     └── ipc/
-        └── channels.js       # PING, ADVANCE_SEND, ADVANCE_PROGRESS, ADVANCE_CANCEL, GET_USAGE_TOTALS, RESET_USAGE_TOTALS, USAGE_UPDATE, OPEN_DEV_TOOLS, GET_MODELS_CONFIG, UPDATE_MODELS_CONFIG, GET_LOGS, CLEAR_LOGS, LOG_UPDATE
+        └── channels.js       # PING, ADVANCE_SEND, ADVANCE_PROGRESS, ADVANCE_CANCEL, GET_USAGE_TOTALS, RESET_USAGE_TOTALS, USAGE_UPDATE, OPEN_DEV_TOOLS, GET_CREDENTIALS, UPDATE_CREDENTIALS, OPEN_EXTERNAL_URL, TEST_OPENROUTER_KEY, TEST_TAVILY_KEY, GET_MODELS_CONFIG, UPDATE_MODELS_CONFIG, GET_LOGS, CLEAR_LOGS, LOG_UPDATE
 ```
 
 ---
@@ -94,7 +96,7 @@ src/
 ### App startup
 
 1. `npm start` → `scripts/start-electron.js` spawns Electron
-2. `src/main/index.js` runs: loads `.env` via `dotenv`, hides menu, registers IPC handlers, creates main window
+2. `src/main/index.js` runs: `loadEnv()` from `env-file-service.js`, hides menu, registers IPC handlers, creates main window
 3. `main-window.js` creates a hidden BrowserWindow (800×600 — this is the restore size after un-maximize), loads `src/renderer/index.html`
 4. On `ready-to-show`: `win.maximize()` then `win.show()` then `win.focus()`. Title bar stays; do **not** use `setFullScreen(true)`. Restore returns to 800×600
 
@@ -126,8 +128,11 @@ src/
 ### Settings (gear icon)
 
 1. Home `#btn-settings` (fixed top-left) opens `#settings-overlay`
-2. **Open DevTools** invokes IPC `OPEN_DEV_TOOLS`
-3. **Close** / Escape / backdrop dismiss the popup
+2. Left tabs / right pane. **Credentials** is the only tab. On open, `getCredentials()` fills the OpenRouter and Tavily password fields from `.env` (empty if missing)
+3. **Save** invokes `updateCredentials`; main creates or updates `.env` and reloads `process.env` (`dotenv.config` override). Close / Escape / backdrop discard without saving
+4. **Test key** (per field) probes the **current input** via `testOpenRouterKey` / `testTavilyKey` — does not write `.env`. Empty input → Invalid with no network. Status: Testing… / Valid / Invalid
+5. Hint links under each field open in the system browser via `openExternalUrl` (allowlisted: `https://openrouter.ai/keys`, `https://app.tavily.com/home`)
+6. **Open DevTools** invokes IPC `OPEN_DEV_TOOLS`
 
 There is no theme picker. All screens use the Sunset Bloom palette in [`themes.css`](src/renderer/styles/themes.css) (`:root`). Shared glass/type tokens stay in [`tokens.css`](src/renderer/styles/tokens.css).
 
@@ -197,10 +202,10 @@ All screens share [`tokens.css`](src/renderer/styles/tokens.css) (glass + type) 
 | **Top bar** | Settings gear + Models only |
 | **Dropdowns** | Custom listboxes (`.custom-select`). Trigger copies the old closed glass look (frosted white, 10px radius, chevron). Native `<select>` is hidden and remains the value source. Open menu: rounded glass panel. Options use `--text-ink`; hover/selected use `--accent-wash` + `--accent` text — not Windows blue. Age menu `max-height: 16rem` with a thin themed scrollbar. One menu open at a time; click-outside and Escape close; Arrow / Enter / Home / End work; selected age scrolls into view on open |
 | **Reasoning level** | Left of the selects row. Five options — None / Low / Medium / High / Very High — Medium default. Stashed as `neuroagi:advanceReasoningLevel` on submit |
-| **Settings (gear)** | Fixed `top: 1rem; left: 1rem`, glass circle; opens Settings popup (Open DevTools) |
+| **Settings (gear)** | Fixed `top: 1rem; left: 1rem`, glass circle; opens Settings popup |
 | **Models button** | Glass pill immediately right of the gear |
 | **Models popup** | Full-viewport `.glass-overlay`. White card. Star fills `--accent`. Footer: Close (`--chrome`) + Update (`--accent`) |
-| **Settings popup** | Compact white card like the error modal. Footer: **Open DevTools** (left) + Close (`--chrome`). Close/Escape/backdrop dismiss |
+| **Settings popup** | Wider white card. Left tab list (Credentials) + right pane. Password inputs (`--surface-solid`, `--text-ink`). Muted hint links under each field. **Test key** (`--chrome`) plus Valid/Invalid status. Footer: **Open DevTools** (left) + Close (`--chrome`) + Save (`--accent`). Close/Escape/backdrop dismiss without saving |
 | **Master model required popup** | `#error-overlay` — title "Master model required"; **OK** + **Open Models** |
 
 ### Advance screen (`advance.css`)
@@ -237,6 +242,7 @@ Full-viewport overlay (z-index 300). The `.logs-modal` card uses `--logs-card` +
 
 - `contextIsolation: true`, `nodeIntegration: false`
 - CSP: `default-src 'self'; script-src 'self'; style-src 'self'`
-- API keys stay in main process only (never in renderer or preload source)
+- API keys are not hardcoded in renderer or preload source. File I/O stays in main (`env-file-service.js`). Settings Credentials loads keys over IPC into password fields
+- `OPEN_EXTERNAL_URL` allowlists only `https://openrouter.ai/keys` and `https://app.tavily.com/home`
 - IPC channels centralized in `src/shared/ipc/channels.js`; preload mirrors them
 - All file paths use `path.join(__dirname, ...)` for spaces and packaging compatibility

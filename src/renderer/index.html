@@ -28,11 +28,39 @@
     <div class="settings-modal">
       <div class="settings-modal-header">
         <h2 class="settings-modal-title" id="settings-modal-title">Settings</h2>
-        <p class="settings-modal-subtitle">Open developer tools.</p>
+        <p class="settings-modal-subtitle">API keys for OpenRouter and Tavily.</p>
+      </div>
+      <div class="settings-modal-body">
+        <nav class="settings-nav" role="tablist" aria-label="Settings sections">
+          <button type="button" class="settings-tab is-active" data-tab="credentials" role="tab" aria-selected="true" aria-controls="settings-pane-credentials" id="settings-tab-credentials">Credentials</button>
+        </nav>
+        <div class="settings-panes">
+          <div id="settings-pane-credentials" class="settings-pane" role="tabpanel" aria-labelledby="settings-tab-credentials">
+            <div class="settings-field">
+              <label class="settings-field-label" for="input-openrouter-key">OpenRouter API key</label>
+              <input type="password" id="input-openrouter-key" class="settings-field-input" autocomplete="off" spellcheck="false">
+              <span class="settings-field-hint">Get a key at <a href="https://openrouter.ai/keys" class="settings-ext-link" data-external-url="https://openrouter.ai/keys">https://openrouter.ai/keys</a></span>
+              <div class="settings-field-test">
+                <button type="button" id="btn-test-openrouter" class="settings-btn-test">Test key</button>
+                <span id="status-openrouter-key" class="settings-test-status" aria-live="polite"></span>
+              </div>
+            </div>
+            <div class="settings-field">
+              <label class="settings-field-label" for="input-tavily-key">Tavily API key</label>
+              <input type="password" id="input-tavily-key" class="settings-field-input" autocomplete="off" spellcheck="false">
+              <span class="settings-field-hint">Get a key at <a href="https://app.tavily.com/home" class="settings-ext-link" data-external-url="https://app.tavily.com/home">https://app.tavily.com/home</a></span>
+              <div class="settings-field-test">
+                <button type="button" id="btn-test-tavily" class="settings-btn-test">Test key</button>
+                <span id="status-tavily-key" class="settings-test-status" aria-live="polite"></span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="settings-modal-footer">
         <button type="button" id="btn-settings-devtools" class="settings-btn-devtools">Open DevTools</button>
         <button type="button" id="btn-settings-close" class="models-btn-close">Close</button>
+        <button type="button" id="btn-settings-save" class="models-btn-update">Save</button>
       </div>
     </div>
   </div>

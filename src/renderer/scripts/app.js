@@ -287,13 +287,88 @@ document.addEventListener('DOMContentLoaded', () => {
   const settingsOverlay = document.getElementById('settings-overlay');
   const settingsCloseBtn = document.getElementById('btn-settings-close');
   const settingsDevtoolsBtn = document.getElementById('btn-settings-devtools');
+  const settingsSaveBtn = document.getElementById('btn-settings-save');
+  const settingsTabs = document.querySelectorAll('.settings-tab');
+  const openRouterKeyInput = document.getElementById('input-openrouter-key');
+  const tavilyKeyInput = document.getElementById('input-tavily-key');
+  const testOpenRouterBtn = document.getElementById('btn-test-openrouter');
+  const testTavilyBtn = document.getElementById('btn-test-tavily');
+  const openRouterStatus = document.getElementById('status-openrouter-key');
+  const tavilyStatus = document.getElementById('status-tavily-key');
+
+  function setTestStatus(el, kind, text) {
+    if (!el) return;
+    el.textContent = text || '';
+    el.classList.toggle('is-valid', kind === 'valid');
+    el.classList.toggle('is-invalid', kind === 'invalid');
+  }
+
+  function clearCredentialTestStatus() {
+    setTestStatus(openRouterStatus, '', '');
+    setTestStatus(tavilyStatus, '', '');
+  }
+
+  function formatTestResult(result) {
+    if (result?.ok) return { kind: 'valid', text: 'Valid' };
+    const message = (result?.message || '').trim();
+    if (!message || message === 'Invalid') return { kind: 'invalid', text: 'Invalid' };
+    if (message === 'Enter a key') return { kind: 'invalid', text: 'Invalid — enter a key' };
+    return { kind: 'invalid', text: `Invalid — ${message}` };
+  }
+
+  async function runKeyTest({ input, button, status, tester }) {
+    const apiKey = (input?.value || '').trim();
+    if (!apiKey) {
+      setTestStatus(status, 'invalid', 'Invalid — enter a key');
+      return;
+    }
+    if (button) button.disabled = true;
+    setTestStatus(status, '', 'Testing…');
+    try {
+      const result = await tester({ apiKey });
+      const { kind, text } = formatTestResult(result);
+      setTestStatus(status, kind, text);
+    } catch (err) {
+      console.error('[app] Key test failed:', err?.message || String(err));
+      setTestStatus(status, 'invalid', 'Invalid — request failed');
+    } finally {
+      if (button) button.disabled = false;
+    }
+  }
 
   function closeSettingsPopup() {
     if (settingsOverlay) settingsOverlay.hidden = true;
   }
 
-  function openSettingsPopup() {
+  function selectSettingsTab(tabId) {
+    settingsTabs.forEach((tab) => {
+      const isActive = tab.dataset.tab === tabId;
+      tab.classList.toggle('is-active', isActive);
+      tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+    document.querySelectorAll('.settings-pane').forEach((pane) => {
+      pane.hidden = pane.id !== `settings-pane-${tabId}`;
+    });
+  }
+
+  async function fillCredentialsForm() {
+    if (!openRouterKeyInput || !tavilyKeyInput) return;
+    clearCredentialTestStatus();
+    try {
+      const creds = await window.electronAPI?.getCredentials?.();
+      openRouterKeyInput.value = creds?.OPENROUTER_API_KEY || '';
+      tavilyKeyInput.value = creds?.TAVILY_API_KEY || '';
+    } catch (err) {
+      console.error('[app] Failed to load credentials:', err);
+      openRouterKeyInput.value = '';
+      tavilyKeyInput.value = '';
+    }
+  }
+
+  async function openSettingsPopup() {
     if (!settingsOverlay) return;
+    selectSettingsTab('credentials');
+    await fillCredentialsForm();
     settingsOverlay.hidden = false;
   }
 
@@ -311,9 +386,68 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  settingsTabs.forEach((tab) => {
+    tab.addEventListener('click', () => selectSettingsTab(tab.dataset.tab));
+  });
+
+  if (testOpenRouterBtn) {
+    testOpenRouterBtn.addEventListener('click', () => {
+      runKeyTest({
+        input: openRouterKeyInput,
+        button: testOpenRouterBtn,
+        status: openRouterStatus,
+        tester: (payload) => window.electronAPI?.testOpenRouterKey?.(payload),
+      });
+    });
+  }
+
+  if (testTavilyBtn) {
+    testTavilyBtn.addEventListener('click', () => {
+      runKeyTest({
+        input: tavilyKeyInput,
+        button: testTavilyBtn,
+        status: tavilyStatus,
+        tester: (payload) => window.electronAPI?.testTavilyKey?.(payload),
+      });
+    });
+  }
+
+  if (openRouterKeyInput) {
+    openRouterKeyInput.addEventListener('input', () => setTestStatus(openRouterStatus, '', ''));
+  }
+
+  if (tavilyKeyInput) {
+    tavilyKeyInput.addEventListener('input', () => setTestStatus(tavilyStatus, '', ''));
+  }
+
+  if (settingsSaveBtn) {
+    settingsSaveBtn.addEventListener('click', async () => {
+      settingsSaveBtn.disabled = true;
+      settingsSaveBtn.textContent = 'Saving…';
+      try {
+        await window.electronAPI?.updateCredentials?.({
+          OPENROUTER_API_KEY: openRouterKeyInput?.value || '',
+          TAVILY_API_KEY: tavilyKeyInput?.value || '',
+        });
+      } catch (err) {
+        console.error('[app] Failed to save credentials:', err);
+      } finally {
+        settingsSaveBtn.disabled = false;
+        settingsSaveBtn.textContent = 'Save';
+      }
+    });
+  }
+
   if (settingsOverlay) {
     settingsOverlay.addEventListener('click', (e) => {
       if (e.target === settingsOverlay) closeSettingsPopup();
+    });
+    settingsOverlay.addEventListener('click', (e) => {
+      const link = e.target.closest('.settings-ext-link');
+      if (!link) return;
+      e.preventDefault();
+      const url = link.getAttribute('data-external-url');
+      if (url) window.electronAPI?.openExternalUrl?.(url);
     });
   }
 

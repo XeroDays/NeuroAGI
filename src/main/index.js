@@ -1,18 +1,5 @@
-const path = require("path");
-const fs = require("fs");
-const dotenv = require("dotenv");
-
-const envCandidates = [
-  path.join(path.dirname(process.execPath), ".env"),
-  path.join(__dirname, "../..", ".env"),
-];
-
-for (const envPath of envCandidates) {
-  if (fs.existsSync(envPath)) {
-    dotenv.config({ path: envPath });
-    break;
-  }
-}
+const { loadEnv } = require("./services/env-file-service");
+loadEnv();
 
 const { app, Menu } = require("electron");
 const { createMainWindow } = require("./windows/main-window");
