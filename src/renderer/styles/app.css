@@ -889,29 +889,6 @@ body.app-shell {
   color: #666;
 }
 
-.settings-modal-body {
-  padding: 1.15rem 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-}
-
-.settings-theme-label {
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: #555;
-}
-
-.settings-modal-body .custom-select {
-  display: block;
-  width: 100%;
-}
-
-.settings-modal-body .custom-select-trigger {
-  width: 100%;
-  min-width: 0;
-}
-
 .settings-modal-footer {
   display: flex;
   justify-content: flex-end;

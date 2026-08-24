@@ -194,9 +194,6 @@ document.addEventListener('DOMContentLoaded', () => {
   enhanceGlassSelect(genderSelect);
   enhanceGlassSelect(ageSelect);
 
-  const themeSelect = document.getElementById('select-theme');
-  enhanceGlassSelect(themeSelect);
-
   const errorOverlay = document.getElementById('error-overlay');
   const errorOkBtn = document.getElementById('btn-error-ok');
   const errorOpenModelsBtn = document.getElementById('btn-error-open-models');
@@ -289,7 +286,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const settingsBtn = document.getElementById('btn-settings');
   const settingsOverlay = document.getElementById('settings-overlay');
   const settingsCloseBtn = document.getElementById('btn-settings-close');
-  const settingsApplyBtn = document.getElementById('btn-settings-apply');
   const settingsDevtoolsBtn = document.getElementById('btn-settings-devtools');
 
   function closeSettingsPopup() {
@@ -298,11 +294,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function openSettingsPopup() {
     if (!settingsOverlay) return;
-    const current = window.NeuroAGITheme?.current?.() || 'aurora';
-    if (themeSelect) {
-      themeSelect.value = current;
-      themeSelect.dispatchEvent(new Event('change', { bubbles: true }));
-    }
     settingsOverlay.hidden = false;
   }
 
@@ -312,14 +303,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (settingsCloseBtn) {
     settingsCloseBtn.addEventListener('click', closeSettingsPopup);
-  }
-
-  if (settingsApplyBtn) {
-    settingsApplyBtn.addEventListener('click', () => {
-      const id = themeSelect?.value || 'aurora';
-      window.NeuroAGITheme?.apply?.(id, true);
-      closeSettingsPopup();
-    });
   }
 
   if (settingsDevtoolsBtn) {

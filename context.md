@@ -59,8 +59,7 @@ src/
 │   │       └── index.html    # Advance chat. Thread + composer; no settings overlay. Does not link worker-snack.css
 │   ├── scripts/
 │   │   ├── constants.js      # APP_TITLE, SCREEN_ADVANCE, LABEL_START_HUMAN_DIAGNOSTICS, PLACEHOLDER_HEALTH_INPUT
-│   │   ├── app.js            # Home: enhanceGlassSelect() wraps reasoning/gender/age/theme native <select>s. Gear opens Settings (theme + Apply + DevTools). handleStartDiagnostics() — empty issue is a no-op; master-model guard; stashes reasoning; resetUsageTotals(); navigates to Advance with issue/gender/age
-│   │   ├── theme.js          # Sync (non-module) theme loader. Runs in <head> before CSS. Reads localStorage['neuroagi:theme'], sets html[data-theme], defaults to aurora. Exposes window.NeuroAGITheme { apply, current, IDS }
+│   │   ├── app.js            # Home: enhanceGlassSelect() wraps reasoning/gender/age native <select>s. Gear opens Settings (Open DevTools). handleStartDiagnostics() — empty issue is a no-op; master-model guard; stashes reasoning; resetUsageTotals(); navigates to Advance with issue/gender/age
 │   │   ├── advance.js        # Advance chat: getReasoningLevel() from sessionStorage['neuroagi:advanceReasoningLevel'] (default medium). URL `issue` auto-composes the first message and calls handleSend()
 │   │   ├── advance-questions.js # ask_user form renderer (text / single_select / multi_select / slider / range)
 │   │   ├── usage-bubbles.js  # Global top-right tokens + cost pills (Home + Advance)
@@ -69,7 +68,7 @@ src/
 │   │       └── marked.esm.js # Vendored marked; imported by advance.js
 │   ├── styles/
 │   │   ├── tokens.css        # Shared glass + type tokens only (no palette). --grad-speed is 28s
-│   │   ├── themes.css        # Palettes behind html[data-theme]: aurora (default pink–blue), warm-clinic, clinical-teal, midnight-indigo, arctic-slate, forest-sage
+│   │   ├── themes.css        # Sunset Bloom palette on :root (rose → coral → gold wash)
 │   │   ├── shell.css         # Shared wash for body.app-shell / .adv-shell only
 │   │   ├── app.css           # Home chrome, Settings popup, .custom-select. Native <select> popup is unused
 │   │   ├── advance.css       # Advance chat UI
@@ -117,24 +116,13 @@ src/
 5. Informational turns (definitions, general education) answer from knowledge without tools unless a URL, misspelled medicine, or time-sensitive fact needs lookup
 6. `advanceCancel` aborts the in-flight AbortController for that sender
 
-### Settings (gear icon) → theme popup
+### Settings (gear icon)
 
 1. Home `#btn-settings` (fixed top-left) opens `#settings-overlay`
-2. Theme dropdown (`#select-theme`, custom listbox) is seeded from `localStorage['neuroagi:theme']` (default `aurora`)
-3. **Apply** calls `NeuroAGITheme.apply(id, true)` — sets `html[data-theme]` and persists the key. Home restyles immediately; Advance picks it up on the next page load
-4. **Close** / Escape / backdrop discard without applying
-5. **Open DevTools** in the popup footer still invokes IPC `OPEN_DEV_TOOLS`
+2. **Open DevTools** invokes IPC `OPEN_DEV_TOOLS`
+3. **Close** / Escape / backdrop dismiss the popup
 
-Theme load: [`theme.js`](src/renderer/scripts/theme.js) is a sync script in `<head>` on Home and Advance, before CSS, so the first paint matches the saved palette. Palettes live in [`themes.css`](src/renderer/styles/themes.css). Shared glass/type tokens stay in [`tokens.css`](src/renderer/styles/tokens.css).
-
-| id | Label |
-|----|--------|
-| `aurora` | Aurora (default) — original pink–blue `#ff79c1` → `#56b8e0`, accent `#b48cd2` |
-| `warm-clinic` | Warm Clinic — terracotta → cream |
-| `clinical-teal` | Clinical Teal — deep teal → mint |
-| `midnight-indigo` | Midnight Indigo — navy → periwinkle |
-| `arctic-slate` | Arctic Slate — steel grey → ice |
-| `forest-sage` | Forest Sage — olive → moss |
+There is no theme picker. All screens use the Sunset Bloom palette in [`themes.css`](src/renderer/styles/themes.css) (`:root`). Shared glass/type tokens stay in [`tokens.css`](src/renderer/styles/tokens.css).
 
 ### Models button → Models popup
 
@@ -169,9 +157,8 @@ Records every Advance OpenRouter call (`advance-llm.js`, type `"ai"`) and every 
 
 1. Create `src/renderer/screens/<name>/index.html`
 2. Link `tokens.css` + `themes.css` + `shell.css` (and usage/logs if needed) with `../../styles/` paths
-3. Load `theme.js` in `<head>` before stylesheets (sync, not a module)
-4. Add a screen script in `src/renderer/scripts/`
-5. Navigate via relative HTML paths
+3. Add a screen script in `src/renderer/scripts/`
+4. Navigate via relative HTML paths
 
 ---
 
@@ -179,28 +166,28 @@ Records every Advance OpenRouter call (`advance-llm.js`, type `"ai"`) and every 
 
 ### Theme
 
-All screens share [`tokens.css`](src/renderer/styles/tokens.css) (glass + type) + [`themes.css`](src/renderer/styles/themes.css) (palette) + [`shell.css`](src/renderer/styles/shell.css) (rotating wash). `html[data-theme]` selects the palette. **Default is Aurora** (pink–blue `#ff79c1` → `#56b8e0`, `--glow-pink` / `--glow-cyan`, accent `#b48cd2`, chrome `#2b2b2b`). `--grad-speed` is 28s on every theme. Inputs stay `--surface-solid` white with theme `--text-ink`. Send / Back / Logs Close use `--chrome` → `--accent` hover. Dropdown selected/hover uses `--accent-wash`. No hosted fonts (renderer CSP is `default-src 'self'`).
+All screens share [`tokens.css`](src/renderer/styles/tokens.css) (glass + type) + [`themes.css`](src/renderer/styles/themes.css) (palette) + [`shell.css`](src/renderer/styles/shell.css) (rotating wash). The only palette is **Sunset Bloom** on `:root` (rose–coral–gold `#ff6b9d` → `#ffe8c8`, accent `#e85d4c`, chrome `#24101c`). Chrome stays darker than the wash so buttons still contrast. `--grad-speed` is 28s. Inputs stay `--surface-solid` white with `--text-ink`. Send / Back / Logs Close use `--chrome` → `--accent` hover. Dropdown selected/hover uses `--accent-wash`. No hosted fonts (renderer CSP is `default-src 'self'`).
 
 ### Home screen (`app.css`)
 
 | Element | Style |
 |---------|-------|
-| **Background** | Shared wash from `shell.css` (palette from `data-theme`) |
+| **Background** | Shared wash from `shell.css` (Sunset Bloom palette from `themes.css`) |
 | **Title** | White, centered, responsive clamp sizing |
 | **Text input** | Solid white, rounded (`14px`), dark text; 80% viewport width |
 | **Submit button** | `--chrome` rounded square inside the input; hover `--accent`. Only path to Advance |
 | **Top bar** | Settings gear + Models only |
 | **Dropdowns** | Custom listboxes (`.custom-select`). Trigger copies the old closed glass look (frosted white, 10px radius, chevron). Native `<select>` is hidden and remains the value source. Open menu: rounded glass panel. Options use `--text-ink`; hover/selected use `--accent-wash` + `--accent` text — not Windows blue. Age menu `max-height: 16rem` with a thin themed scrollbar. One menu open at a time; click-outside and Escape close; Arrow / Enter / Home / End work; selected age scrolls into view on open |
 | **Reasoning level** | Left of the selects row. Five options — None / Low / Medium / High / Very High — Medium default. Stashed as `neuroagi:advanceReasoningLevel` on submit |
-| **Settings (gear)** | Fixed `top: 1rem; left: 1rem`, glass circle; opens Settings popup (theme dropdown + Apply + Open DevTools) |
+| **Settings (gear)** | Fixed `top: 1rem; left: 1rem`, glass circle; opens Settings popup (Open DevTools) |
 | **Models button** | Glass pill immediately right of the gear |
 | **Models popup** | Full-viewport `.glass-overlay`. White card. Star fills `--accent`. Footer: Close (`--chrome`) + Update (`--accent`) |
-| **Settings popup** | Compact white card like the error modal. Theme label + custom-select. Footer: **Open DevTools** (left) + Close (`--chrome`) + Apply (`--accent`). Close/Escape/backdrop discard without applying |
+| **Settings popup** | Compact white card like the error modal. Footer: **Open DevTools** (left) + Close (`--chrome`). Close/Escape/backdrop dismiss |
 | **Master model required popup** | `#error-overlay` — title "Master model required"; **OK** + **Open Models** |
 
 ### Advance screen (`advance.css`)
 
-Themed chat UI (same `shell.css` wash as Home): `--chrome` Back, `#adv-thread` of user/assistant bubbles (assistant Markdown via vendored `marked`), status step pills for tool work, optional `ask_user` form cards, bottom composer matching Home. Send / sliders use `--accent`. **No Settings chip, overlay, or reasoning dropdown** — reasoning comes from Home via sessionStorage. Theme is applied by `theme.js` from `localStorage`.
+Themed chat UI (same `shell.css` wash as Home): `--chrome` Back, `#adv-thread` of user/assistant bubbles (assistant Markdown via vendored `marked`), status step pills for tool work, optional `ask_user` form cards, bottom composer matching Home. Send / sliders use `--accent`. **No Settings chip, overlay, or reasoning dropdown** — reasoning comes from Home via sessionStorage. Palette is Sunset Bloom from [`themes.css`](src/renderer/styles/themes.css).
 
 ### Global UI — Usage bubbles (`usage-bubbles.css`)
 
