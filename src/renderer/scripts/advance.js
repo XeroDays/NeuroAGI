@@ -34,9 +34,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const threadEl = document.getElementById('adv-thread');
   const inputEl = document.getElementById('adv-input');
   const sendBtn = document.getElementById('adv-send');
-  const reasoningSelect = document.getElementById('adv-reasoning');
-  const settingsOverlay = document.getElementById('adv-settings-overlay');
-  const settingsCloseBtn = document.getElementById('adv-settings-close');
 
   if (titleEl) titleEl.textContent = APP_TITLE;
   if (screenTitleEl) screenTitleEl.textContent = SCREEN_ADVANCE;
@@ -52,76 +49,9 @@ document.addEventListener('DOMContentLoaded', () => {
     return DEFAULT_REASONING_LEVEL;
   }
 
-  function persistReasoningLevel(level) {
-    try {
-      sessionStorage.setItem(REASONING_STORAGE_KEY, level);
-    } catch {
-      /* sessionStorage may be unavailable */
-    }
-  }
-
   function getReasoningLevel() {
-    const value = reasoningSelect?.value || DEFAULT_REASONING_LEVEL;
-    return REASONING_LEVELS.has(value) ? value : DEFAULT_REASONING_LEVEL;
+    return readStoredReasoningLevel();
   }
-
-  if (reasoningSelect) {
-    reasoningSelect.value = readStoredReasoningLevel();
-    reasoningSelect.addEventListener('change', () => {
-      persistReasoningLevel(getReasoningLevel());
-    });
-  }
-
-  function setSettingsOpen(open) {
-    if (!settingsOverlay) return;
-    settingsOverlay.hidden = !open;
-  }
-
-  function onSettingsKeydown(event) {
-    if (event.key === 'Escape' && settingsOverlay && !settingsOverlay.hidden) {
-      setSettingsOpen(false);
-    }
-  }
-
-  settingsOverlay?.addEventListener('click', (event) => {
-    if (event.target === settingsOverlay) setSettingsOpen(false);
-  });
-  settingsCloseBtn?.addEventListener('click', () => setSettingsOpen(false));
-  document.addEventListener('keydown', onSettingsKeydown);
-
-  async function mountSettingsChip() {
-    if (document.getElementById('adv-settings')) return;
-
-    let logsBubble = null;
-    for (let i = 0; i < 30; i += 1) {
-      logsBubble = document.querySelector('.usage-bubbles .logs-bubble');
-      if (logsBubble) break;
-      await new Promise((resolve) => setTimeout(resolve, 25));
-    }
-
-    const container = document.querySelector('.usage-bubbles');
-    if (!container) return;
-
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.id = 'adv-settings';
-    btn.className = 'usage-bubble adv-settings-bubble';
-    btn.setAttribute('aria-label', 'Settings');
-    btn.setAttribute('title', 'Advance settings');
-    btn.innerHTML = `<svg class="adv-settings-bubble-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <circle cx="12" cy="12" r="3"/>
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-    </svg><span>Settings</span>`;
-    btn.addEventListener('click', () => setSettingsOpen(true));
-
-    if (logsBubble) {
-      container.insertBefore(btn, logsBubble);
-    } else {
-      container.insertBefore(btn, container.firstChild);
-    }
-  }
-
-  mountSettingsChip();
 
   /** @type {{ role: 'user'|'assistant', content: string }[]} */
   const messages = [];
@@ -167,7 +97,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function setComposerEnabled(enabled) {
     if (inputEl) inputEl.disabled = !enabled;
-    if (reasoningSelect) reasoningSelect.disabled = !enabled;
   }
 
   function setBusy(busy) {
@@ -490,5 +419,15 @@ document.addEventListener('DOMContentLoaded', () => {
         handleSend();
       }
     });
+  }
+
+  const params = new URLSearchParams(location.search);
+  const issue = params.get('issue')?.trim();
+  if (issue && inputEl) {
+    const age = params.get('age');
+    const gender = params.get('gender');
+    const text = age && gender ? `${issue}\n\nPatient: ${age}-year-old ${gender}.` : issue;
+    inputEl.value = text;
+    handleSend();
   }
 });

@@ -1,3 +1,4 @@
+/* OBSOLETE — no longer reachable; Home now routes to the Advance screen */
 import { APP_TITLE, SCREEN_LABORATORY } from './constants.js';
 import { createWorkerProgressPanel } from './worker-progress-panel.js';
 import { wireFanoutEarlyContinue } from './fanout-early-continue.js';

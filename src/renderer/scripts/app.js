@@ -2,7 +2,6 @@ import {
   APP_TITLE,
   LABEL_START_HUMAN_DIAGNOSTICS
 } from './constants.js';
-import { createWorkerProgressPanel } from './worker-progress-panel.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   document.title = APP_TITLE;
@@ -25,38 +24,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (input) {
     input.focus();
-  }
-
-  let enhancing = false;
-
-  const progressPanel = createWorkerProgressPanel({
-    position: 'bottom-right',
-    attachToSelector: '#qe-toast-stack',
-  });
-
-  function ensureToastStack() {
-    let stack = document.getElementById('qe-toast-stack');
-    if (!stack) {
-      stack = document.createElement('div');
-      stack.id = 'qe-toast-stack';
-      stack.className = 'qe-toast-stack';
-      document.body.appendChild(stack);
-    }
-    return stack;
-  }
-
-  function showToast(message, status = 'active') {
-    const stack = ensureToastStack();
-
-    const toast = document.createElement('div');
-    toast.className = `qe-toast qe-toast--${status}`;
-    toast.textContent = message;
-    stack.appendChild(toast);
-
-    setTimeout(() => {
-      toast.classList.add('qe-toast--leaving');
-      setTimeout(() => toast.remove(), 280);
-    }, 3500);
   }
 
   const errorOverlay = document.getElementById('error-overlay');
@@ -96,7 +63,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function handleStartDiagnostics() {
-    if (enhancing) return;
+    const issue = input?.value?.trim() || '';
+    if (!issue) return;
 
     let hasMaster = false;
     try {
@@ -109,13 +77,12 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const issue = input?.value?.trim() || '';
     const gender = genderSelect?.value || 'male';
     const age = ageSelect?.value || '30';
     const reasoningLevel = reasoningSelect?.value || 'medium';
 
     try {
-      sessionStorage.setItem('neuroagi:reasoningLevel', reasoningLevel);
+      sessionStorage.setItem('neuroagi:advanceReasoningLevel', reasoningLevel);
     } catch (err) {
       console.warn('Failed to stash reasoning level:', err);
     }
@@ -126,44 +93,11 @@ document.addEventListener('DOMContentLoaded', () => {
       console.warn('[app] Failed to reset usage totals:', err);
     }
 
-    let finalIssue = issue;
-
-    if (issue && window.electronAPI?.enhanceQuery) {
-      enhancing = true;
-      btn.classList.add('is-loading');
-      btn.disabled = true;
-      if (input) input.disabled = true;
-
-      let unsubscribe = () => {};
-      ensureToastStack();
-      if (window.electronAPI?.onQueryEnhancerProgress) {
-        unsubscribe = window.electronAPI.onQueryEnhancerProgress((payload) => {
-          if (payload?.type) {
-            progressPanel.handleEvent(payload);
-          } else if (payload?.message) {
-            showToast(payload.message, payload.status);
-          }
-        });
-      }
-
-      try {
-        const res = await window.electronAPI.enhanceQuery({ issue, gender, age });
-        if (typeof res?.enhancedQuery === 'string' && res.enhancedQuery.trim()) {
-          finalIssue = res.enhancedQuery;
-        }
-      } catch (err) {
-        console.warn('[app] QueryEnhancer failed, continuing with original query:', err);
-      } finally {
-        progressPanel.hide();
-        unsubscribe();
-      }
-    }
-
     const query = new URLSearchParams();
-    if (finalIssue) query.set('issue', finalIssue);
+    query.set('issue', issue);
     query.set('gender', gender);
     query.set('age', age);
-    window.location.href = `screens/questionnaire/index.html?${query}`;
+    window.location.href = `screens/advance/index.html?${query}`;
   }
 
   if (btn) {

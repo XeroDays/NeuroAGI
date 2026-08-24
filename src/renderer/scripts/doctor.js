@@ -1,3 +1,4 @@
+/* OBSOLETE — no longer reachable; Home now routes to the Advance screen */
 import { APP_TITLE, SCREEN_DOCTOR } from './constants.js';
 import { marked } from './vendor/marked.esm.js';
 
