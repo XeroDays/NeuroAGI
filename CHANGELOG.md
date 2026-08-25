@@ -9,6 +9,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Security
+
+## [1.0.3] - 2026-08-25
+
+Settings credentials, per-model Advance threads, and Models Test latency.
+
+### Added
+
 - Settings Credentials tab: save OpenRouter and Tavily keys to `.env` from the app
 - Test key buttons in Settings to check OpenRouter and Tavily keys without saving
 - Models popup Test latency: probe the visible Free or Paid tab, update latency/tps badges, drop failed models
@@ -86,6 +98,7 @@ First stable release of the NeuroAGI multi-screen diagnostic flow.
 - Logo display and asset path corrections
 - Master-merge fallback when master model JSON parse fails or returns empty results
 
-[Unreleased]: https://github.com/XeroDays/Open-Health/compare/v1.0.2...HEAD
+[Unreleased]: https://github.com/XeroDays/Open-Health/compare/v1.0.3...HEAD
+[1.0.3]: https://github.com/XeroDays/Open-Health/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/XeroDays/Open-Health/compare/v1.0.0...v1.0.2
 [1.0.0]: https://github.com/XeroDays/Open-Health/releases/tag/v1.0.0
