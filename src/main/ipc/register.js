@@ -73,6 +73,14 @@ function registerIpcHandlers() {
     return UpdateModelsConfig(payload || {});
   });
 
+  ipcMain.handle(channels.ADD_MODEL, (_event, payload) => {
+    return modelConfigService.addCustomModel(payload || {});
+  });
+
+  ipcMain.handle(channels.DELETE_MODEL, (_event, payload) => {
+    return modelConfigService.deleteModel(payload?.name);
+  });
+
   ipcMain.handle(channels.BENCHMARK_MODELS, async (_event, payload) => {
     if (benchmarkInFlight) {
       return { ok: false, error: "A latency test is already running." };
@@ -125,11 +133,11 @@ function registerIpcHandlers() {
             note: result.note,
           });
         } else {
-          modelConfigService.removeFailedModel(entry.name);
+          modelConfigService.recordProbeError(entry.name, result.note);
           broadcastBenchmarkProgress({
             name: entry.name,
             type: entry.type,
-            status: "removed",
+            status: "error",
             index,
             total,
             note: result.note,

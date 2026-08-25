@@ -9,7 +9,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- Models popup Add: paste an OpenRouter model id onto the visible Free or Paid tab
+- Test latency spinner on the probing model row, plus an Error chip (hover shows the failure)
+- Hover Delete on Models rows to remove a model from the list
+
 ### Changed
+
+- Test latency keeps failed models in the list instead of auto-removing them
 
 ### Fixed
 

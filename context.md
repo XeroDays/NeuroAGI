@@ -42,7 +42,7 @@ src/
 ├── main/
 │   ├── index.js              # Bootstrap: loadEnv(), hide menu, register IPC, create window
 │   ├── ipc/
-│   │   └── register.js       # IPC: ping, advanceSend / advanceCancel, getUsageTotals, resetUsageTotals, openDevTools, getCredentials, updateCredentials, openExternalUrl, testOpenRouterKey, testTavilyKey, getModelsConfig, updateModelsConfig, benchmarkModels, getLogs, clearLogs. USAGE_UPDATE / LOG_UPDATE / ADVANCE_PROGRESS / BENCHMARK_PROGRESS are broadcast, not handle-invoked
+│   │   └── register.js       # IPC: ping, advanceSend / advanceCancel, getUsageTotals, resetUsageTotals, openDevTools, getCredentials, updateCredentials, openExternalUrl, testOpenRouterKey, testTavilyKey, getModelsConfig, updateModelsConfig, addModel, deleteModel, benchmarkModels, getLogs, clearLogs. USAGE_UPDATE / LOG_UPDATE / ADVANCE_PROGRESS / BENCHMARK_PROGRESS are broadcast, not handle-invoked
 │   ├── middlewares/
 │   │   ├── advance-middleware.js   # SendAdvanceChat({ messages, model, resume?, reasoningLevel }, sender) — one enabled-model turn. CancelAdvanceChat(sender, { model? }) aborts that model or all
 │   │   └── cookie-middleware.js    # GetModelsConfig() / UpdateModelsConfig({ activeModels, masterModel }) — thin wrapper around model-config-service
@@ -51,7 +51,7 @@ src/
 │   │   ├── advance-llm.js          # Advance-only OpenRouter client: chatCompletionWithTools(messages, model, options). Records usage + type:"ai" logs. Does not use a shared api-helper
 │   │   ├── advance-tools.js        # Tool schemas + executeTool (Tavily search/extract + URL discovery) + ask_user question sanitizer
 │   │   ├── advance-system-prompt.js # ADVANCE_SYSTEM_PROMPT — clinical assistant + diagnostic vs informational turn rules
-│   │   ├── model-config-service.js # Catalog + persisted { activeModels, masterModel, latencies, throughputs, removedModels } under Electron userData. Advance uses getActiveModelIds(); removed names stay hidden
+│   │   ├── model-config-service.js # Catalog + persisted { activeModels, masterModel, latencies, throughputs, probeErrors, removedModels, customModels } under Electron userData. Advance uses getActiveModelIds(); Delete hides catalog names via removedModels; Add persists customModels
 │   │   ├── web-search-service.js   # Tavily search() + extract(); type:"web" log items on every success/error
 │   │   ├── env-file-service.js     # resolve/read/write `.env`; loadEnv() at startup; GET/UPDATE credentials. Create: project root unpackaged, next to exe when packaged
 │   │   ├── credential-test-service.js # Probe OpenRouter GET /api/v1/key and Tavily POST /search (basic ping). No logs, no usage, never echoes the key
@@ -61,7 +61,7 @@ src/
 │   └── windows/
 │       └── main-window.js    # BrowserWindow 800×600 (restore size). On ready-to-show: maximize() then show(). Not fullscreen
 ├── preload/
-│   └── index.js              # contextBridge → window.electronAPI { ping, getUsageTotals, resetUsageTotals, onUsageUpdate, openDevTools, getCredentials, updateCredentials, openExternalUrl, testOpenRouterKey, testTavilyKey, getModelsConfig, updateModelsConfig, benchmarkModels, onBenchmarkProgress, getLogs, clearLogs, onLogUpdate, advanceSend, advanceCancel, onAdvanceProgress }
+│   └── index.js              # contextBridge → window.electronAPI { ping, getUsageTotals, resetUsageTotals, onUsageUpdate, openDevTools, getCredentials, updateCredentials, openExternalUrl, testOpenRouterKey, testTavilyKey, getModelsConfig, updateModelsConfig, addModel, deleteModel, benchmarkModels, onBenchmarkProgress, getLogs, clearLogs, onLogUpdate, advanceSend, advanceCancel, onAdvanceProgress }
 ├── renderer/
 │   ├── index.html            # Home. Top bar: Settings + Models only (no Advance shortcut). Submit is the only entry to Advance
 │   ├── screens/
@@ -69,7 +69,7 @@ src/
 │   │       └── index.html    # Advance chat. Model chips + per-model threads + composer; no settings overlay. Does not link worker-snack.css
 │   ├── scripts/
 │   │   ├── constants.js      # APP_TITLE, SCREEN_ADVANCE, LABEL_START_HUMAN_DIAGNOSTICS, PLACEHOLDER_HEALTH_INPUT
-│   │   ├── app.js            # Home: enhanceGlassSelect() wraps reasoning/gender/age native <select>s. Gear opens Settings (Credentials tab, Save writes `.env`, Test key probes the current input). Models Test latency probes the visible Free/Paid tab. handleStartDiagnostics() — empty issue is a no-op; enabled-model guard; stashes reasoning; resetUsageTotals(); navigates to Advance with issue/gender/age
+│   │   ├── app.js            # Home: enhanceGlassSelect() wraps reasoning/gender/age native <select>s. Gear opens Settings (Credentials tab, Save writes `.env`, Test key probes the current input). Models Add pastes an OpenRouter id onto the visible Free/Paid tab. Test latency spinner + Error chip; hover Delete. handleStartDiagnostics() — empty issue is a no-op; enabled-model guard; stashes reasoning; resetUsageTotals(); navigates to Advance with issue/gender/age
 │   │   ├── advance.js        # Advance chat: one thread per enabled model. First URL `issue` fans out to all; follow-ups go to the selected chip. getReasoningLevel() from sessionStorage['neuroagi:advanceReasoningLevel'] (default medium)
 │   │   ├── advance-questions.js # ask_user form renderer (text / single_select / multi_select / slider / range)
 │   │   ├── usage-bubbles.js  # Global top-right tokens + cost pills (Home + Advance)
@@ -87,7 +87,7 @@ src/
 │   └── assets/
 └── shared/
     └── ipc/
-        └── channels.js       # PING, ADVANCE_SEND, ADVANCE_PROGRESS, ADVANCE_CANCEL, GET_USAGE_TOTALS, RESET_USAGE_TOTALS, USAGE_UPDATE, OPEN_DEV_TOOLS, GET_CREDENTIALS, UPDATE_CREDENTIALS, OPEN_EXTERNAL_URL, TEST_OPENROUTER_KEY, TEST_TAVILY_KEY, GET_MODELS_CONFIG, UPDATE_MODELS_CONFIG, BENCHMARK_MODELS, BENCHMARK_PROGRESS, GET_LOGS, CLEAR_LOGS, LOG_UPDATE
+        └── channels.js       # PING, ADVANCE_SEND, ADVANCE_PROGRESS, ADVANCE_CANCEL, GET_USAGE_TOTALS, RESET_USAGE_TOTALS, USAGE_UPDATE, OPEN_DEV_TOOLS, GET_CREDENTIALS, UPDATE_CREDENTIALS, OPEN_EXTERNAL_URL, TEST_OPENROUTER_KEY, TEST_TAVILY_KEY, GET_MODELS_CONFIG, UPDATE_MODELS_CONFIG, ADD_MODEL, DELETE_MODEL, BENCHMARK_MODELS, BENCHMARK_PROGRESS, GET_LOGS, CLEAR_LOGS, LOG_UPDATE
 ```
 
 ---
@@ -141,11 +141,13 @@ There is no theme picker. All screens use the Sunset Bloom palette in [`themes.c
 ### Models button → Models popup
 
 1. Home `#btn-models` immediately right of the gear
-2. Opens `#models-overlay`; `getModelsConfig()` returns catalog rows with `enabled` + `isMaster` (names in `removedModels` are omitted)
+2. Opens `#models-overlay`; `getModelsConfig()` returns catalog + `customModels` rows with `enabled` + `isMaster` (names in `removedModels` are omitted)
 3. Star is still saved as exclusive `masterModel` (unused by live Advance). Toggle = enabled set used by Advance (`getActiveModelIds()`)
-4. **Test latency** (`#btn-models-test`, chrome, left of Close) probes every catalog row on the **visible tab** (Free → `type: "Free"`, Paid → `type: "Paid"`), not only toggled models. Same OpenRouter probe as `npm run benchmark:latency` (`latency-benchmark-service.js`): sequential, `stream: false`, `reasoning.effort: none`, `max_tokens: 2048`. Prompt: list integers 1–120, one per line, numbers only. Uses `process.env.OPENROUTER_API_KEY`. Does not write `benchmark-results-*.json`. Button shows `Testing 3/12…` while a run is in flight; a second run is rejected
-5. Success overlays `latencies` / `throughputs` in userData `models-state.json` and updates the row badges (`3.65s`, `99tps` chars/s proxy). Failure (HTTP / network / API error) removes that model from the list, un-enables it, and appends the name to `removedModels` — catalog JSON is not rewritten. Remaining models in the tab continue
-6. Close / Escape / backdrop discard; Update persists `{ activeModels, masterModel }` to `models-state.json`
+4. **Add** (`#btn-models-add`, chrome, left of Test latency) reveals `#input-models-add`. Enter pastes the OpenRouter model id onto the **visible tab** (Free → `type: "Free"`, Paid → `type: "Paid"`) via `addModel`. Persists immediately as `customModels` in userData `models-state.json` (catalog JSON is not rewritten). New rows start disabled. Empty / duplicate names are not added. Escape hides the input without closing the popup. A name in `removedModels` is un-removed (added to `customModels` only if it is not in the shipped catalog)
+5. **Test latency** (`#btn-models-test`, chrome) probes every listed row on the **visible tab** (Free → `type: "Free"`, Paid → `type: "Paid"`), including custom models, not only toggled models. Same OpenRouter probe as `npm run benchmark:latency` (`latency-benchmark-service.js`): sequential, `stream: false`, `reasoning.effort: none`, `max_tokens: 2048`. Prompt: list integers 1–120, one per line, numbers only. Uses `process.env.OPENROUTER_API_KEY`. Does not write `benchmark-results-*.json`. Button shows `Testing 3/12…` while a run is in flight; a second run is rejected. The probing row shows a circular spinner left of the name
+6. Success overlays `latencies` / `throughputs` in userData `models-state.json` and updates the row badges (`3.65s`, `99tps` chars/s proxy). Failure keeps the row, stores `probeErrors[name]`, and shows an **Error** chip (hover shows the probe `note`). Remaining models in the tab continue. Catalog JSON is not rewritten
+7. Hover **Delete** (left of the enable toggle) invokes `deleteModel`: custom names leave `customModels`; shipped catalog names go into `removedModels`. Overlays and enable/master for that name are cleared
+8. Close / Escape / backdrop discard; Update persists `{ activeModels, masterModel }` to `models-state.json`
 
 ### Usage tracker (top-right bubbles)
 
@@ -208,7 +210,7 @@ All screens share [`tokens.css`](src/renderer/styles/tokens.css) (glass + type) 
 | **Reasoning level** | Left of the selects row. Five options — None / Low / Medium / High / Very High — Medium default. Stashed as `neuroagi:advanceReasoningLevel` on submit |
 | **Settings (gear)** | Fixed `top: 1rem; left: 1rem`, glass circle; opens Settings popup |
 | **Models button** | Glass pill immediately right of the gear |
-| **Models popup** | Full-viewport `.glass-overlay`. White card. Star fills `--accent`. Footer: Test latency (`--chrome`, left) + Close (`--chrome`) + Update (`--accent`) |
+| **Models popup** | Full-viewport `.glass-overlay`. White card. Star fills `--accent`. Probe spinner left of the name (`--accent` ring). **Error** chip (red) with hover tooltip. Hover **Delete** (muted → destructive red) left of the toggle. Footer: Add (`--chrome`) + Test latency (`--chrome`, left) + Close (`--chrome`) + Update (`--accent`). Add reveals a `--surface-solid` / `--text-ink` model-id input |
 | **Settings popup** | Wider white card. Left tab list (Credentials) + right pane. Password inputs (`--surface-solid`, `--text-ink`). Muted hint links under each field. **Test key** (`--chrome`) plus Valid/Invalid status. Footer: **Open DevTools** (left) + Close (`--chrome`) + Save (`--accent`). Save closes after a successful write. Close/Escape/backdrop dismiss without saving |
 | **Enable a model popup** | `#error-overlay` — title "Enable a model"; **OK** + **Open Models** |
 

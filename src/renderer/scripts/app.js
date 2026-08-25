@@ -460,15 +460,83 @@ document.addEventListener('DOMContentLoaded', () => {
   const modelsCloseBtn  = document.getElementById('btn-models-close');
   const modelsUpdateBtn = document.getElementById('btn-models-update');
   const modelsTestBtn   = document.getElementById('btn-models-test');
+  const modelsAddBtn    = document.getElementById('btn-models-add');
+  const modelsAddInput  = document.getElementById('input-models-add');
   const modelsTabs      = document.querySelectorAll('.models-tab');
 
   // Local snapshot of the model list; mutated by toggle/star interactions.
   let modelsState = [];
   let modelsBenchmarkRunning = false;
+  let modelsProbingName = '';
 
   function parseModelLabels(raw) {
     if (typeof raw !== 'string' || !raw.trim()) return [];
     return raw.split(';').map((s) => s.trim()).filter(Boolean);
+  }
+
+  function createErrorChip(note) {
+    const chip = document.createElement('span');
+    chip.className = 'models-error-chip';
+    chip.textContent = 'Error';
+    const text = typeof note === 'string' && note.trim() ? note : 'Probe failed.';
+    chip.title = text;
+    chip.dataset.error = text;
+    chip.tabIndex = 0;
+    return chip;
+  }
+
+  function setProbingName(name) {
+    modelsProbingName = typeof name === 'string' ? name : '';
+    const lists = [modelsListFree, modelsListPaid];
+    for (const list of lists) {
+      if (!list) continue;
+      for (const row of list.querySelectorAll('.models-row')) {
+        const spinner = row.querySelector('.models-probe-spinner');
+        if (spinner) {
+          spinner.classList.toggle('is-probing', row.dataset.modelName === modelsProbingName);
+        }
+      }
+    }
+  }
+
+  function upsertErrorChip(modelName, note) {
+    const row = findModelsRow(modelName);
+    if (!row) return;
+    const info = row.querySelector('.models-row-info');
+    if (!info) return;
+    let chip = info.querySelector('.models-error-chip');
+    if (!chip) {
+      chip = createErrorChip(note);
+      const typeBadge = info.querySelector('.models-type-badge');
+      if (typeBadge) typeBadge.insertAdjacentElement('afterend', chip);
+      else info.appendChild(chip);
+    } else {
+      const text = typeof note === 'string' && note.trim() ? note : 'Probe failed.';
+      chip.title = text;
+      chip.dataset.error = text;
+    }
+  }
+
+  function clearErrorChip(modelName) {
+    const row = findModelsRow(modelName);
+    if (!row) return;
+    const chip = row.querySelector('.models-error-chip');
+    if (chip) chip.remove();
+  }
+
+  async function deleteModelRow(modelName) {
+    try {
+      const result = await window.electronAPI?.deleteModel?.({ name: modelName });
+      if (!result?.ok) {
+        console.error('[app] Delete model failed:', result?.error || 'unknown error');
+        return;
+      }
+      modelsState = modelsState.filter((m) => m.name !== modelName);
+      if (modelsProbingName === modelName) modelsProbingName = '';
+      renderModelsList();
+    } catch (err) {
+      console.error('[app] Delete model failed:', err);
+    }
   }
 
   function setMasterModel(modelName) {
@@ -515,6 +583,11 @@ document.addEventListener('DOMContentLoaded', () => {
       const info = document.createElement('div');
       info.className = 'models-row-info';
 
+      const spinner = document.createElement('span');
+      spinner.className = 'models-probe-spinner';
+      spinner.setAttribute('aria-hidden', 'true');
+      if (model.name === modelsProbingName) spinner.classList.add('is-probing');
+
       const nameSpan = document.createElement('span');
       nameSpan.className = 'models-row-name';
       nameSpan.textContent = model.name;
@@ -523,8 +596,13 @@ document.addEventListener('DOMContentLoaded', () => {
       typeBadge.className = `models-type-badge models-type-badge--${model.type.toLowerCase()}`;
       typeBadge.textContent = model.type;
 
+      info.appendChild(spinner);
       info.appendChild(nameSpan);
       info.appendChild(typeBadge);
+
+      if (model.probeError) {
+        info.appendChild(createErrorChip(model.probeError));
+      }
 
       if (model.latency) {
         const latencyBadge = document.createElement('span');
@@ -576,8 +654,17 @@ document.addEventListener('DOMContentLoaded', () => {
       toggleLabel.appendChild(toggleInput);
       toggleLabel.appendChild(toggleSlider);
 
+      const deleteBtn = document.createElement('button');
+      deleteBtn.type = 'button';
+      deleteBtn.className = 'models-delete-btn';
+      deleteBtn.setAttribute('aria-label', `Delete ${model.name}`);
+      deleteBtn.innerHTML =
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>';
+      deleteBtn.addEventListener('click', () => deleteModelRow(model.name));
+
       row.appendChild(starBtn);
       row.appendChild(info);
+      row.appendChild(deleteBtn);
       row.appendChild(toggleLabel);
       container.appendChild(row);
     }
@@ -655,8 +742,51 @@ document.addEventListener('DOMContentLoaded', () => {
     return activeTab?.dataset.tab === 'paid' ? 'Paid' : 'Free';
   }
 
+  function hideModelsAddInput() {
+    if (modelsAddInput) {
+      modelsAddInput.value = '';
+      modelsAddInput.hidden = true;
+    }
+    if (modelsAddBtn) modelsAddBtn.hidden = false;
+  }
+
+  function showModelsAddInput() {
+    if (!modelsAddInput || !modelsAddBtn) return;
+    modelsAddBtn.hidden = true;
+    modelsAddInput.hidden = false;
+    modelsAddInput.value = '';
+    modelsAddInput.focus();
+  }
+
+  async function confirmModelsAdd() {
+    if (!modelsAddInput) return;
+    const name = modelsAddInput.value.trim();
+    if (!name) {
+      hideModelsAddInput();
+      return;
+    }
+    try {
+      const result = await window.electronAPI?.addModel?.({
+        name,
+        type: getActiveModelsTabType(),
+      });
+      if (!result?.ok) {
+        console.error('[app] Add model failed:', result?.error || 'unknown error');
+        return;
+      }
+      if (result.model && !modelsState.some((m) => m.name === result.model.name)) {
+        modelsState.push(result.model);
+        renderModelsList();
+      }
+      hideModelsAddInput();
+    } catch (err) {
+      console.error('[app] Add model failed:', err);
+    }
+  }
+
   function setModelsTestIdle() {
     modelsBenchmarkRunning = false;
+    setProbingName('');
     if (!modelsTestBtn) return;
     modelsTestBtn.disabled = false;
     modelsTestBtn.textContent = 'Test latency';
@@ -664,25 +794,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function applyBenchmarkProgress(payload) {
     if (!payload || typeof payload !== 'object') return;
-    const { name, status, latency, throughput, index, total } = payload;
+    const { name, status, latency, throughput, index, total, note } = payload;
 
     if (modelsTestBtn && modelsBenchmarkRunning && Number.isFinite(index) && Number.isFinite(total)) {
       modelsTestBtn.textContent = `Testing ${index}/${total}…`;
     }
 
+    if (status === 'running') {
+      setProbingName(name);
+      return;
+    }
+
     if (status === 'ok') {
+      if (modelsProbingName === name) setProbingName('');
       const entry = modelsState.find((m) => m.name === name);
       if (entry) {
         if (typeof latency === 'string') entry.latency = latency;
         if (typeof throughput === 'string') entry.throughput = throughput;
+        entry.probeError = '';
         refreshModelMetricBadges(name, entry.latency, entry.throughput);
+        clearErrorChip(name);
       }
       return;
     }
 
-    if (status === 'removed' || status === 'error') {
-      modelsState = modelsState.filter((m) => m.name !== name);
-      renderModelsList();
+    if (status === 'error') {
+      if (modelsProbingName === name) setProbingName('');
+      const entry = modelsState.find((m) => m.name === name);
+      if (entry) {
+        entry.probeError = typeof note === 'string' ? note : 'Probe failed.';
+        upsertErrorChip(name, entry.probeError);
+      }
     }
   }
 
@@ -712,6 +854,7 @@ document.addEventListener('DOMContentLoaded', () => {
       modelsState = Array.isArray(config) ? config : [];
       renderModelsList();
       switchTab('free'); // always open on Free tab
+      hideModelsAddInput();
       modelsOverlay.hidden = false;
     } catch (err) {
       console.error('[app] Failed to load models config:', err);
@@ -719,6 +862,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function closeModelsPopup() {
+    hideModelsAddInput();
     if (modelsOverlay) modelsOverlay.hidden = true;
   }
 
@@ -734,6 +878,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Close on Escape key
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
+      if (!modelsOverlay.hidden && modelsAddInput && !modelsAddInput.hidden) {
+        hideModelsAddInput();
+        return;
+      }
       if (!modelsOverlay.hidden) closeModelsPopup();
       if (errorOverlay && !errorOverlay.hidden) closeErrorPopup();
       if (settingsOverlay && !settingsOverlay.hidden) closeSettingsPopup();
@@ -781,6 +929,22 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error('[app] Latency test failed:', err);
       } finally {
         setModelsTestIdle();
+      }
+    });
+  }
+
+  if (modelsAddBtn) {
+    modelsAddBtn.addEventListener('click', () => showModelsAddInput());
+  }
+
+  if (modelsAddInput) {
+    modelsAddInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        confirmModelsAdd();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        hideModelsAddInput();
       }
     });
   }
