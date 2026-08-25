@@ -12,6 +12,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Models popup Add: paste an OpenRouter model id onto the visible Free or Paid tab
 - Test latency spinner on the probing model row, plus an Error chip (hover shows the failure)
 - Hover Delete on Models rows to remove a model from the list
+- Splash window with Softasium Register (AppID `NeuroAGI`) before the main window shows
+- Optional **New Release Available** chip and ForceUpdate lock overlay; installer downloads to OS Downloads from the Register `DownloadUrl`
 
 ### Changed
 

@@ -23,6 +23,14 @@ const CH = {
   ADVANCE_SEND: "neuroagi:advance-send",
   ADVANCE_PROGRESS: "neuroagi:advance-progress",
   ADVANCE_CANCEL: "neuroagi:advance-cancel",
+  GET_LICENSE_UPDATE: "neuroagi:get-license-update",
+  LICENSE_UPDATE: "neuroagi:license-update",
+  REGISTER_SOFTWARE_LICENSE: "neuroagi:register-software-license",
+  CHECK_SOFTWARE_INSTALLER: "neuroagi:check-software-installer",
+  DOWNLOAD_SOFTWARE_UPDATE: "neuroagi:download-software-update",
+  SOFTWARE_DOWNLOAD_PROGRESS: "neuroagi:software-download-progress",
+  INSTALL_SOFTWARE_UPDATE: "neuroagi:install-software-update",
+  QUIT_APP: "neuroagi:quit-app",
 };
 
 function subscribe(channel, cb) {
@@ -60,4 +68,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
   advanceSend: (payload) => ipcRenderer.invoke(CH.ADVANCE_SEND, payload),
   advanceCancel: (payload) => ipcRenderer.invoke(CH.ADVANCE_CANCEL, payload),
   onAdvanceProgress: (cb) => subscribe(CH.ADVANCE_PROGRESS, cb),
+
+  getLicenseUpdate: () => ipcRenderer.invoke(CH.GET_LICENSE_UPDATE),
+  registerSoftwareLicense: () => ipcRenderer.invoke(CH.REGISTER_SOFTWARE_LICENSE),
+  onLicenseUpdate: (cb) => subscribe(CH.LICENSE_UPDATE, cb),
+  checkSoftwareInstaller: (fileName) => ipcRenderer.invoke(CH.CHECK_SOFTWARE_INSTALLER, { fileName }),
+  downloadSoftwareUpdate: (payload) => ipcRenderer.invoke(CH.DOWNLOAD_SOFTWARE_UPDATE, payload),
+  onSoftwareDownloadProgress: (cb) => subscribe(CH.SOFTWARE_DOWNLOAD_PROGRESS, cb),
+  installSoftwareUpdate: (fileName) => ipcRenderer.invoke(CH.INSTALL_SOFTWARE_UPDATE, { fileName }),
+  quitApp: () => ipcRenderer.invoke(CH.QUIT_APP),
 });

@@ -1,7 +1,9 @@
 import { APP_TITLE } from './constants.js';
+import { initReleaseUpdate, isForceUpdateLocked } from './release-update-panel.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   document.title = APP_TITLE;
+  void initReleaseUpdate();
 
   const input = document.getElementById('health-input');
   const btn = document.getElementById('btn-start-diagnostics');
@@ -231,6 +233,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function handleStartDiagnostics() {
+    if (isForceUpdateLocked()) return;
     const issue = input?.value?.trim() || '';
     if (!issue) return;
 
@@ -366,6 +369,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function openSettingsPopup() {
+    if (isForceUpdateLocked()) return;
     if (!settingsOverlay) return;
     selectSettingsTab('credentials');
     await fillCredentialsForm();
@@ -848,6 +852,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   async function openModelsPopup() {
+    if (isForceUpdateLocked()) return;
     if (!modelsOverlay) return;
     try {
       const config = await window.electronAPI?.getModelsConfig?.();
@@ -878,6 +883,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Close on Escape key
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
+      if (isForceUpdateLocked()) return;
       if (!modelsOverlay.hidden && modelsAddInput && !modelsAddInput.hidden) {
         hideModelsAddInput();
         return;

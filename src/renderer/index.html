@@ -21,6 +21,9 @@
     </svg>
     </button>
     <button type="button" id="btn-models" class="glass-models-btn" aria-label="Models">Models</button>
+    <button type="button" id="btn-new-release" class="btn-new-release" hidden aria-label="New Release Available" title="New Release Available">
+      New Release Available
+    </button>
   </div>
 
   <!-- Settings popup -->
@@ -100,6 +103,34 @@
       <div class="error-modal-footer">
         <button type="button" id="btn-error-ok" class="models-btn-close">OK</button>
         <button type="button" id="btn-error-open-models" class="models-btn-update">Open Models</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Softasium in-app installer (Home) -->
+  <div id="release-overlay" class="glass-overlay release-overlay" hidden aria-modal="true" role="dialog" aria-labelledby="release-title">
+    <div class="release-modal">
+      <div class="release-modal-header">
+        <h2 class="release-modal-title" id="release-title">New Release</h2>
+        <button type="button" id="btn-release-close" class="release-close-btn" aria-label="Close release dialog">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="release-modal-body">
+        <div id="release-notes" class="release-notes" aria-label="Release notes"></div>
+        <p id="release-status" class="release-status" hidden></p>
+      </div>
+      <div class="release-modal-footer">
+        <div id="release-download-progress" class="release-download-progress" hidden>
+          <div class="release-progress-track" aria-hidden="true">
+            <div id="release-progress-bar" class="release-progress-bar"></div>
+          </div>
+          <span id="release-download-percent" class="release-download-percent">0%</span>
+        </div>
+        <button type="button" id="btn-release-download" class="models-btn-update">Download Now</button>
       </div>
     </div>
   </div>

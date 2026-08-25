@@ -25,12 +25,16 @@ function createMainWindow() {
       const { app } = require("electron");
       app.dock.setIcon(iconPath);
     }
-    win.maximize();
-    win.show();
-    win.focus();
   });
 
   return win;
 }
 
-module.exports = { createMainWindow };
+function showMainWindow(win) {
+  if (!win || win.isDestroyed()) return;
+  win.maximize();
+  win.show();
+  win.focus();
+}
+
+module.exports = { createMainWindow, showMainWindow };

@@ -1215,3 +1215,198 @@ body.app-shell {
 .settings-btn-devtools:hover {
   color: var(--accent-strong);
 }
+
+/* ── New Release chip + overlay (Home) ────────────────────────────────────── */
+.btn-new-release {
+  height: 2.5rem;
+  padding: 0 0.9rem;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--accent-rgb), 0.55);
+  background: rgba(255, 209, 102, 0.28);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  color: var(--bubble-text);
+  box-shadow: var(--glass-shadow);
+  cursor: pointer;
+  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.btn-new-release:not([hidden]) {
+  display: inline-flex;
+  animation: new-release-glow-breathe 2.4s ease-in-out infinite;
+}
+
+@keyframes new-release-glow-breathe {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(var(--accent-rgb), 0.28);
+  }
+  50% {
+    box-shadow: 0 0 18px rgba(255, 179, 71, 0.55);
+  }
+}
+
+.btn-new-release[hidden] {
+  display: none !important;
+}
+
+.btn-new-release:hover {
+  background: rgba(255, 179, 71, 0.42);
+  transform: translateY(-1px);
+}
+
+.btn-new-release:focus-visible {
+  outline: 2px solid rgba(var(--accent-rgb), 0.8);
+  outline-offset: 2px;
+}
+
+.release-overlay {
+  z-index: 400;
+}
+
+.release-overlay.is-force-update {
+  background: rgba(0, 0, 0, 0.58);
+}
+
+.release-modal {
+  width: min(92vw, 520px);
+  max-height: min(560px, 90vh);
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: none;
+  border-radius: 20px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.28), 0 2px 8px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+}
+
+.release-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1.3rem 1.5rem 1rem;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.release-modal-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-ink);
+}
+
+.release-close-btn {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #888;
+  cursor: pointer;
+}
+
+.release-close-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text-ink);
+}
+
+.release-close-btn:focus-visible {
+  outline: 2px solid rgba(var(--accent-rgb), 0.8);
+  outline-offset: 2px;
+}
+
+.release-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 0;
+  padding: 1.1rem 1.5rem;
+}
+
+.release-notes {
+  min-height: 12rem;
+  max-height: min(320px, 45vh);
+  overflow-y: auto;
+  padding: 0.85rem 1rem;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--text-ink-muted);
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: #f7f4f2;
+  border: 1px solid #ece6e2;
+  border-radius: 12px;
+}
+
+.release-status {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: #c0392b;
+  font-weight: 600;
+}
+
+.release-status[hidden] {
+  display: none !important;
+}
+
+.release-modal-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #e8e8e8;
+}
+
+.release-download-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.release-download-progress[hidden] {
+  display: none !important;
+}
+
+.release-progress-track {
+  flex: 1;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: #ece6e2;
+  overflow: hidden;
+}
+
+.release-progress-bar {
+  height: 100%;
+  width: 0%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), var(--grad-3));
+  transition: width 120ms linear;
+}
+
+.release-download-percent {
+  min-width: 2.75rem;
+  text-align: right;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--accent-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.release-modal-footer .models-btn-update {
+  align-self: flex-end;
+}

@@ -1,4 +1,5 @@
-const { ipcMain, BrowserWindow, shell } = require("electron");
+const { ipcMain, BrowserWindow } = require("electron");
+const path = require("path");
 const channels = require("../../shared/ipc/channels");
 const { GetModelsConfig, UpdateModelsConfig } = require("../middlewares/cookie-middleware");
 const { SendAdvanceChat, CancelAdvanceChat } = require("../middlewares/advance-middleware");
@@ -8,7 +9,9 @@ const envFileService = require("../services/env-file-service");
 const modelConfigService = require("../services/model-config-service");
 const { probeModel } = require("../services/latency-benchmark-service");
 const { testOpenRouterKey, testTavilyKey } = require("../services/credential-test-service");
+const SoftwareLicensingService = require("../services/software-licensing-service");
 
+let ipcHandlersRegistered = false;
 let benchmarkInFlight = false;
 
 function broadcastBenchmarkProgress(payload) {
@@ -22,12 +25,10 @@ function broadcastBenchmarkProgress(payload) {
   }
 }
 
-const ALLOWED_EXTERNAL_URLS = new Set([
-  "https://openrouter.ai/keys",
-  "https://app.tavily.com/home",
-]);
-
 function registerIpcHandlers() {
+  if (ipcHandlersRegistered) return;
+  ipcHandlersRegistered = true;
+
   ipcMain.handle(channels.PING, async () => "pong");
 
   ipcMain.handle(channels.GET_USAGE_TOTALS, () => usageTracker.getTotals());
@@ -47,14 +48,6 @@ function registerIpcHandlers() {
 
   ipcMain.handle(channels.UPDATE_CREDENTIALS, (_event, payload) => {
     return envFileService.writeCredentials(payload || {});
-  });
-
-  ipcMain.handle(channels.OPEN_EXTERNAL_URL, async (_event, url) => {
-    if (typeof url !== "string" || !ALLOWED_EXTERNAL_URLS.has(url)) {
-      return { ok: false };
-    }
-    await shell.openExternal(url);
-    return { ok: true };
   });
 
   ipcMain.handle(channels.TEST_OPENROUTER_KEY, (_event, payload) => {
@@ -163,6 +156,44 @@ function registerIpcHandlers() {
 
   ipcMain.handle(channels.ADVANCE_CANCEL, (event, payload) => {
     return CancelAdvanceChat(event.sender, payload || {});
+  });
+
+  ipcMain.handle(channels.REGISTER_SOFTWARE_LICENSE, async () => {
+    return SoftwareLicensingService.getCachedUpdate();
+  });
+
+  ipcMain.handle(channels.GET_LICENSE_UPDATE, async () => {
+    return SoftwareLicensingService.getCachedUpdate();
+  });
+
+  ipcMain.handle(channels.CHECK_SOFTWARE_INSTALLER, (_event, payload) => {
+    return SoftwareLicensingService.checkInstaller(payload?.fileName);
+  });
+
+  ipcMain.handle(channels.DOWNLOAD_SOFTWARE_UPDATE, async (event, payload) => {
+    const url = typeof payload?.url === "string" ? payload.url : "";
+    const fileName = typeof payload?.fileName === "string" ? payload.fileName : "";
+    const sender = event.sender;
+    return SoftwareLicensingService.downloadInstaller(url, fileName, (progress) => {
+      if (sender && !sender.isDestroyed()) {
+        sender.send(channels.SOFTWARE_DOWNLOAD_PROGRESS, {
+          percent: progress?.percent ?? 0,
+          received: progress?.received ?? 0,
+          total: progress?.total ?? 0,
+          filename: progress?.filename ?? fileName,
+          path: progress?.path ?? null,
+        });
+      }
+    });
+  });
+
+  ipcMain.handle(channels.INSTALL_SOFTWARE_UPDATE, async (_event, payload) => {
+    const fileName = typeof payload?.fileName === "string"
+      ? payload.fileName
+      : typeof payload?.filePath === "string"
+        ? path.basename(payload.filePath)
+        : "";
+    return SoftwareLicensingService.installInstaller(fileName);
   });
 }
 
