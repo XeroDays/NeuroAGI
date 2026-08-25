@@ -1,0 +1,162 @@
+{
+  "runAt": "2026-08-24T15:29:34.878Z",
+  "totalRunMs": 71347,
+  "prompt": "Count the number of letters in the word \"characteristically\".\nThink carefully and verify your count.\nAfter you have finished, reply with exactly: OK",
+  "options": {
+    "maxTokens": 16384,
+    "reasoning": {
+      "effort": "medium"
+    }
+  },
+  "results": [
+    {
+      "model": "nvidia/nemotron-3-nano-30b-a3b:free",
+      "type": "Free",
+      "status": "error",
+      "elapsedMs": 470,
+      "note": "HTTP 404: {\"error\":{\"message\":\"This model is unavailable for free. The paid version is available now - use this slug instead: nvidia/nemotron-3-nano-30b-a3b\",\"code\":404},\"user_id\":\"user_39X3kcW237L8ckfga22xrL4lALU\"}"
+    },
+    {
+      "model": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+      "type": "Free",
+      "status": "error",
+      "elapsedMs": 7308,
+      "note": "Upstream error from Nvidia: ResourceExhausted: Worker local total request limit reached (16/16)"
+    },
+    {
+      "model": "openai/gpt-oss-20b:free",
+      "type": "Free",
+      "status": "error",
+      "elapsedMs": 273,
+      "note": "HTTP 404: {\"error\":{\"message\":\"This model is unavailable for free. The paid version is available now - use this slug instead: openai/gpt-oss-20b\",\"code\":404},\"user_id\":\"user_39X3kcW237L8ckfga22xrL4lALU\"}"
+    },
+    {
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "type": "Free",
+      "status": "ok",
+      "elapsedMs": 4235,
+      "finishReason": "stop",
+      "contentLength": 2,
+      "reasoningLength": 308,
+      "note": "OK"
+    },
+    {
+      "model": "poolside/laguna-m.1:free",
+      "type": "Free",
+      "status": "error",
+      "elapsedMs": 277,
+      "note": "HTTP 404: {\"error\":{\"message\":\"No endpoints found for poolside/laguna-m.1:free.\",\"code\":404},\"user_id\":\"user_39X3kcW237L8ckfga22xrL4lALU\"}"
+    },
+    {
+      "model": "tencent/hy3:free",
+      "type": "Free",
+      "status": "error",
+      "elapsedMs": 270,
+      "note": "HTTP 404: {\"error\":{\"message\":\"This model is unavailable for free. The paid version is available now - use this slug instead: tencent/hy3\",\"code\":404},\"user_id\":\"user_39X3kcW237L8ckfga22xrL4lALU\"}"
+    },
+    {
+      "model": "dots-studio/dots-3-note-preview:free",
+      "type": "Free",
+      "status": "ok",
+      "elapsedMs": 5677,
+      "finishReason": "stop",
+      "contentLength": 4,
+      "reasoningLength": 1601,
+      "note": "OK"
+    },
+    {
+      "model": "nvidia/nemotron-3.5-lightning:free",
+      "type": "Free",
+      "status": "ok",
+      "elapsedMs": 17315,
+      "finishReason": "stop",
+      "contentLength": 2,
+      "reasoningLength": 1954,
+      "note": "OK"
+    },
+    {
+      "model": "z-ai/glm-4-32b",
+      "type": "Paid",
+      "status": "error",
+      "elapsedMs": 294,
+      "note": "HTTP 404: {\"error\":{\"message\":\"No endpoints found for z-ai/glm-4-32b.\",\"code\":404},\"user_id\":\"user_39X3kcW237L8ckfga22xrL4lALU\"}"
+    },
+    {
+      "model": "deepseek/deepseek-v4-flash",
+      "type": "Paid",
+      "status": "ok",
+      "elapsedMs": 3650,
+      "finishReason": "stop",
+      "contentLength": 2,
+      "reasoningLength": 359,
+      "note": "OK"
+    },
+    {
+      "model": "meta-llama/llama-3.3-70b-instruct",
+      "type": "Paid",
+      "status": "ok",
+      "elapsedMs": 6169,
+      "finishReason": "stop",
+      "contentLength": 226,
+      "reasoningLength": 0,
+      "note": "To count the letters, I'll break down the word into its individual letters: 1. C 2. H 3. A 4. R 5. A 6. C 7. T 8. E 9. R…"
+    },
+    {
+      "model": "google/gemini-2.5-flash-lite",
+      "type": "Paid",
+      "status": "ok",
+      "elapsedMs": 4118,
+      "finishReason": "stop",
+      "contentLength": 2,
+      "reasoningLength": 412,
+      "note": "OK"
+    },
+    {
+      "model": "google/gemini-2.5-flash-lite-preview-09-2025",
+      "type": "Paid",
+      "status": "error",
+      "elapsedMs": 301,
+      "note": "HTTP 404: {\"error\":{\"message\":\"No endpoints found for google/gemini-2.5-flash-lite-preview-09-2025.\",\"code\":404},\"user_id\":\"user_39X3kcW237L8ckfga22xrL4lALU\"}"
+    },
+    {
+      "model": "qwen/qwen3.6-flash",
+      "type": "Paid",
+      "status": "ok",
+      "elapsedMs": 5607,
+      "finishReason": "stop",
+      "contentLength": 2,
+      "reasoningLength": 1934,
+      "note": "OK"
+    },
+    {
+      "model": "stepfun/step-3.7-flash",
+      "type": "Paid",
+      "status": "ok",
+      "elapsedMs": 8675,
+      "finishReason": "stop",
+      "contentLength": 2,
+      "reasoningLength": 1183,
+      "note": "OK"
+    },
+    {
+      "model": "openai/gpt-4.1-mini",
+      "type": "Paid",
+      "status": "ok",
+      "elapsedMs": 1655,
+      "finishReason": "stop",
+      "contentLength": 49,
+      "reasoningLength": 0,
+      "note": "The word \"characteristically\" has 16 letters. OK"
+    },
+    {
+      "model": "google/gemini-3-flash-preview",
+      "type": "Paid",
+      "status": "ok",
+      "elapsedMs": 5024,
+      "finishReason": "stop",
+      "contentLength": 2,
+      "reasoningLength": 270,
+      "note": "OK"
+    }
+  ]
+}

@@ -189,22 +189,24 @@ function applyResume(working, resume) {
 }
 
 /**
- * Send a multi-turn chat to the starred master model, with web_search,
+ * Send a multi-turn chat to one enabled model, with web_search,
  * extract_url, and ask_user. ask_user pauses the loop until the renderer
  * resumes with answers.
  *
  * @param {{ role: string, content: string }[]} messages
- * @param {{ onProgress?: (payload: object) => void, reasoningLevel?: string, signal?: AbortSignal }} [hooks]
+ * @param {{ model?: string, onProgress?: (payload: object) => void, reasoningLevel?: string, signal?: AbortSignal }} [hooks]
  * @param {object|null} [resume]
  * @returns {Promise<{ reply: string|null, model: string, preface?: string, pendingAsk?: object }>}
  */
-async function askMasterChat(messages, hooks = {}, resume = null) {
-  const masterId = modelConfigService.getMasterModelRuntimeId();
-  if (!masterId) {
-    throw new Error('No master model selected. Star a model in the Models popup.');
+async function askModelChat(messages, hooks = {}, resume = null) {
+  const enabledIds = modelConfigService.getActiveModelIds();
+  const model = typeof hooks.model === 'string' ? hooks.model.trim() : '';
+  if (!model || !enabledIds.includes(model)) {
+    throw new Error('No enabled model selected. Toggle a model in the Models popup.');
   }
 
-  const onProgress = typeof hooks.onProgress === 'function' ? hooks.onProgress : () => {};
+  const onProgressRaw = typeof hooks.onProgress === 'function' ? hooks.onProgress : () => {};
+  const onProgress = (payload) => onProgressRaw({ ...payload, model });
   const signal = hooks.signal;
   const llmOptions = {
     ...resolveLlmOptions(hooks.reasoningLevel),
@@ -217,7 +219,7 @@ async function askMasterChat(messages, hooks = {}, resume = null) {
   const resumed = applyResume(working, resume);
 
   console.log(
-    `[advance-chat] master query → ${masterId} (${working.length} messages${resumed ? ', resume' : ''}, reasoning=${hooks.reasoningLevel || DEFAULT_REASONING_LEVEL})`
+    `[advance-chat] query → ${model} (${working.length} messages${resumed ? ', resume' : ''}, reasoning=${hooks.reasoningLevel || DEFAULT_REASONING_LEVEL})`
   );
 
   for (let round = 0; round <= MAX_TOOL_ROUNDS; round += 1) {
@@ -236,7 +238,7 @@ async function askMasterChat(messages, hooks = {}, resume = null) {
     try {
       ({ content, toolCalls, message } = await chatCompletionWithTools(
         working,
-        masterId,
+        model,
         llmOptions
       ));
     } catch (err) {
@@ -266,13 +268,13 @@ async function askMasterChat(messages, hooks = {}, resume = null) {
     });
 
     if (!toolCalls.length) {
-      return { reply: content, model: masterId };
+      return { reply: content, model };
     }
 
     if (round === MAX_TOOL_ROUNDS) {
       return {
         reply: content || 'I reached the tool limit before I could finish. Please try again.',
-        model: masterId,
+        model,
       };
     }
 
@@ -367,12 +369,12 @@ async function askMasterChat(messages, hooks = {}, resume = null) {
           assistantMessage,
           priorToolResults,
         },
-        model: masterId,
+        model,
       };
     }
   }
 
-  return { reply: '', model: masterId };
+  return { reply: '', model };
 }
 
-module.exports = { askMasterChat, isAbortError, AdvanceAbortError };
+module.exports = { askModelChat, isAbortError, AdvanceAbortError };

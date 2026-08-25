@@ -198,16 +198,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const errorOkBtn = document.getElementById('btn-error-ok');
   const errorOpenModelsBtn = document.getElementById('btn-error-open-models');
 
-  async function isMasterModelSelected() {
+  async function hasEnabledModel() {
     const config = await window.electronAPI?.getModelsConfig?.();
-    return Array.isArray(config) && config.some((m) => m.isMaster === true);
+    return Array.isArray(config) && config.some((m) => m.enabled === true);
   }
 
   function closeErrorPopup() {
     if (errorOverlay) errorOverlay.hidden = true;
   }
 
-  function showMasterRequiredError() {
+  function showEnableModelError() {
     if (!errorOverlay) return;
     errorOverlay.hidden = false;
     errorOkBtn?.focus();
@@ -234,14 +234,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const issue = input?.value?.trim() || '';
     if (!issue) return;
 
-    let hasMaster = false;
+    let hasEnabled = false;
     try {
-      hasMaster = await isMasterModelSelected();
+      hasEnabled = await hasEnabledModel();
     } catch (err) {
       console.warn('[app] Failed to read models config:', err);
     }
-    if (!hasMaster) {
-      showMasterRequiredError();
+    if (!hasEnabled) {
+      showEnableModelError();
       return;
     }
 
@@ -429,6 +429,7 @@ document.addEventListener('DOMContentLoaded', () => {
           OPENROUTER_API_KEY: openRouterKeyInput?.value || '',
           TAVILY_API_KEY: tavilyKeyInput?.value || '',
         });
+        closeSettingsPopup();
       } catch (err) {
         console.error('[app] Failed to save credentials:', err);
       } finally {
@@ -458,10 +459,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const modelsListPaid  = document.getElementById('models-list-paid');
   const modelsCloseBtn  = document.getElementById('btn-models-close');
   const modelsUpdateBtn = document.getElementById('btn-models-update');
+  const modelsTestBtn   = document.getElementById('btn-models-test');
   const modelsTabs      = document.querySelectorAll('.models-tab');
 
   // Local snapshot of the model list; mutated by toggle/star interactions.
   let modelsState = [];
+  let modelsBenchmarkRunning = false;
 
   function parseModelLabels(raw) {
     if (typeof raw !== 'string' || !raw.trim()) return [];
@@ -493,6 +496,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const row = document.createElement('div');
       row.className = 'models-row';
       row.setAttribute('role', 'listitem');
+      row.dataset.modelName = model.name;
 
       const starBtn = document.createElement('button');
       starBtn.type = 'button';
@@ -602,6 +606,90 @@ document.addEventListener('DOMContentLoaded', () => {
     updateTabCounts();
   }
 
+  function findModelsRow(modelName) {
+    const lists = [modelsListFree, modelsListPaid];
+    for (const list of lists) {
+      if (!list) continue;
+      for (const row of list.querySelectorAll('.models-row')) {
+        if (row.dataset.modelName === modelName) return row;
+      }
+    }
+    return null;
+  }
+
+  function upsertMetricBadge(info, className, text, insertAfter) {
+    if (!info || !text) return null;
+    let badge = info.querySelector(`.${className}`);
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.className = className;
+      if (insertAfter && insertAfter.parentNode === info) {
+        insertAfter.insertAdjacentElement('afterend', badge);
+      } else {
+        const typeBadge = info.querySelector('.models-type-badge');
+        if (typeBadge) typeBadge.insertAdjacentElement('afterend', badge);
+        else info.appendChild(badge);
+      }
+    }
+    badge.textContent = text;
+    return badge;
+  }
+
+  function refreshModelMetricBadges(modelName, latency, throughput) {
+    const row = findModelsRow(modelName);
+    if (!row) return;
+    const info = row.querySelector('.models-row-info');
+    if (!info) return;
+    const typeBadge = info.querySelector('.models-type-badge');
+    const latencyBadge = upsertMetricBadge(info, 'models-latency-badge', latency, typeBadge);
+    upsertMetricBadge(
+      info,
+      'models-throughput-badge',
+      throughput,
+      latencyBadge || typeBadge
+    );
+  }
+
+  function getActiveModelsTabType() {
+    const activeTab = document.querySelector('.models-tab.is-active');
+    return activeTab?.dataset.tab === 'paid' ? 'Paid' : 'Free';
+  }
+
+  function setModelsTestIdle() {
+    modelsBenchmarkRunning = false;
+    if (!modelsTestBtn) return;
+    modelsTestBtn.disabled = false;
+    modelsTestBtn.textContent = 'Test latency';
+  }
+
+  function applyBenchmarkProgress(payload) {
+    if (!payload || typeof payload !== 'object') return;
+    const { name, status, latency, throughput, index, total } = payload;
+
+    if (modelsTestBtn && modelsBenchmarkRunning && Number.isFinite(index) && Number.isFinite(total)) {
+      modelsTestBtn.textContent = `Testing ${index}/${total}…`;
+    }
+
+    if (status === 'ok') {
+      const entry = modelsState.find((m) => m.name === name);
+      if (entry) {
+        if (typeof latency === 'string') entry.latency = latency;
+        if (typeof throughput === 'string') entry.throughput = throughput;
+        refreshModelMetricBadges(name, entry.latency, entry.throughput);
+      }
+      return;
+    }
+
+    if (status === 'removed' || status === 'error') {
+      modelsState = modelsState.filter((m) => m.name !== name);
+      renderModelsList();
+    }
+  }
+
+  if (typeof window.electronAPI?.onBenchmarkProgress === 'function') {
+    window.electronAPI.onBenchmarkProgress(applyBenchmarkProgress);
+  }
+
   // Switch active tab; show the matching panel, hide the other.
   function switchTab(tabName) {
     modelsTabs.forEach((tab) => {
@@ -672,6 +760,27 @@ document.addEventListener('DOMContentLoaded', () => {
       } finally {
         modelsUpdateBtn.disabled = false;
         modelsUpdateBtn.textContent = 'Update';
+      }
+    });
+  }
+
+  if (modelsTestBtn) {
+    modelsTestBtn.addEventListener('click', async () => {
+      if (modelsBenchmarkRunning) return;
+      modelsBenchmarkRunning = true;
+      modelsTestBtn.disabled = true;
+      modelsTestBtn.textContent = 'Testing…';
+      try {
+        const result = await window.electronAPI?.benchmarkModels?.({
+          type: getActiveModelsTabType(),
+        });
+        if (!result?.ok) {
+          console.error('[app] Latency test failed:', result?.error || 'unknown error');
+        }
+      } catch (err) {
+        console.error('[app] Latency test failed:', err);
+      } finally {
+        setModelsTestIdle();
       }
     });
   }

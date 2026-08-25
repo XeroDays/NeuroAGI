@@ -74,6 +74,65 @@ body.adv-shell {
   flex-direction: column;
 }
 
+.adv-chips {
+  flex-shrink: 0;
+  display: flex;
+  gap: 0.45rem;
+  overflow-x: auto;
+  padding: 0 0 0.75rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.35) transparent;
+}
+
+.adv-chips::-webkit-scrollbar {
+  height: 4px;
+}
+
+.adv-chips::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 4px;
+}
+
+.adv-chip {
+  flex-shrink: 0;
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0.42rem 0.9rem;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.adv-chip:hover {
+  background: rgba(255, 255, 255, 0.26);
+}
+
+.adv-chip.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.adv-chip:focus-visible {
+  outline: 2px solid rgba(var(--accent-rgb), 0.8);
+  outline-offset: 2px;
+}
+
+.adv-threads {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .adv-thread {
   flex: 1;
   min-height: 0;

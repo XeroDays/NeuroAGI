@@ -13,6 +13,8 @@ const CH = {
   TEST_TAVILY_KEY: "neuroagi:test-tavily-key",
   GET_MODELS_CONFIG: "neuroagi:get-models-config",
   UPDATE_MODELS_CONFIG: "neuroagi:update-models-config",
+  BENCHMARK_MODELS: "neuroagi:benchmark-models",
+  BENCHMARK_PROGRESS: "neuroagi:benchmark-progress",
   GET_LOGS: "neuroagi:get-logs",
   CLEAR_LOGS: "neuroagi:clear-logs",
   LOG_UPDATE: "neuroagi:log-update",
@@ -44,12 +46,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   getModelsConfig: () => ipcRenderer.invoke(CH.GET_MODELS_CONFIG),
   updateModelsConfig: (payload) => ipcRenderer.invoke(CH.UPDATE_MODELS_CONFIG, payload),
+  benchmarkModels: (payload) => ipcRenderer.invoke(CH.BENCHMARK_MODELS, payload),
+  onBenchmarkProgress: (cb) => subscribe(CH.BENCHMARK_PROGRESS, cb),
 
   getLogs: () => ipcRenderer.invoke(CH.GET_LOGS),
   clearLogs: () => ipcRenderer.invoke(CH.CLEAR_LOGS),
   onLogUpdate: (cb) => subscribe(CH.LOG_UPDATE, cb),
 
   advanceSend: (payload) => ipcRenderer.invoke(CH.ADVANCE_SEND, payload),
-  advanceCancel: () => ipcRenderer.invoke(CH.ADVANCE_CANCEL),
+  advanceCancel: (payload) => ipcRenderer.invoke(CH.ADVANCE_CANCEL, payload),
   onAdvanceProgress: (cb) => subscribe(CH.ADVANCE_PROGRESS, cb),
 });

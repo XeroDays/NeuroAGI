@@ -1,0 +1,187 @@
+{
+  "runAt": "2026-08-24T15:43:24.581Z",
+  "totalRunMs": 111611,
+  "prompt": "Count the number of letters in the word \"characteristically\".\nThink carefully and verify your count.\nAfter you have finished, reply with exactly: OK",
+  "options": {
+    "maxTokens": 16384,
+    "reasoning": {
+      "effort": "medium"
+    }
+  },
+  "results": [
+    {
+      "model": "nvidia/nemotron-3-nano-30b-a3b:free",
+      "type": "Free",
+      "status": "error",
+      "elapsedMs": 723,
+      "note": "HTTP 404: {\"error\":{\"message\":\"This model is unavailable for free. The paid version is available now - use this slug instead: nvidia/nemotron-3-nano-30b-a3b\",\"code\":404},\"user_id\":\"user_39X3kcW237L8ckfga22xrL4lALU\"}"
+    },
+    {
+      "model": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+      "type": "Free",
+      "status": "ok",
+      "elapsedMs": 9299,
+      "finishReason": "stop",
+      "contentLength": 2,
+      "reasoningLength": 992,
+      "latency": "9.30s",
+      "throughput": "107tps",
+      "note": "OK"
+    },
+    {
+      "model": "openai/gpt-oss-20b:free",
+      "type": "Free",
+      "status": "error",
+      "elapsedMs": 316,
+      "note": "HTTP 404: {\"error\":{\"message\":\"This model is unavailable for free. The paid version is available now - use this slug instead: openai/gpt-oss-20b\",\"code\":404},\"user_id\":\"user_39X3kcW237L8ckfga22xrL4lALU\"}"
+    },
+    {
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "type": "Free",
+      "status": "ok",
+      "elapsedMs": 1728,
+      "finishReason": "stop",
+      "contentLength": 2,
+      "reasoningLength": 236,
+      "latency": "1.73s",
+      "throughput": "138tps",
+      "note": "OK"
+    },
+    {
+      "model": "poolside/laguna-m.1:free",
+      "type": "Free",
+      "status": "error",
+      "elapsedMs": 295,
+      "note": "HTTP 404: {\"error\":{\"message\":\"No endpoints found for poolside/laguna-m.1:free.\",\"code\":404},\"user_id\":\"user_39X3kcW237L8ckfga22xrL4lALU\"}"
+    },
+    {
+      "model": "tencent/hy3:free",
+      "type": "Free",
+      "status": "error",
+      "elapsedMs": 272,
+      "note": "HTTP 404: {\"error\":{\"message\":\"This model is unavailable for free. The paid version is available now - use this slug instead: tencent/hy3\",\"code\":404},\"user_id\":\"user_39X3kcW237L8ckfga22xrL4lALU\"}"
+    },
+    {
+      "model": "dots-studio/dots-3-note-preview:free",
+      "type": "Free",
+      "status": "ok",
+      "elapsedMs": 8307,
+      "finishReason": "stop",
+      "contentLength": 4,
+      "reasoningLength": 2421,
+      "latency": "8.31s",
+      "throughput": "292tps",
+      "note": "OK"
+    },
+    {
+      "model": "nvidia/nemotron-3.5-lightning:free",
+      "type": "Free",
+      "status": "ok",
+      "elapsedMs": 43122,
+      "finishReason": "stop",
+      "contentLength": 2,
+      "reasoningLength": 3252,
+      "latency": "43.12s",
+      "throughput": "75tps",
+      "note": "OK"
+    },
+    {
+      "model": "z-ai/glm-4-32b",
+      "type": "Paid",
+      "status": "error",
+      "elapsedMs": 567,
+      "note": "HTTP 404: {\"error\":{\"message\":\"No endpoints found for z-ai/glm-4-32b.\",\"code\":404},\"user_id\":\"user_39X3kcW237L8ckfga22xrL4lALU\"}"
+    },
+    {
+      "model": "deepseek/deepseek-v4-flash",
+      "type": "Paid",
+      "status": "ok",
+      "elapsedMs": 10114,
+      "finishReason": "stop",
+      "contentLength": 2,
+      "reasoningLength": 3067,
+      "latency": "10.11s",
+      "throughput": "303tps",
+      "note": "OK"
+    },
+    {
+      "model": "meta-llama/llama-3.3-70b-instruct",
+      "type": "Paid",
+      "status": "ok",
+      "elapsedMs": 1913,
+      "finishReason": "stop",
+      "contentLength": 2,
+      "reasoningLength": 0,
+      "latency": "1.91s",
+      "throughput": "1tps",
+      "note": "OK"
+    },
+    {
+      "model": "google/gemini-2.5-flash-lite",
+      "type": "Paid",
+      "status": "ok",
+      "elapsedMs": 4431,
+      "finishReason": "stop",
+      "contentLength": 2,
+      "reasoningLength": 414,
+      "latency": "4.43s",
+      "throughput": "94tps",
+      "note": "OK"
+    },
+    {
+      "model": "google/gemini-2.5-flash-lite-preview-09-2025",
+      "type": "Paid",
+      "status": "error",
+      "elapsedMs": 418,
+      "note": "HTTP 404: {\"error\":{\"message\":\"No endpoints found for google/gemini-2.5-flash-lite-preview-09-2025.\",\"code\":404},\"user_id\":\"user_39X3kcW237L8ckfga22xrL4lALU\"}"
+    },
+    {
+      "model": "qwen/qwen3.6-flash",
+      "type": "Paid",
+      "status": "ok",
+      "elapsedMs": 6791,
+      "finishReason": "stop",
+      "contentLength": 2,
+      "reasoningLength": 2578,
+      "latency": "6.79s",
+      "throughput": "380tps",
+      "note": "OK"
+    },
+    {
+      "model": "stepfun/step-3.7-flash",
+      "type": "Paid",
+      "status": "ok",
+      "elapsedMs": 13719,
+      "finishReason": "stop",
+      "contentLength": 2,
+      "reasoningLength": 2399,
+      "latency": "13.72s",
+      "throughput": "175tps",
+      "note": "OK"
+    },
+    {
+      "model": "openai/gpt-4.1-mini",
+      "type": "Paid",
+      "status": "ok",
+      "elapsedMs": 1427,
+      "finishReason": "stop",
+      "contentLength": 49,
+      "reasoningLength": 0,
+      "latency": "1.43s",
+      "throughput": "34tps",
+      "note": "The word \"characteristically\" has 16 letters. OK"
+    },
+    {
+      "model": "google/gemini-3-flash-preview",
+      "type": "Paid",
+      "status": "ok",
+      "elapsedMs": 8144,
+      "finishReason": "stop",
+      "contentLength": 2,
+      "reasoningLength": 493,
+      "latency": "8.14s",
+      "throughput": "61tps",
+      "note": "OK"
+    }
+  ]
+}

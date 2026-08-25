@@ -755,6 +755,16 @@ body.app-shell {
   flex-shrink: 0;
 }
 
+.models-btn-test {
+  margin-right: auto;
+}
+
+.models-btn-test:disabled {
+  opacity: 0.55;
+  cursor: default;
+  transform: none;
+}
+
 .models-btn-close {
   padding: 0.52rem 1.2rem;
   font: inherit;

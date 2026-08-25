@@ -35,7 +35,7 @@ For each model it:
 
 1. Sends a non-streaming chat completion request to OpenRouter.
 2. Uses the same fixed prompt for all models so latency is comparable.
-3. Sets `stream: false` and `reasoning: { effort: "medium" }`.
+3. Sets `stream: false` and `reasoning: { effort: "none" }`, with `max_tokens: 2048`.
 4. Waits for the full response before moving to the next model.
 5. Logs progress, elapsed time, and a short content preview.
 
@@ -44,9 +44,9 @@ For each model it:
 Every model receives this user message:
 
 ```
-Count the number of letters in the word "characteristically".
-Think carefully and verify your count.
-After you have finished, reply with exactly: OK
+Write the integers from 1 to 120 inclusive, one number per line.
+Output only those numbers.
+Do not add a title, commentary, or reasoning.
 ```
 
 ## Console output
@@ -58,8 +58,8 @@ While running, you will see logs like:
   Sending request…
   ✓ Completed in 5.27s
     status: 200, finish_reason: stop
-    content: 291 chars, reasoning: 829 chars
-    preview: I'll count the letters in "characteristically"…
+    content: 392 chars, reasoning: 0 chars
+    preview: 1 2 3 4 5…
 ```
 
 If a model fails (HTTP error, network issue, etc.), the script logs the error and **continues** with the remaining models.

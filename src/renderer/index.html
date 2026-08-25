@@ -70,7 +70,7 @@
     <div class="models-modal">
       <div class="models-modal-header">
         <h2 class="models-modal-title" id="models-modal-title">Models</h2>
-        <p class="models-modal-subtitle">Toggle which models are active for all diagnostic steps.</p>
+        <p class="models-modal-subtitle">Toggle which models run in Advance.</p>
       </div>
       <div class="models-tabs-bar" role="tablist">
         <button type="button" class="models-tab is-active" data-tab="free" role="tab" aria-selected="true" aria-controls="models-list-free">Free</button>
@@ -79,18 +79,19 @@
       <div class="models-modal-body" id="models-list-free" role="list"></div>
       <div class="models-modal-body" id="models-list-paid" role="list" hidden></div>
       <div class="models-modal-footer">
+        <button type="button" id="btn-models-test" class="models-btn-close models-btn-test">Test latency</button>
         <button type="button" id="btn-models-close" class="models-btn-close">Close</button>
         <button type="button" id="btn-models-update" class="models-btn-update">Update</button>
       </div>
     </div>
   </div>
 
-  <!-- Master model required error -->
+  <!-- Enable a model error -->
   <div id="error-overlay" class="glass-overlay error-overlay" hidden aria-modal="true" role="dialog" aria-labelledby="error-modal-title">
     <div class="error-modal">
       <div class="error-modal-header">
-        <h2 class="error-modal-title" id="error-modal-title">Master model required</h2>
-        <p class="error-modal-message">No master model selected. Star a model in the Models popup.</p>
+        <h2 class="error-modal-title" id="error-modal-title">Enable a model</h2>
+        <p class="error-modal-message">Turn on at least one model in the Models popup.</p>
       </div>
       <div class="error-modal-footer">
         <button type="button" id="btn-error-ok" class="models-btn-close">OK</button>

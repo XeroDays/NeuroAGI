@@ -11,8 +11,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Settings Credentials tab: save OpenRouter and Tavily keys to `.env` from the app
 - Test key buttons in Settings to check OpenRouter and Tavily keys without saving
+- Models popup Test latency: probe the visible Free or Paid tab, update latency/tps badges, drop failed models
 
 ### Changed
+
+- Settings Save closes the popup after a successful write
+- Advance runs every enabled model in parallel; chips switch per-model threads (star is ignored)
+- Latency probe lists 1–120 instead of a letter-count / OK reply, with reasoning off and a 2048 token cap
 
 ### Fixed
 

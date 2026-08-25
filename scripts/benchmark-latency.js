@@ -1,32 +1,18 @@
 const fs = require("fs");
 const path = require("path");
 const dotenv = require("dotenv");
+const {
+  BENCHMARK_PROMPT,
+  LLM_OPTIONS,
+  formatSeconds,
+  preview,
+  probeModel,
+} = require("../src/main/services/latency-benchmark-service");
 
-const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const PROJECT_ROOT = path.join(__dirname, "..");
 const CATALOG_PATH = path.join(PROJECT_ROOT, "models-catalog.json");
 
-const BENCHMARK_PROMPT = `Count the number of letters in the word "characteristically".
-Think carefully and verify your count.
-After you have finished, reply with exactly: OK`;
-
-const LLM_OPTIONS = {
-  maxTokens: 16384,
-  reasoning: { effort: "medium" },
-};
-
 dotenv.config({ path: path.join(PROJECT_ROOT, ".env") });
-
-function formatSeconds(ms) {
-  return (ms / 1000).toFixed(2);
-}
-
-function preview(text, maxLen = 120) {
-  if (typeof text !== "string" || text.length === 0) return "(empty)";
-  const oneLine = text.replace(/\s+/g, " ").trim();
-  if (oneLine.length <= maxLen) return oneLine;
-  return `${oneLine.slice(0, maxLen)}…`;
-}
 
 async function benchmarkModel(modelEntry, index, total) {
   const { name: model, type } = modelEntry;
@@ -35,90 +21,22 @@ async function benchmarkModel(modelEntry, index, total) {
   console.log(`\n[${index}/${total}] → ${model} (${type})`);
   console.log(`  Sending request…`);
 
-  const startedAt = Date.now();
-  let elapsedMs = 0;
+  const result = await probeModel(modelEntry, apiKey);
 
-  try {
-    const res = await fetch(OPENROUTER_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-        "HTTP-Referer": "https://github.com/xerodays/neuroAGI",
-        "X-Title": "NeuroAGI",
-      },
-      body: JSON.stringify({
-        model,
-        messages: [{ role: "user", content: BENCHMARK_PROMPT }],
-        stream: false,
-        max_tokens: LLM_OPTIONS.maxTokens,
-        reasoning: LLM_OPTIONS.reasoning,
-      }),
-    });
-
-    elapsedMs = Date.now() - startedAt;
-
-    if (!res.ok) {
-      const errText = await res.text();
-      const message = `HTTP ${res.status}: ${errText.slice(0, 400)}`;
-      console.log(`  ✗ Failed in ${formatSeconds(elapsedMs)}s — ${message}`);
-      return {
-        model,
-        type,
-        status: "error",
-        elapsedMs,
-        note: message,
-      };
-    }
-
-    const json = await res.json();
-    elapsedMs = Date.now() - startedAt;
-
-    if (json?.error) {
-      const message = json.error.message || String(json.error);
-      console.log(`  ✗ API error in ${formatSeconds(elapsedMs)}s — ${message}`);
-      return {
-        model,
-        type,
-        status: "error",
-        elapsedMs,
-        note: message,
-      };
-    }
-
-    const message = json?.choices?.[0]?.message ?? {};
-    const content = message.content ?? "";
-    const finishReason = json?.choices?.[0]?.finish_reason ?? null;
-    const reasoningLen =
-      typeof message.reasoning === "string" ? message.reasoning.length : 0;
-
-    console.log(`  ✓ Completed in ${formatSeconds(elapsedMs)}s`);
-    console.log(`    status: ${res.status}, finish_reason: ${finishReason}`);
-    console.log(`    content: ${content.length} chars, reasoning: ${reasoningLen} chars`);
-    console.log(`    preview: ${preview(content)}`);
-
-    return {
-      model,
-      type,
-      status: "ok",
-      elapsedMs,
-      finishReason,
-      contentLength: content.length,
-      reasoningLength: reasoningLen,
-      note: preview(content),
-    };
-  } catch (err) {
-    elapsedMs = Date.now() - startedAt;
-    const message = err?.message || String(err);
-    console.log(`  ✗ Exception in ${formatSeconds(elapsedMs)}s — ${message}`);
-    return {
-      model,
-      type,
-      status: "error",
-      elapsedMs,
-      note: message,
-    };
+  if (result.status === "ok") {
+    console.log(`  ✓ Completed in ${formatSeconds(result.elapsedMs)}s`);
+    console.log(`    status: 200, finish_reason: ${result.finishReason}`);
+    console.log(
+      `    content: ${result.contentLength} chars, reasoning: ${result.reasoningLength} chars`
+    );
+    console.log(`    preview: ${result.note}`);
+  } else {
+    console.log(
+      `  ✗ Failed in ${formatSeconds(result.elapsedMs)}s — ${result.note}`
+    );
   }
+
+  return result;
 }
 
 function printSummary(results, totalRunMs) {
@@ -178,7 +96,7 @@ async function main() {
   console.log("NeuroAGI Model Latency Benchmark");
   console.log(`Catalog: ${catalog.length} models`);
   console.log(`Prompt : ${preview(BENCHMARK_PROMPT, 80)}`);
-  console.log(`Options: stream=false, reasoning=medium, max_tokens=${LLM_OPTIONS.maxTokens}`);
+  console.log(`Options: stream=false, reasoning=${LLM_OPTIONS.reasoning.effort}, max_tokens=${LLM_OPTIONS.maxTokens}`);
 
   const runStartedAt = Date.now();
   const results = [];
@@ -210,7 +128,9 @@ async function main() {
   console.log(`\nResults saved to: ${reportPath}`);
 }
 
-main().catch((err) => {
-  console.error("Benchmark failed:", err?.message || String(err));
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((err) => {
+    console.error("Benchmark failed:", err?.message || String(err));
+    process.exit(1);
+  });
+}

@@ -11,6 +11,8 @@ module.exports = {
   TEST_TAVILY_KEY: "neuroagi:test-tavily-key",
   GET_MODELS_CONFIG: "neuroagi:get-models-config",
   UPDATE_MODELS_CONFIG: "neuroagi:update-models-config",
+  BENCHMARK_MODELS: "neuroagi:benchmark-models",
+  BENCHMARK_PROGRESS: "neuroagi:benchmark-progress",
   GET_LOGS: "neuroagi:get-logs",
   CLEAR_LOGS: "neuroagi:clear-logs",
   LOG_UPDATE: "neuroagi:log-update",

@@ -1,7 +1,8 @@
 const channels = require('../../shared/ipc/channels');
-const { askMasterChat, isAbortError } = require('../services/advance-chat-service');
+const { askModelChat, isAbortError } = require('../services/advance-chat-service');
+const modelConfigService = require('../services/model-config-service');
 
-/** @type {Map<number, AbortController>} */
+/** @type {Map<number, Map<string, AbortController>>} */
 const controllers = new Map();
 
 const ALLOWED_ROLES = new Set(['user', 'assistant']);
@@ -34,6 +35,35 @@ function sanitizeMessages(raw) {
   return cleaned;
 }
 
+function sanitizeModel(raw) {
+  const model = typeof raw === 'string' ? raw.trim() : '';
+  if (!model) return '';
+  const enabled = modelConfigService.getActiveModelIds();
+  return enabled.includes(model) ? model : '';
+}
+
+function senderMap(senderId) {
+  let map = controllers.get(senderId);
+  if (!map) {
+    map = new Map();
+    controllers.set(senderId, map);
+  }
+  return map;
+}
+
+function abortModel(senderId, model) {
+  const map = controllers.get(senderId);
+  if (!map) return;
+  const controller = map.get(model);
+  if (controller) controller.abort();
+}
+
+function abortAll(senderId) {
+  const map = controllers.get(senderId);
+  if (!map) return;
+  for (const controller of map.values()) controller.abort();
+}
+
 function emitProgress(sender, payload) {
   if (!sender || sender.isDestroyed?.()) return;
   try {
@@ -44,16 +74,16 @@ function emitProgress(sender, payload) {
 }
 
 /**
- * Advance-screen chat turn. Uses the starred master model and the full
- * conversation so prior messages are remembered. May run web_search or
+ * Advance-screen chat turn for one enabled model. May run web_search or
  * pause for ask_user.
  *
- * @param {{ messages?: unknown, resume?: object, reasoningLevel?: unknown }} payload
+ * @param {{ messages?: unknown, model?: unknown, resume?: object, reasoningLevel?: unknown }} payload
  * @param {Electron.WebContents} [sender]
  * @returns {Promise<object>}
  */
 async function SendAdvanceChat(payload = {}, sender) {
   const messages = sanitizeMessages(payload.messages);
+  const model = sanitizeModel(payload.model);
   const resume = payload.resume && typeof payload.resume === 'object'
     ? payload.resume
     : null;
@@ -65,23 +95,26 @@ async function SendAdvanceChat(payload = {}, sender) {
   if (messages[messages.length - 1].role !== 'user') {
     return { ok: false, error: 'Last message must be from the user.' };
   }
+  if (!model) {
+    return { ok: false, error: 'No enabled model selected. Toggle a model in the Models popup.' };
+  }
 
   const senderId = sender?.id;
-  const prior = senderId != null ? controllers.get(senderId) : null;
-  if (prior) prior.abort();
+  if (senderId != null) abortModel(senderId, model);
 
   const controller = new AbortController();
-  if (senderId != null) controllers.set(senderId, controller);
+  if (senderId != null) senderMap(senderId).set(model, controller);
 
   try {
-    const result = await askMasterChat(messages, {
-      onProgress: (event) => emitProgress(sender, event),
+    const result = await askModelChat(messages, {
+      model,
+      onProgress: (event) => emitProgress(sender, { ...event, model }),
       reasoningLevel,
       signal: controller.signal,
     }, resume);
 
     if (controller.signal.aborted) {
-      return { ok: false, aborted: true };
+      return { ok: false, aborted: true, model };
     }
 
     if (result?.pendingAsk) {
@@ -96,7 +129,7 @@ async function SendAdvanceChat(payload = {}, sender) {
     return { ok: true, reply: result?.reply ?? '', model: result?.model };
   } catch (err) {
     if (isAbortError(err) || controller.signal.aborted) {
-      return { ok: false, aborted: true };
+      return { ok: false, aborted: true, model };
     }
     const error = err instanceof Error ? err.message : String(err);
     console.error('[advance] SendAdvanceChat failed:', error);
@@ -106,19 +139,26 @@ async function SendAdvanceChat(payload = {}, sender) {
       tool: 'model',
       state: 'error',
       label: error,
+      model,
     });
-    return { ok: false, error };
+    return { ok: false, error, model };
   } finally {
-    if (senderId != null && controllers.get(senderId) === controller) {
-      controllers.delete(senderId);
+    if (senderId != null) {
+      const map = controllers.get(senderId);
+      if (map && map.get(model) === controller) {
+        map.delete(model);
+        if (map.size === 0) controllers.delete(senderId);
+      }
     }
   }
 }
 
-function CancelAdvanceChat(sender) {
+function CancelAdvanceChat(sender, payload = {}) {
   const senderId = sender?.id;
-  const controller = senderId != null ? controllers.get(senderId) : null;
-  if (controller) controller.abort();
+  if (senderId == null) return { ok: true };
+  const model = typeof payload.model === 'string' ? payload.model.trim() : '';
+  if (model) abortModel(senderId, model);
+  else abortAll(senderId);
   return { ok: true };
 }
 

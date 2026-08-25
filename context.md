@@ -42,34 +42,35 @@ src/
 ├── main/
 │   ├── index.js              # Bootstrap: loadEnv(), hide menu, register IPC, create window
 │   ├── ipc/
-│   │   └── register.js       # IPC: ping, advanceSend / advanceCancel, getUsageTotals, resetUsageTotals, openDevTools, getCredentials, updateCredentials, openExternalUrl, testOpenRouterKey, testTavilyKey, getModelsConfig, updateModelsConfig, getLogs, clearLogs. USAGE_UPDATE / LOG_UPDATE / ADVANCE_PROGRESS are broadcast, not handle-invoked
+│   │   └── register.js       # IPC: ping, advanceSend / advanceCancel, getUsageTotals, resetUsageTotals, openDevTools, getCredentials, updateCredentials, openExternalUrl, testOpenRouterKey, testTavilyKey, getModelsConfig, updateModelsConfig, benchmarkModels, getLogs, clearLogs. USAGE_UPDATE / LOG_UPDATE / ADVANCE_PROGRESS / BENCHMARK_PROGRESS are broadcast, not handle-invoked
 │   ├── middlewares/
-│   │   ├── advance-middleware.js   # SendAdvanceChat({ messages, resume?, reasoningLevel }, sender) — starred-master chat turn for Advance. CancelAdvanceChat(sender) aborts the in-flight turn
+│   │   ├── advance-middleware.js   # SendAdvanceChat({ messages, model, resume?, reasoningLevel }, sender) — one enabled-model turn. CancelAdvanceChat(sender, { model? }) aborts that model or all
 │   │   └── cookie-middleware.js    # GetModelsConfig() / UpdateModelsConfig({ activeModels, masterModel }) — thin wrapper around model-config-service
 │   ├── services/
-│   │   ├── advance-chat-service.js # askMasterChat: tool loop (max 4 rounds) on the starred master. Tools: find_topic_urls, extract_url, web_search, ask_user. Resolves LLM_OPTIONS_BY_LEVEL (none/low/medium/high/very_high) into maxTokens + reasoning.effort
+│   │   ├── advance-chat-service.js # askModelChat: tool loop (max 4 rounds) on one enabled model. Tools: find_topic_urls, extract_url, web_search, ask_user. Resolves LLM_OPTIONS_BY_LEVEL (none/low/medium/high/very_high) into maxTokens + reasoning.effort
 │   │   ├── advance-llm.js          # Advance-only OpenRouter client: chatCompletionWithTools(messages, model, options). Records usage + type:"ai" logs. Does not use a shared api-helper
 │   │   ├── advance-tools.js        # Tool schemas + executeTool (Tavily search/extract + URL discovery) + ask_user question sanitizer
 │   │   ├── advance-system-prompt.js # ADVANCE_SYSTEM_PROMPT — clinical assistant + diagnostic vs informational turn rules
-│   │   ├── model-config-service.js # Catalog + persisted { activeModels, masterModel } under Electron userData. Advance uses getMasterModelRuntimeId()
+│   │   ├── model-config-service.js # Catalog + persisted { activeModels, masterModel, latencies, throughputs, removedModels } under Electron userData. Advance uses getActiveModelIds(); removed names stay hidden
 │   │   ├── web-search-service.js   # Tavily search() + extract(); type:"web" log items on every success/error
 │   │   ├── env-file-service.js     # resolve/read/write `.env`; loadEnv() at startup; GET/UPDATE credentials. Create: project root unpackaged, next to exe when packaged
 │   │   ├── credential-test-service.js # Probe OpenRouter GET /api/v1/key and Tavily POST /search (basic ping). No logs, no usage, never echoes the key
+│   │   ├── latency-benchmark-service.js # Shared OpenRouter latency probe (no Electron). Used by Models Test latency and scripts/benchmark-latency.js
 │   │   ├── log-service.js          # In-memory tool-call logger. addLog / getLogs / clearLogs; broadcasts LOG_UPDATE. Instrumented at advance-llm.js and web-search-service.js
 │   │   └── usage-tracker.js        # Running cost + token totals; broadcasts USAGE_UPDATE
 │   └── windows/
 │       └── main-window.js    # BrowserWindow 800×600 (restore size). On ready-to-show: maximize() then show(). Not fullscreen
 ├── preload/
-│   └── index.js              # contextBridge → window.electronAPI { ping, getUsageTotals, resetUsageTotals, onUsageUpdate, openDevTools, getCredentials, updateCredentials, openExternalUrl, testOpenRouterKey, testTavilyKey, getModelsConfig, updateModelsConfig, getLogs, clearLogs, onLogUpdate, advanceSend, advanceCancel, onAdvanceProgress }
+│   └── index.js              # contextBridge → window.electronAPI { ping, getUsageTotals, resetUsageTotals, onUsageUpdate, openDevTools, getCredentials, updateCredentials, openExternalUrl, testOpenRouterKey, testTavilyKey, getModelsConfig, updateModelsConfig, benchmarkModels, onBenchmarkProgress, getLogs, clearLogs, onLogUpdate, advanceSend, advanceCancel, onAdvanceProgress }
 ├── renderer/
 │   ├── index.html            # Home. Top bar: Settings + Models only (no Advance shortcut). Submit is the only entry to Advance
 │   ├── screens/
 │   │   └── advance/
-│   │       └── index.html    # Advance chat. Thread + composer; no settings overlay. Does not link worker-snack.css
+│   │       └── index.html    # Advance chat. Model chips + per-model threads + composer; no settings overlay. Does not link worker-snack.css
 │   ├── scripts/
 │   │   ├── constants.js      # APP_TITLE, SCREEN_ADVANCE, LABEL_START_HUMAN_DIAGNOSTICS, PLACEHOLDER_HEALTH_INPUT
-│   │   ├── app.js            # Home: enhanceGlassSelect() wraps reasoning/gender/age native <select>s. Gear opens Settings (Credentials tab, Save writes `.env`, Test key probes the current input). handleStartDiagnostics() — empty issue is a no-op; master-model guard; stashes reasoning; resetUsageTotals(); navigates to Advance with issue/gender/age
-│   │   ├── advance.js        # Advance chat: getReasoningLevel() from sessionStorage['neuroagi:advanceReasoningLevel'] (default medium). URL `issue` auto-composes the first message and calls handleSend()
+│   │   ├── app.js            # Home: enhanceGlassSelect() wraps reasoning/gender/age native <select>s. Gear opens Settings (Credentials tab, Save writes `.env`, Test key probes the current input). Models Test latency probes the visible Free/Paid tab. handleStartDiagnostics() — empty issue is a no-op; enabled-model guard; stashes reasoning; resetUsageTotals(); navigates to Advance with issue/gender/age
+│   │   ├── advance.js        # Advance chat: one thread per enabled model. First URL `issue` fans out to all; follow-ups go to the selected chip. getReasoningLevel() from sessionStorage['neuroagi:advanceReasoningLevel'] (default medium)
 │   │   ├── advance-questions.js # ask_user form renderer (text / single_select / multi_select / slider / range)
 │   │   ├── usage-bubbles.js  # Global top-right tokens + cost pills (Home + Advance)
 │   │   ├── logs-panel.js     # Global Logs bubble + overlay (CSS-only restyle; no layout rewrite)
@@ -86,7 +87,7 @@ src/
 │   └── assets/
 └── shared/
     └── ipc/
-        └── channels.js       # PING, ADVANCE_SEND, ADVANCE_PROGRESS, ADVANCE_CANCEL, GET_USAGE_TOTALS, RESET_USAGE_TOTALS, USAGE_UPDATE, OPEN_DEV_TOOLS, GET_CREDENTIALS, UPDATE_CREDENTIALS, OPEN_EXTERNAL_URL, TEST_OPENROUTER_KEY, TEST_TAVILY_KEY, GET_MODELS_CONFIG, UPDATE_MODELS_CONFIG, GET_LOGS, CLEAR_LOGS, LOG_UPDATE
+        └── channels.js       # PING, ADVANCE_SEND, ADVANCE_PROGRESS, ADVANCE_CANCEL, GET_USAGE_TOTALS, RESET_USAGE_TOTALS, USAGE_UPDATE, OPEN_DEV_TOOLS, GET_CREDENTIALS, UPDATE_CREDENTIALS, OPEN_EXTERNAL_URL, TEST_OPENROUTER_KEY, TEST_TAVILY_KEY, GET_MODELS_CONFIG, UPDATE_MODELS_CONFIG, BENCHMARK_MODELS, BENCHMARK_PROGRESS, GET_LOGS, CLEAR_LOGS, LOG_UPDATE
 ```
 
 ---
@@ -106,30 +107,31 @@ src/
 2. User types a health issue, picks gender, age, and **Reasoning level** (default `medium`)
 3. Clicks the submit button **or** presses **Ctrl+Enter** / **Cmd+Enter** — both call `handleStartDiagnostics()`
 4. Empty issue is a no-op. There is no Home Advance button; submit is the only entry
-5. **Master model guard:** `isMasterModelSelected()` via `getModelsConfig()`. If no persisted `isMaster`, shows `#error-overlay` and aborts
+5. **Enabled model guard:** `hasEnabledModel()` via `getModelsConfig()`. If no `enabled` row, shows `#error-overlay` and aborts
 6. Stashes Reasoning level in `sessionStorage['neuroagi:advanceReasoningLevel']`. Advance's `getReasoningLevel()` validates against `none|low|medium|high|very_high` (default `medium`) and sends it on every `advanceSend`
 7. Awaits `resetUsageTotals()` so cost/tokens reset to `USD 0` / `0 tokens`. Back from Advance does **not** reset
 8. Navigates to `screens/advance/index.html?issue=…&gender=…&age=…`
-9. Advance bootstrap: if `issue` is present, first user message is `{issue}\n\nPatient: {age}-year-old {gender}.` (falls back to just `issue` if age/gender missing), written into `#adv-input`, then `handleSend()` runs automatically
+9. Advance bootstrap: if `issue` is present, first user message is `{issue}\n\nPatient: {age}-year-old {gender}.` (falls back to just `issue` if age/gender missing), written into every enabled-model thread, then `advanceSend` runs in parallel for each
 
-### Advance chat (master + tools)
+### Advance chat (enabled models + tools)
 
-1. Renderer `advanceSend({ messages, resume?, reasoningLevel })` → IPC `ADVANCE_SEND` → `SendAdvanceChat` → `askMasterChat`
-2. Uses the starred master only (`getMasterModelRuntimeId()`). Throws if none starred
-3. Loop (max 4 tool rounds) via `chatCompletionWithTools` in `advance-llm.js`. Progress events go out on `ADVANCE_PROGRESS`
-4. Tools (from `advance-tools.js` + `ADVANCE_SYSTEM_PROMPT`):
+1. Renderer `advanceSend({ messages, model, resume?, reasoningLevel })` → IPC `ADVANCE_SEND` → `SendAdvanceChat` → `askModelChat`
+2. `model` must be in `getActiveModelIds()` (toggled Models, not the star). Throws/returns error if none enabled or the id is not in that set
+3. Home `issue` auto-send fires one `advanceSend` **per enabled model in parallel** (same messages + reasoning). Follow-ups go only to the selected chip
+4. Loop (max 4 tool rounds) via `chatCompletionWithTools` in `advance-llm.js`. Progress events go out on `ADVANCE_PROGRESS` and include `model`
+5. Tools (from `advance-tools.js` + `ADVANCE_SYSTEM_PROMPT`):
    - **find_topic_urls** — first research step on a new personal/diagnostic issue
    - **extract_url** — fetch page text (Tavily extract)
    - **web_search** — extra targeted Tavily search after find + extract
-   - **ask_user** — pauses the turn; renderer shows a form; resume sends answers back as a tool result
-5. Informational turns (definitions, general education) answer from knowledge without tools unless a URL, misspelled medicine, or time-sensitive fact needs lookup
-6. `advanceCancel` aborts the in-flight AbortController for that sender
+   - **ask_user** — pauses that model's turn; renderer shows a form in that model's thread; resume sends answers back as a tool result
+6. Informational turns (definitions, general education) answer from knowledge without tools unless a URL, misspelled medicine, or time-sensitive fact needs lookup
+7. `advanceCancel({ model })` aborts that model's AbortController; omit `model` to abort all for that window
 
 ### Settings (gear icon)
 
 1. Home `#btn-settings` (fixed top-left) opens `#settings-overlay`
 2. Left tabs / right pane. **Credentials** is the only tab. On open, `getCredentials()` fills the OpenRouter and Tavily password fields from `.env` (empty if missing)
-3. **Save** invokes `updateCredentials`; main creates or updates `.env` and reloads `process.env` (`dotenv.config` override). Close / Escape / backdrop discard without saving
+3. **Save** invokes `updateCredentials`; main creates or updates `.env` and reloads `process.env` (`dotenv.config` override), then closes the popup. Close / Escape / backdrop discard without saving
 4. **Test key** (per field) probes the **current input** via `testOpenRouterKey` / `testTavilyKey` — does not write `.env`. Empty input → Invalid with no network. Status: Testing… / Valid / Invalid
 5. Hint links under each field open in the system browser via `openExternalUrl` (allowlisted: `https://openrouter.ai/keys`, `https://app.tavily.com/home`)
 6. **Open DevTools** invokes IPC `OPEN_DEV_TOOLS`
@@ -139,9 +141,11 @@ There is no theme picker. All screens use the Sunset Bloom palette in [`themes.c
 ### Models button → Models popup
 
 1. Home `#btn-models` immediately right of the gear
-2. Opens `#models-overlay`; `getModelsConfig()` returns catalog rows with `enabled` + `isMaster`
-3. Star = exclusive master used by Advance. Toggle = persisted worker set (not used by the live Advance path; still saved independently)
-4. Close / Escape / backdrop discard; Update persists `{ activeModels, masterModel }` to userData `models-state.json`
+2. Opens `#models-overlay`; `getModelsConfig()` returns catalog rows with `enabled` + `isMaster` (names in `removedModels` are omitted)
+3. Star is still saved as exclusive `masterModel` (unused by live Advance). Toggle = enabled set used by Advance (`getActiveModelIds()`)
+4. **Test latency** (`#btn-models-test`, chrome, left of Close) probes every catalog row on the **visible tab** (Free → `type: "Free"`, Paid → `type: "Paid"`), not only toggled models. Same OpenRouter probe as `npm run benchmark:latency` (`latency-benchmark-service.js`): sequential, `stream: false`, `reasoning.effort: none`, `max_tokens: 2048`. Prompt: list integers 1–120, one per line, numbers only. Uses `process.env.OPENROUTER_API_KEY`. Does not write `benchmark-results-*.json`. Button shows `Testing 3/12…` while a run is in flight; a second run is rejected
+5. Success overlays `latencies` / `throughputs` in userData `models-state.json` and updates the row badges (`3.65s`, `99tps` chars/s proxy). Failure (HTTP / network / API error) removes that model from the list, un-enables it, and appends the name to `removedModels` — catalog JSON is not rewritten. Remaining models in the tab continue
+6. Close / Escape / backdrop discard; Update persists `{ activeModels, masterModel }` to `models-state.json`
 
 ### Usage tracker (top-right bubbles)
 
@@ -204,13 +208,13 @@ All screens share [`tokens.css`](src/renderer/styles/tokens.css) (glass + type) 
 | **Reasoning level** | Left of the selects row. Five options — None / Low / Medium / High / Very High — Medium default. Stashed as `neuroagi:advanceReasoningLevel` on submit |
 | **Settings (gear)** | Fixed `top: 1rem; left: 1rem`, glass circle; opens Settings popup |
 | **Models button** | Glass pill immediately right of the gear |
-| **Models popup** | Full-viewport `.glass-overlay`. White card. Star fills `--accent`. Footer: Close (`--chrome`) + Update (`--accent`) |
-| **Settings popup** | Wider white card. Left tab list (Credentials) + right pane. Password inputs (`--surface-solid`, `--text-ink`). Muted hint links under each field. **Test key** (`--chrome`) plus Valid/Invalid status. Footer: **Open DevTools** (left) + Close (`--chrome`) + Save (`--accent`). Close/Escape/backdrop dismiss without saving |
-| **Master model required popup** | `#error-overlay` — title "Master model required"; **OK** + **Open Models** |
+| **Models popup** | Full-viewport `.glass-overlay`. White card. Star fills `--accent`. Footer: Test latency (`--chrome`, left) + Close (`--chrome`) + Update (`--accent`) |
+| **Settings popup** | Wider white card. Left tab list (Credentials) + right pane. Password inputs (`--surface-solid`, `--text-ink`). Muted hint links under each field. **Test key** (`--chrome`) plus Valid/Invalid status. Footer: **Open DevTools** (left) + Close (`--chrome`) + Save (`--accent`). Save closes after a successful write. Close/Escape/backdrop dismiss without saving |
+| **Enable a model popup** | `#error-overlay` — title "Enable a model"; **OK** + **Open Models** |
 
 ### Advance screen (`advance.css`)
 
-Themed chat UI (same `shell.css` wash as Home): `--chrome` Back, `#adv-thread` of user/assistant bubbles (assistant Markdown via vendored `marked`), status step pills for tool work, optional `ask_user` form cards, bottom composer matching Home. Send / sliders use `--accent`. **No Settings chip, overlay, or reasoning dropdown** — reasoning comes from Home via sessionStorage. Palette is Sunset Bloom from [`themes.css`](src/renderer/styles/themes.css).
+Themed chat UI (same `shell.css` wash as Home): `--chrome` Back, model **chips** under the header (last path segment of catalog `name`; full id on `title`), one `.adv-thread` panel per enabled model (click a chip to switch). User/assistant bubbles (assistant Markdown via vendored `marked`), status step pills for tool work, optional `ask_user` form cards in that model's thread, bottom composer matching Home. First Home query fans out to every enabled model; later Send goes to the selected chip. Send / sliders use `--accent`. **No Settings chip, overlay, or reasoning dropdown** — reasoning comes from Home via sessionStorage. Palette is Sunset Bloom from [`themes.css`](src/renderer/styles/themes.css).
 
 ### Global UI — Usage bubbles (`usage-bubbles.css`)
 

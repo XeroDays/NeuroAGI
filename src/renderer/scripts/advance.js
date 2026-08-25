@@ -26,12 +26,25 @@ function sanitizeHtml(html) {
     .replace(JS_HREF_RE, ' $1="#"');
 }
 
+function toRuntimeId(entry) {
+  if (!entry || typeof entry.name !== 'string') return '';
+  if (entry.name.includes(':')) return entry.name;
+  return entry.type === 'Free' ? `${entry.name}:free` : entry.name;
+}
+
+function chipLabel(name) {
+  const text = String(name || '');
+  const parts = text.split('/');
+  return parts[parts.length - 1] || text;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   document.title = `${SCREEN_ADVANCE} — ${APP_TITLE}`;
 
   const titleEl = document.getElementById('app-title');
   const screenTitleEl = document.getElementById('screen-title');
-  const threadEl = document.getElementById('adv-thread');
+  const chipsEl = document.getElementById('adv-chips');
+  const threadsEl = document.getElementById('adv-threads');
   const inputEl = document.getElementById('adv-input');
   const sendBtn = document.getElementById('adv-send');
 
@@ -53,19 +66,17 @@ document.addEventListener('DOMContentLoaded', () => {
     return readStoredReasoningLevel();
   }
 
-  /** @type {{ role: 'user'|'assistant', content: string }[]} */
-  const messages = [];
-  let inFlight = false;
-  let awaitingAnswers = false;
-  /** @type {object|null} */
-  let pendingAsk = null;
-  let lastSentText = '';
-  /** @type {HTMLElement|null} */
-  let lastUserBubble = null;
-  let restoreOnAbort = false;
+  /** @type {Map<string, object>} */
+  const sessions = new Map();
+  let activeModel = '';
 
-  function appendBubble(role, content, isError = false) {
-    if (!threadEl) return;
+  function activeSession() {
+    return sessions.get(activeModel) || null;
+  }
+
+  function appendBubble(session, role, content, isError = false) {
+    const threadEl = session?.threadEl;
+    if (!threadEl) return null;
     const bubble = document.createElement('div');
     bubble.className = isError
       ? 'adv-bubble adv-bubble--error'
@@ -99,10 +110,20 @@ document.addEventListener('DOMContentLoaded', () => {
     if (inputEl) inputEl.disabled = !enabled;
   }
 
-  function setBusy(busy) {
-    inFlight = busy;
-    setComposerEnabled(!busy && !awaitingAnswers);
-    setSendBusy(busy);
+  function syncComposer() {
+    const session = activeSession();
+    if (!session) {
+      setComposerEnabled(false);
+      setSendBusy(false);
+      return;
+    }
+    setComposerEnabled(!session.inFlight && !session.awaitingAnswers);
+    setSendBusy(session.inFlight);
+  }
+
+  function setBusy(session, busy) {
+    session.inFlight = busy;
+    syncComposer();
   }
 
   function truncateDetail(detail) {
@@ -116,9 +137,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const extra = truncateDetail(detail);
     return extra ? `${title} ${extra}` : title;
   }
-
-  /** @type {Map<string, HTMLElement>} */
-  const statusBlocks = new Map();
 
   function renderStatusIcon(el, state) {
     el.className = 'adv-status-icon';
@@ -142,7 +160,8 @@ document.addEventListener('DOMContentLoaded', () => {
     el.appendChild(mark);
   }
 
-  function upsertStatusBlock(payload) {
+  function upsertStatusBlock(session, payload) {
+    const threadEl = session?.threadEl;
     if (!threadEl || !payload || payload.type !== 'step') return;
     const id = typeof payload.id === 'string' && payload.id
       ? payload.id
@@ -152,11 +171,11 @@ document.addEventListener('DOMContentLoaded', () => {
       : 'running';
 
     if (!id) {
-      if (state === 'error') failRunningStatusBlocks(payload.label);
+      if (state === 'error') failRunningStatusBlocks(session, payload.label);
       return;
     }
 
-    let block = statusBlocks.get(id);
+    let block = session.statusBlocks.get(id);
     const prior = block?.dataset.state;
     if (block && (prior === 'done' || prior === 'error') && state === 'running') {
       return;
@@ -166,7 +185,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (tool === 'model' && (state === 'done' || state === 'error')) {
       if (block) {
         block.remove();
-        statusBlocks.delete(id);
+        session.statusBlocks.delete(id);
       }
       return;
     }
@@ -182,7 +201,7 @@ document.addEventListener('DOMContentLoaded', () => {
       text.className = 'adv-status-text';
       block.append(icon, text);
       threadEl.appendChild(block);
-      statusBlocks.set(id, block);
+      session.statusBlocks.set(id, block);
     }
 
     if (tool) block.dataset.tool = tool;
@@ -194,12 +213,12 @@ document.addEventListener('DOMContentLoaded', () => {
     threadEl.scrollTop = threadEl.scrollHeight;
   }
 
-  function failRunningStatusBlocks(message) {
-    for (const [id, block] of statusBlocks.entries()) {
+  function failRunningStatusBlocks(session, message) {
+    for (const [id, block] of session.statusBlocks.entries()) {
       if (block.dataset.state !== 'running') continue;
       const text = block.querySelector('.adv-status-text')?.textContent || '';
       if (block.dataset.tool === 'model' || text.startsWith('Loading')) {
-        hideStatusBlock(id, block);
+        hideStatusBlock(session, id, block);
         continue;
       }
       block.dataset.state = 'error';
@@ -224,46 +243,48 @@ document.addEventListener('DOMContentLoaded', () => {
     return text || 'Complete';
   }
 
-  function hideStatusBlock(id, block) {
+  function hideStatusBlock(session, id, block) {
     block.remove();
-    statusBlocks.delete(id);
+    session.statusBlocks.delete(id);
   }
 
-  function hideRunningStatusBlocks() {
-    for (const [id, block] of statusBlocks.entries()) {
-      if (block.dataset.state === 'running') hideStatusBlock(id, block);
+  function hideRunningStatusBlocks(session) {
+    for (const [id, block] of session.statusBlocks.entries()) {
+      if (block.dataset.state === 'running') hideStatusBlock(session, id, block);
     }
   }
 
-  function restorePausedQuery() {
-    if (!restoreOnAbort) {
-      hideRunningStatusBlocks();
+  function restorePausedQuery(session) {
+    if (!session.restoreOnAbort) {
+      hideRunningStatusBlocks(session);
       return;
     }
-    if (lastUserBubble) {
-      lastUserBubble.remove();
-      lastUserBubble = null;
+    if (session.lastUserBubble) {
+      session.lastUserBubble.remove();
+      session.lastUserBubble = null;
     }
     if (
-      lastSentText
-      && messages.length
-      && messages[messages.length - 1].role === 'user'
-      && messages[messages.length - 1].content === lastSentText
+      session.lastSentText
+      && session.messages.length
+      && session.messages[session.messages.length - 1].role === 'user'
+      && session.messages[session.messages.length - 1].content === session.lastSentText
     ) {
-      messages.pop();
+      session.messages.pop();
     }
-    if (inputEl && lastSentText) inputEl.value = lastSentText;
-    lastSentText = '';
-    restoreOnAbort = false;
-    hideRunningStatusBlocks();
+    if (inputEl && session.lastSentText && session.model === activeModel) {
+      inputEl.value = session.lastSentText;
+    }
+    session.lastSentText = '';
+    session.restoreOnAbort = false;
+    hideRunningStatusBlocks(session);
   }
 
-  function completeRunningStatusBlocks() {
-    for (const [id, block] of statusBlocks.entries()) {
+  function completeRunningStatusBlocks(session) {
+    for (const [id, block] of session.statusBlocks.entries()) {
       if (block.dataset.state !== 'running') continue;
       const text = block.querySelector('.adv-status-text')?.textContent || '';
       if (block.dataset.tool === 'model' || text.startsWith('Loading')) {
-        hideStatusBlock(id, block);
+        hideStatusBlock(session, id, block);
         continue;
       }
       block.dataset.state = 'done';
@@ -276,135 +297,190 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (typeof window.electronAPI?.onAdvanceProgress === 'function') {
     window.electronAPI.onAdvanceProgress((payload) => {
-      if (!payload) return;
-      upsertStatusBlock(payload);
+      if (!payload || typeof payload.model !== 'string') return;
+      const session = sessions.get(payload.model);
+      if (!session) return;
+      upsertStatusBlock(session, payload);
     });
   }
 
-  function showPendingAsk(result) {
-    completeRunningStatusBlocks();
-    pendingAsk = result.pendingAsk;
-    awaitingAnswers = true;
+  function showPendingAsk(session, result) {
+    completeRunningStatusBlocks(session);
+    session.pendingAsk = result.pendingAsk;
+    session.awaitingAnswers = true;
 
     if (typeof result.preface === 'string' && result.preface.trim()) {
-      appendBubble('assistant', result.preface);
+      appendBubble(session, 'assistant', result.preface);
     }
 
     const wrap = document.createElement('div');
     wrap.className = 'adv-q-form-wrap';
     const form = renderQuestionForm(wrap, result.pendingAsk.questions);
-    threadEl.appendChild(wrap);
-    threadEl.scrollTop = threadEl.scrollHeight;
+    session.threadEl.appendChild(wrap);
+    session.threadEl.scrollTop = session.threadEl.scrollHeight;
 
     const submitBtn = form.querySelector('.adv-q-submit');
     submitBtn?.addEventListener('click', () => {
-      handleFormSubmit(form);
+      handleFormSubmit(session, form);
     });
 
-    setBusy(false);
+    setBusy(session, false);
   }
 
-  async function runModel(payload) {
+  async function runModel(session, payload) {
     if (typeof window.electronAPI?.advanceSend !== 'function') {
-      appendBubble('assistant', 'Advance chat is not available.', true);
+      appendBubble(session, 'assistant', 'Advance chat is not available.', true);
       return;
     }
 
-    setBusy(true);
+    setBusy(session, true);
     try {
       const result = await window.electronAPI.advanceSend({
         ...payload,
+        model: session.model,
         reasoningLevel: getReasoningLevel(),
       });
       if (result?.aborted) {
-        restorePausedQuery();
+        restorePausedQuery(session);
         return;
       }
-      restoreOnAbort = false;
-      lastSentText = '';
-      lastUserBubble = null;
+      session.restoreOnAbort = false;
+      session.lastSentText = '';
+      session.lastUserBubble = null;
       if (result?.ok && result.pendingAsk) {
-        showPendingAsk(result);
+        showPendingAsk(session, result);
         return;
       }
-      awaitingAnswers = false;
-      pendingAsk = null;
+      session.awaitingAnswers = false;
+      session.pendingAsk = null;
       if (result?.ok && typeof result.reply === 'string') {
-        completeRunningStatusBlocks();
-        messages.push({ role: 'assistant', content: result.reply });
-        appendBubble('assistant', result.reply);
+        completeRunningStatusBlocks(session);
+        session.messages.push({ role: 'assistant', content: result.reply });
+        appendBubble(session, 'assistant', result.reply);
       } else {
         const error = result?.error || 'The model did not return a reply.';
-        failRunningStatusBlocks(error);
-        appendBubble('assistant', error, true);
+        failRunningStatusBlocks(session, error);
+        appendBubble(session, 'assistant', error, true);
       }
     } catch (err) {
-      awaitingAnswers = false;
-      pendingAsk = null;
-      if (restoreOnAbort) {
-        restorePausedQuery();
+      session.awaitingAnswers = false;
+      session.pendingAsk = null;
+      if (session.restoreOnAbort) {
+        restorePausedQuery(session);
         return;
       }
       const error = err instanceof Error ? err.message : String(err);
-      failRunningStatusBlocks(error);
-      appendBubble('assistant', error, true);
+      failRunningStatusBlocks(session, error);
+      appendBubble(session, 'assistant', error, true);
     } finally {
-      if (!awaitingAnswers) {
-        setBusy(false);
-        inputEl?.focus();
+      if (!session.awaitingAnswers) {
+        setBusy(session, false);
+        if (session.model === activeModel) inputEl?.focus();
       }
     }
   }
 
-  async function handleFormSubmit(form) {
-    if (inFlight || !pendingAsk) return;
+  async function handleFormSubmit(session, form) {
+    if (session.inFlight || !session.pendingAsk) return;
     const answers = collectAnswers(form);
     const resume = {
-      assistantMessage: pendingAsk.assistantMessage,
-      priorToolResults: pendingAsk.priorToolResults,
-      askUserCallId: pendingAsk.id,
+      assistantMessage: session.pendingAsk.assistantMessage,
+      priorToolResults: session.pendingAsk.priorToolResults,
+      askUserCallId: session.pendingAsk.id,
       answers,
     };
     setFormDisabled(form, true);
     collapseQuestionForm(form.closest('.adv-q-form-wrap'), answers);
-    awaitingAnswers = false;
-    pendingAsk = null;
-    lastSentText = '';
-    lastUserBubble = null;
-    restoreOnAbort = false;
-    await runModel({ messages, resume });
+    session.awaitingAnswers = false;
+    session.pendingAsk = null;
+    session.lastSentText = '';
+    session.lastUserBubble = null;
+    session.restoreOnAbort = false;
+    await runModel(session, { messages: session.messages, resume });
   }
 
   function handlePause() {
-    if (!inFlight) return;
+    const session = activeSession();
+    if (!session?.inFlight) return;
     if (typeof window.electronAPI?.advanceCancel === 'function') {
-      window.electronAPI.advanceCancel();
+      window.electronAPI.advanceCancel({ model: session.model });
     }
-    restorePausedQuery();
-    setBusy(false);
+    restorePausedQuery(session);
+    setBusy(session, false);
     inputEl?.focus();
   }
 
   async function handleSend() {
-    if (inFlight) {
+    const session = activeSession();
+    if (!session) return;
+    if (session.inFlight) {
       handlePause();
       return;
     }
-    if (awaitingAnswers || !inputEl) return;
+    if (session.awaitingAnswers || !inputEl) return;
     const text = inputEl.value.trim();
     if (!text) return;
 
     inputEl.value = '';
-    lastSentText = text;
-    restoreOnAbort = true;
-    messages.push({ role: 'user', content: text });
-    lastUserBubble = appendBubble('user', text);
-    await runModel({ messages });
+    session.lastSentText = text;
+    session.restoreOnAbort = true;
+    session.messages.push({ role: 'user', content: text });
+    session.lastUserBubble = appendBubble(session, 'user', text);
+    await runModel(session, { messages: session.messages });
+  }
+
+  function selectModel(model) {
+    activeModel = model;
+    for (const session of sessions.values()) {
+      const on = session.model === model;
+      session.chipEl.classList.toggle('is-active', on);
+      session.chipEl.setAttribute('aria-selected', on ? 'true' : 'false');
+      session.threadEl.hidden = !on;
+    }
+    syncComposer();
+    const session = activeSession();
+    if (session?.threadEl) session.threadEl.scrollTop = session.threadEl.scrollHeight;
+  }
+
+  function createSession(entry) {
+    const model = toRuntimeId(entry);
+    const chipEl = document.createElement('button');
+    chipEl.type = 'button';
+    chipEl.className = 'adv-chip';
+    chipEl.setAttribute('role', 'tab');
+    chipEl.textContent = chipLabel(entry.name);
+    chipEl.title = entry.name;
+    chipEl.addEventListener('click', () => selectModel(model));
+
+    const threadEl = document.createElement('div');
+    threadEl.className = 'adv-thread';
+    threadEl.hidden = true;
+    threadEl.setAttribute('aria-live', 'polite');
+
+    chipsEl.appendChild(chipEl);
+    threadsEl.appendChild(threadEl);
+
+    const session = {
+      model,
+      messages: [],
+      inFlight: false,
+      awaitingAnswers: false,
+      pendingAsk: null,
+      lastSentText: '',
+      lastUserBubble: null,
+      restoreOnAbort: false,
+      threadEl,
+      chipEl,
+      statusBlocks: new Map(),
+    };
+    sessions.set(model, session);
+    return session;
   }
 
   if (sendBtn) {
     sendBtn.addEventListener('click', () => {
-      if (inFlight) {
+      const session = activeSession();
+      if (session?.inFlight) {
         handlePause();
         return;
       }
@@ -421,13 +497,45 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  const params = new URLSearchParams(location.search);
-  const issue = params.get('issue')?.trim();
-  if (issue && inputEl) {
+  async function bootstrap() {
+    let config = [];
+    try {
+      config = await window.electronAPI?.getModelsConfig?.() || [];
+    } catch (err) {
+      console.warn('[advance] Failed to read models config:', err);
+    }
+    const enabled = Array.isArray(config) ? config.filter((m) => m.enabled === true) : [];
+    if (!enabled.length) {
+      const threadEl = document.createElement('div');
+      threadEl.className = 'adv-thread';
+      threadsEl.appendChild(threadEl);
+      appendBubble({ threadEl }, 'assistant', 'Turn on at least one model in the Models popup.', true);
+      syncComposer();
+      return;
+    }
+
+    for (const entry of enabled) createSession(entry);
+    selectModel(toRuntimeId(enabled[0]));
+
+    const params = new URLSearchParams(location.search);
+    const issue = params.get('issue')?.trim();
+    if (!issue) return;
+
     const age = params.get('age');
     const gender = params.get('gender');
     const text = age && gender ? `${issue}\n\nPatient: ${age}-year-old ${gender}.` : issue;
-    inputEl.value = text;
-    handleSend();
+    if (inputEl) inputEl.value = '';
+
+    const pending = [];
+    for (const session of sessions.values()) {
+      session.lastSentText = text;
+      session.restoreOnAbort = true;
+      session.messages.push({ role: 'user', content: text });
+      session.lastUserBubble = appendBubble(session, 'user', text);
+      pending.push(runModel(session, { messages: session.messages }));
+    }
+    await Promise.all(pending);
   }
+
+  bootstrap();
 });

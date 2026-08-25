@@ -8,6 +8,9 @@ let statePath = "";
 let catalog = [];        // [{ name, type, ... }] — loaded once from JSON
 let activeModels = null; // Set<string> of enabled catalog names
 let masterModel = "";    // catalog name of the starred master merge model
+let latencies = {};      // { [name]: "3.65s" } — overlay on catalog latency
+let throughputs = {};    // { [name]: "99tps" } — overlay on catalog throughput
+let removedModels = new Set(); // names dropped after a failed latency probe
 
 function resolvePaths() {
   if (catalogPath && statePath) return;
@@ -30,17 +33,49 @@ function toRuntimeId(entry) {
   return entry.type === "Free" ? `${entry.name}:free` : entry.name;
 }
 
+function catalogNameSet() {
+  return new Set(catalog.map((m) => m.name));
+}
+
+function sanitizeOverlayMap(raw, catalogNames) {
+  const out = {};
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return out;
+  for (const [name, value] of Object.entries(raw)) {
+    if (catalogNames.has(name) && typeof value === "string") {
+      out[name] = value;
+    }
+  }
+  return out;
+}
+
+function dropOverlays(name) {
+  delete latencies[name];
+  delete throughputs[name];
+}
+
 function saveState() {
   resolvePaths();
   try {
     const data = {
       activeModels: Array.from(activeModels),
       masterModel,
+      latencies,
+      throughputs,
+      removedModels: Array.from(removedModels),
     };
     fs.mkdirSync(path.dirname(statePath), { recursive: true });
     fs.writeFileSync(statePath, JSON.stringify(data, null, 2), "utf-8");
   } catch (err) {
     console.error("[model-config] Failed to save state:", err.message);
+  }
+}
+
+function pruneRemovedFromActivation() {
+  for (const name of Array.from(activeModels)) {
+    if (removedModels.has(name)) activeModels.delete(name);
+  }
+  if (masterModel && removedModels.has(masterModel)) {
+    masterModel = "";
   }
 }
 
@@ -66,9 +101,9 @@ function init() {
     catalog = [];
   }
 
-  const catalogNames = new Set(catalog.map((m) => m.name));
+  const catalogNames = catalogNameSet();
 
-  // Load persisted activation + master state
+  // Load persisted activation + master + benchmark overlays
   try {
     const raw = fs.readFileSync(statePath, "utf-8");
     const state = JSON.parse(raw);
@@ -83,27 +118,56 @@ function init() {
       typeof state.masterModel === "string" ? state.masterModel : "";
     masterModel = catalogNames.has(savedMaster) ? savedMaster : "";
 
+    latencies = sanitizeOverlayMap(state.latencies, catalogNames);
+    throughputs = sanitizeOverlayMap(state.throughputs, catalogNames);
+
+    removedModels = new Set(
+      Array.isArray(state.removedModels)
+        ? state.removedModels.filter((n) => typeof n === "string" && catalogNames.has(n))
+        : []
+    );
+    pruneRemovedFromActivation();
+
     console.log(
-      `[model-config] Loaded state: ${activeModels.size} active model(s), master=${masterModel || "(none)"}`
+      `[model-config] Loaded state: ${activeModels.size} active model(s), master=${masterModel || "(none)"}, removed=${removedModels.size}`
     );
   } catch (_err) {
     activeModels = new Set();
     masterModel = "";
+    latencies = {};
+    throughputs = {};
+    removedModels = new Set();
     console.log("[model-config] No state file — starting with no active models or master");
   }
 }
 
+function isListed(name) {
+  return !removedModels.has(name);
+}
+
+/**
+ * Visible catalog rows of one type, excluding models removed by a failed probe.
+ * @param {"Free"|"Paid"} type
+ * @returns {{ name: string, type: string }[]}
+ */
+function getCatalogEntriesByType(type) {
+  if (!activeModels) init();
+  return catalog.filter((m) => m.type === type && isListed(m.name));
+}
+
 /**
  * Returns the full model list with per-model enabled/master state for the popup UI.
+ * Removed models are omitted. Latency/throughput overlays from a Test latency run
+ * win over catalog defaults.
  * @returns {{ name: string, type: string, latency: string, throughput: string, price: string, labels: string, enabled: boolean, isMaster: boolean }[]}
  */
 function getModelsWithState() {
   if (!activeModels) init();
-  return catalog.map((m) => ({
+  return catalog.filter((m) => isListed(m.name)).map((m) => ({
     name: m.name,
     type: m.type,
-    latency: typeof m.latency === "string" ? m.latency : "",
-    throughput: typeof m.throughput === "string" ? m.throughput : "",
+    latency: latencies[m.name] ?? (typeof m.latency === "string" ? m.latency : ""),
+    throughput: throughputs[m.name] ?? (typeof m.throughput === "string" ? m.throughput : ""),
     price: typeof m.price === "string" ? m.price : "",
     labels: typeof m.labels === "string" ? m.labels : "",
     enabled: activeModels.has(m.name),
@@ -119,7 +183,7 @@ function getModelsWithState() {
 function getActiveModelIds() {
   if (!activeModels) init();
   return catalog
-    .filter((m) => activeModels.has(m.name))
+    .filter((m) => isListed(m.name) && activeModels.has(m.name))
     .map(toRuntimeId);
 }
 
@@ -129,10 +193,39 @@ function getActiveModelIds() {
  */
 function getMasterModelRuntimeId() {
   if (!activeModels) init();
-  if (!masterModel) return null;
+  if (!masterModel || !isListed(masterModel)) return null;
   const entry = catalog.find((m) => m.name === masterModel);
   if (!entry) return null;
   return toRuntimeId(entry);
+}
+
+/**
+ * Persist a successful latency probe as overlays on the catalog row.
+ * @param {string} name
+ * @param {string} latency
+ * @param {string} throughput
+ */
+function recordBenchmarkResult(name, latency, throughput) {
+  if (!activeModels) init();
+  if (typeof name !== "string" || !catalogNameSet().has(name) || !isListed(name)) return;
+  if (typeof latency === "string") latencies[name] = latency;
+  if (typeof throughput === "string") throughputs[name] = throughput;
+  saveState();
+}
+
+/**
+ * Drop a model that failed a latency probe. Does not rewrite the catalog file.
+ * @param {string} name
+ */
+function removeFailedModel(name) {
+  if (!activeModels) init();
+  if (typeof name !== "string" || !catalogNameSet().has(name)) return;
+  removedModels.add(name);
+  activeModels.delete(name);
+  if (masterModel === name) masterModel = "";
+  dropOverlays(name);
+  saveState();
+  console.log(`[model-config] Removed failed model: ${name}`);
 }
 
 /**
@@ -142,19 +235,22 @@ function getMasterModelRuntimeId() {
 function updateState({ activeModels: activeNames, masterModel: newMaster } = {}) {
   if (!activeModels) init();
 
-  const catalogNames = new Set(catalog.map((m) => m.name));
+  const visibleNames = new Set(
+    catalog.filter((m) => isListed(m.name)).map((m) => m.name)
+  );
 
   if (Array.isArray(activeNames)) {
-    const validated = activeNames.filter((n) => catalogNames.has(n));
+    const validated = activeNames.filter((n) => visibleNames.has(n));
     activeModels = new Set(validated);
   }
 
   if (newMaster !== undefined) {
-    if (typeof newMaster === "string" && (newMaster === "" || catalogNames.has(newMaster))) {
+    if (typeof newMaster === "string" && (newMaster === "" || visibleNames.has(newMaster))) {
       masterModel = newMaster;
     }
   }
 
+  pruneRemovedFromActivation();
   saveState();
   console.log(
     `[model-config] State updated: master=${masterModel || "(none)"}, activeModels=[${Array.from(activeModels).join(", ")}]`
@@ -166,5 +262,8 @@ module.exports = {
   getModelsWithState,
   getActiveModelIds,
   getMasterModelRuntimeId,
+  getCatalogEntriesByType,
+  recordBenchmarkResult,
+  removeFailedModel,
   updateState,
 };
