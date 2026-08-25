@@ -9,6 +9,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Security
+
+## [1.0.4] - 2026-08-25
+
+Splash, Softasium license gate, in-app installer updates, and Models Add/Delete/latency UX.
+
+### Added
+
 - Models popup Add: paste an OpenRouter model id onto the visible Free or Paid tab
 - Test latency spinner on the probing model row, plus an Error chip (hover shows the failure)
 - Hover Delete on Models rows to remove a model from the list
@@ -106,7 +118,8 @@ First stable release of the NeuroAGI multi-screen diagnostic flow.
 - Logo display and asset path corrections
 - Master-merge fallback when master model JSON parse fails or returns empty results
 
-[Unreleased]: https://github.com/XeroDays/Open-Health/compare/v1.0.3...HEAD
+[Unreleased]: https://github.com/XeroDays/Open-Health/compare/v1.0.4...HEAD
+[1.0.4]: https://github.com/XeroDays/Open-Health/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/XeroDays/Open-Health/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/XeroDays/Open-Health/compare/v1.0.0...v1.0.2
 [1.0.0]: https://github.com/XeroDays/Open-Health/releases/tag/v1.0.0

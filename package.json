@@ -1,6 +1,6 @@
 {
   "name": "neuro-agi",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "NeuroAGI - Electron desktop app",
   "main": "src/main/index.js",
   "scripts": {

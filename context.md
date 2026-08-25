@@ -217,7 +217,7 @@ Records every Advance OpenRouter call (`advance-llm.js`, type `"ai"`) and every 
 
 ### Preparing a release (user publishes)
 
-**“Create a release” / “new release” means local version prep only** — not a git commit, tag, push, or GitHub Release. Current shipped version is `1.0.3` in [`package.json`](package.json).
+**“Create a release” / “new release” means local version prep only** — not a git commit, tag, push, or GitHub Release. Current shipped version is `1.0.4` in [`package.json`](package.json).
 
 1. Do **not** commit, push, tag, or publish
 2. Choose the next SemVer from [`package.json`](package.json) (breaking product change → major)
