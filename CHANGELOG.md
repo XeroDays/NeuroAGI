@@ -25,6 +25,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- Advance right-side scrollbar uses the themed coral pill; the page no longer shows the native Windows bar
+
 ### Security
 
 ## [1.0.4] - 2026-08-25
