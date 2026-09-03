@@ -32,6 +32,8 @@ const CH = {
   INSTALL_SOFTWARE_UPDATE: "neuroagi:install-software-update",
   QUIT_APP: "neuroagi:quit-app",
   GET_PROFILES: "neuroagi:get-profiles",
+  RECORD_PROFILE_ISSUE: "neuroagi:record-profile-issue",
+  DELETE_PROFILE: "neuroagi:delete-profile",
 };
 
 function subscribe(channel, cb) {
@@ -79,4 +81,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   installSoftwareUpdate: (fileName) => ipcRenderer.invoke(CH.INSTALL_SOFTWARE_UPDATE, { fileName }),
   quitApp: () => ipcRenderer.invoke(CH.QUIT_APP),
   getProfiles: () => ipcRenderer.invoke(CH.GET_PROFILES),
+  recordProfileIssue: (payload) => ipcRenderer.invoke(CH.RECORD_PROFILE_ISSUE, payload),
+  deleteProfile: (payload) => ipcRenderer.invoke(CH.DELETE_PROFILE, payload),
 });

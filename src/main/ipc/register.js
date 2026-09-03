@@ -198,6 +198,12 @@ function registerIpcHandlers() {
   });
 
   ipcMain.handle(channels.GET_PROFILES, () => profilesService.getProfiles());
+  ipcMain.handle(channels.RECORD_PROFILE_ISSUE, (_event, payload) => (
+    profilesService.recordIssue(payload)
+  ));
+  ipcMain.handle(channels.DELETE_PROFILE, (_event, payload) => (
+    profilesService.removeById(payload?.id)
+  ));
 }
 
 module.exports = { registerIpcHandlers };

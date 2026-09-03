@@ -259,7 +259,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const gender = genderSelect?.value || 'male';
     const age = ageSelect?.value || '30';
-    const reasoningLevel = reasoningSelect?.value || 'medium';
+    const reasoningLevel = reasoningSelect?.value || 'very_high';
 
     try {
       sessionStorage.setItem('neuroagi:advanceReasoningLevel', reasoningLevel);

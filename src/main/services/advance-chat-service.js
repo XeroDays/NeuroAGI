@@ -11,7 +11,7 @@ const LLM_OPTIONS_BY_LEVEL = {
   very_high: { maxTokens: 65536, reasoning: { effort: 'high' } },
 };
 
-const DEFAULT_REASONING_LEVEL = 'medium';
+const DEFAULT_REASONING_LEVEL = 'very_high';
 
 function resolveLlmOptions(level) {
   const mapped = LLM_OPTIONS_BY_LEVEL[level] || LLM_OPTIONS_BY_LEVEL[DEFAULT_REASONING_LEVEL];
@@ -87,7 +87,7 @@ function toolDetail(name, args) {
   if (name === 'get_profile_by_id' && typeof args.id === 'string') {
     return args.id.trim();
   }
-  if (name === 'create_update_user_profile') {
+  if (name === 'create_update_user_profile' || name === 'manage_user_issues') {
     const id = args.userid ?? args.userId ?? args.id;
     if (typeof id === 'string' && id.trim()) return id.trim();
     if (typeof args.name === 'string' && args.name.trim()) return args.name.trim();
@@ -95,7 +95,7 @@ function toolDetail(name, args) {
   return '';
 }
 
-function toolLabel(name, state) {
+function toolLabel(name, state, args) {
   if (name === 'find_topic_urls') return state === 'running' ? 'Finding sources…' : 'Found sources';
   if (name === 'web_search') return state === 'running' ? 'Searching…' : 'Searched';
   if (name === 'extract_url') return state === 'running' ? 'Extracting…' : 'Extracted';
@@ -103,6 +103,13 @@ function toolLabel(name, state) {
   if (name === 'get_available_users') return state === 'running' ? 'Listing profiles…' : 'Listed profiles';
   if (name === 'get_profile_by_id') return state === 'running' ? 'Loading profile…' : 'Loaded profile';
   if (name === 'create_update_user_profile') return state === 'running' ? 'Saving profile…' : 'Saved profile';
+  if (name === 'manage_user_issues') {
+    const action = String(args?.action || '').trim().toLowerCase();
+    if (action === 'list') return state === 'running' ? 'Listing issues…' : 'Listed issues';
+    if (action === 'create') return state === 'running' ? 'Saving issue…' : 'Saved issue';
+    if (action === 'delete') return state === 'running' ? 'Removing issue…' : 'Removed issue';
+    return state === 'running' ? 'Updating issues…' : 'Updated issues';
+  }
   if (name === 'model') return state === 'running' ? 'Loading…' : 'Loaded';
   return state === 'running' ? `${name}…` : name;
 }
@@ -314,7 +321,7 @@ async function askModelChat(messages, hooks = {}, resume = null) {
         id: stepId,
         tool: name || 'tool',
         state: 'running',
-        label: toolLabel(name, 'running'),
+        label: toolLabel(name, 'running', args),
         detail,
       });
 
@@ -324,7 +331,7 @@ async function askModelChat(messages, hooks = {}, resume = null) {
         id: stepId,
         tool: name || 'tool',
         state: failed ? 'error' : 'done',
-        label: failed ? 'Failed' : toolLabel(name, 'done'),
+        label: failed ? 'Failed' : toolLabel(name, 'done', args),
         detail,
       });
 

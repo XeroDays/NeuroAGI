@@ -10,11 +10,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Added
 
 - Home Name field (required, left of gender/age); included in the first Advance patient line
-- User profiles in Documents/NeuroAGI/profiles.json, Home Profiles popup, and Advance tools to list / load / create-or-update; first turn matches name+age+gender, checks the profile before ask_user, and writes answers back
+- User profiles in Documents/NeuroAGI/profiles.json, Home Profiles popup, and Advance tools to list / load / create-or-update; first turn lists users, fuzzy-matches, checks the profile before ask_user, and writes answers back
+- Dated issue history on each user profile (`issues` with text + datetime), written only by Advance `manage_user_issues` and shown in the Profiles popup
+- Home Profiles popup can delete a patient profile (confirm, then remove from profiles.json)
 
 ### Changed
 
 - Home wordmark is `NeuroHome.png`; splash, window/taskbar, and packaged exe icon use `NeuroLogo.png` / `build/icon.ico`
+- ask_user is required on a new diagnostic issue unless a short gap checklist is already answered; a short story or an old profile does not skip intake
+- Home no longer records or creates profiles and does not inject a profile id; Advance lists users first, fuzzy-matches (spelling / nearby age), then get/update profile content
+- Issue rows are only written via `manage_user_issues` (list / create / update / delete); profile upsert no longer appends them; the model stores a short cleaned summary, not the raw query
+- Home reasoning level defaults to Very High
+- Advance chat thread scrollbar uses the Sunset Bloom accent (coral pill, warmer orange on hover)
 
 ### Fixed
 

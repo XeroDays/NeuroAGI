@@ -58,7 +58,7 @@ const ASK_USER_TOOL = {
   type: 'function',
   function: {
     name: 'ask_user',
-    description: 'Ask issue-specific investigation questions that the loaded user profile does not already answer (onset, severity, associated symptoms, meds, labs). Check get_profile_by_id first. Do not re-ask facts already in the profile. Do not use on definitions or general-education questions. Do not re-ask after they just submitted answers. After answers, persist lasting facts with create_update_user_profile.',
+    description: 'Required on a new personal/diagnostic issue after get_profile_by_id and research tools have run, unless a short gap checklist is already answered in THIS user message plus the loaded profile/issues (onset/duration/trend, frequency and timing, severity and aftermath, associated symptoms and unstated red-flag negatives, other meds/doses/tried treatments, relevant diet/sleep/work/triggers). Call get_profile_by_id immediately before this. Check that JSON first; do not ask what it already answers. A short symptom story, named medicines, or “I feel okay after vomit” is not complete intake. Facts from a different past issue do not close gaps for this complaint. Ask only unknown items; do not re-ask known meds/timings. Do not skip just to write the report. Prefer this call over extra web_search if rounds are tight. Do not use on definitions or general-education questions. Do not re-ask after they just submitted answers. After they submit: get_profile_by_id, then create_update_user_profile with userid and merged content (new answers only; keep existing facts; do not pass issue).',
     parameters: {
       type: 'object',
       required: ['questions'],
@@ -97,7 +97,7 @@ const GET_AVAILABLE_USERS_TOOL = {
   type: 'function',
   function: {
     name: 'get_available_users',
-    description: 'List saved user profiles as id, name, age, and gender only. Use first on a Home submit to match the current Patient line. Does not return the stored profile body.',
+    description: 'List saved user profiles as id, name, age, and gender only. Call this first when no userid is already in a prior get_available_users / get_profile_by_id / create_update_user_profile tool result in this thread. The Patient line never includes an id. Skip listing once a tool result has given you an id. Does not return the stored profile body.',
     parameters: {
       type: 'object',
       properties: {},
@@ -109,7 +109,7 @@ const GET_PROFILE_BY_ID_TOOL = {
   type: 'function',
   function: {
     name: 'get_profile_by_id',
-    description: 'Load the full stored profile JSON (id, name, age, gender, profile) for context. Call after matching or creating a user, and before ask_user so you can skip questions the profile already answers.',
+    description: 'Load the full stored profile JSON (id, name, age, gender, profile, issues). Use only after you have an id from a prior profile tool result (list or create). Required immediately before ask_user, and again after they submit answers before create_update. If this fails (unknown id), fall back to get_available_users. Do not treat an old issue row as complete intake for a new complaint.',
     parameters: {
       type: 'object',
       required: ['id'],
@@ -124,7 +124,7 @@ const CREATE_UPDATE_USER_PROFILE_TOOL = {
   type: 'function',
   function: {
     name: 'create_update_user_profile',
-    description: 'Create or update a user profile. Omit userid to create a new GUID. Pass userid to update that record. content must be short and to the point: medications and timings, other history, nutrition, food intake, daily routine. Merge new facts; do not wipe unrelated prior facts. name, age, and gender are required when creating.',
+    description: 'Create or update a user profile body only. Omit userid to create a new GUID. Pass userid to update that record. When a userid is already in a prior profile tool result, always pass that userid. Do not invent an id from the Patient line. content must be short and to the point: medications and timings, other history, nutrition, food intake, daily routine. Merge new facts; do not wipe unrelated prior facts. name, age, and gender are required when creating. Never writes issue rows — use manage_user_issues for those.',
     parameters: {
       type: 'object',
       required: ['content'],
@@ -142,10 +142,39 @@ const CREATE_UPDATE_USER_PROFILE_TOOL = {
   },
 };
 
+const MANAGE_USER_ISSUES_TOOL = {
+  type: 'function',
+  function: {
+    name: 'manage_user_issues',
+    description: 'List, create, update, or delete issue rows for a known userid. Software never writes issues. Use after a userid is in a prior profile tool result. action=list returns stored issues. action=create adds a short cleaned summary (one or two precise sentences; not the raw Home query or Patient line). action=update replaces text on an existing issueid (same complaint, tighter wording). action=delete removes that issueid (duplicates, wrong person, or resolved). Do not use on informational turns.',
+    parameters: {
+      type: 'object',
+      required: ['userid', 'action'],
+      properties: {
+        userid: { type: 'string', description: 'Existing profile id from a prior tool result' },
+        action: {
+          type: 'string',
+          enum: ['list', 'create', 'update', 'delete'],
+          description: 'list | create | update | delete',
+        },
+        text: {
+          type: 'string',
+          description: 'Required for create/update. Short cleaned issue summary, not the raw chat.',
+        },
+        issueid: {
+          type: 'string',
+          description: 'Required for update/delete. Id of the issue row.',
+        },
+      },
+    },
+  },
+};
+
 const ADVANCE_TOOLS = [
   GET_AVAILABLE_USERS_TOOL,
   GET_PROFILE_BY_ID_TOOL,
   CREATE_UPDATE_USER_PROFILE_TOOL,
+  MANAGE_USER_ISSUES_TOOL,
   FIND_TOPIC_URLS_TOOL,
   WEB_SEARCH_TOOL,
   EXTRACT_URL_TOOL,
@@ -373,6 +402,26 @@ function executeCreateUpdateUserProfile(payload) {
   return JSON.stringify(result);
 }
 
+function executeManageUserIssues(payload) {
+  const userid = payload.userid ?? payload.userId ?? payload.id;
+  const action = String(payload.action || '').trim().toLowerCase();
+  const text = payload.text;
+  const issueId = payload.issueid ?? payload.issueId ?? payload.issue_id;
+  if (action === 'list') {
+    return JSON.stringify(profilesService.listIssues(userid));
+  }
+  if (action === 'create') {
+    return JSON.stringify(profilesService.createIssue(userid, text));
+  }
+  if (action === 'update') {
+    return JSON.stringify(profilesService.updateIssue(userid, issueId, text));
+  }
+  if (action === 'delete') {
+    return JSON.stringify(profilesService.deleteIssue(userid, issueId));
+  }
+  return JSON.stringify({ ok: false, error: 'action must be list, create, update, or delete.' });
+}
+
 async function executeTool(name, args) {
   const payload = args && typeof args === 'object' ? args : {};
   if (name === 'find_topic_urls') {
@@ -393,6 +442,9 @@ async function executeTool(name, args) {
   if (name === 'create_update_user_profile') {
     return executeCreateUpdateUserProfile(payload);
   }
+  if (name === 'manage_user_issues') {
+    return executeManageUserIssues(payload);
+  }
   return JSON.stringify({ error: `Unknown tool: ${name}` });
 }
 
@@ -404,6 +456,7 @@ module.exports = {
   GET_AVAILABLE_USERS_TOOL,
   GET_PROFILE_BY_ID_TOOL,
   CREATE_UPDATE_USER_PROFILE_TOOL,
+  MANAGE_USER_ISSUES_TOOL,
   ADVANCE_TOOLS,
   sanitizeQuestions,
   executeWebSearch,

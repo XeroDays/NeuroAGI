@@ -9,7 +9,7 @@ marked.setOptions({
 
 const REASONING_LEVELS = new Set(['none', 'low', 'medium', 'high', 'very_high']);
 const REASONING_STORAGE_KEY = 'neuroagi:advanceReasoningLevel';
-const DEFAULT_REASONING_LEVEL = 'medium';
+const DEFAULT_REASONING_LEVEL = 'very_high';
 
 const SEND_ICON_HTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
 const PAUSE_ICON_HTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>';
@@ -36,6 +36,17 @@ function chipLabel(name) {
   const text = String(name || '');
   const parts = text.split('/');
   return parts[parts.length - 1] || text;
+}
+
+const REPORTED_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function formatReportedAt(date = new Date()) {
+  const day = date.getDate();
+  const month = REPORTED_MONTHS[date.getMonth()];
+  const year = date.getFullYear();
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${day} ${month} ${year}, ${hours}:${minutes}`;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -525,10 +536,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const gender = params.get('gender');
     const name = params.get('name')?.trim();
     let text = issue;
+    const reported = formatReportedAt();
     if (age && gender) {
-      text = name
-        ? `${issue}\n\nPatient: ${name}, ${age}-year-old ${gender}.`
-        : `${issue}\n\nPatient: ${age}-year-old ${gender}.`;
+      const patient = name
+        ? `${name}, ${age}-year-old ${gender}`
+        : `${age}-year-old ${gender}`;
+      text = `${issue}\n\nPatient: ${patient}. Reported: ${reported}.`;
     }
     if (inputEl) inputEl.value = '';
 

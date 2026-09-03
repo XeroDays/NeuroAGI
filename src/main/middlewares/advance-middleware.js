@@ -7,7 +7,7 @@ const controllers = new Map();
 
 const ALLOWED_ROLES = new Set(['user', 'assistant']);
 const REASONING_LEVELS = new Set(['none', 'low', 'medium', 'high', 'very_high']);
-const DEFAULT_REASONING_LEVEL = 'medium';
+const DEFAULT_REASONING_LEVEL = 'very_high';
 
 function sanitizeReasoningLevel(raw) {
   return REASONING_LEVELS.has(raw) ? raw : DEFAULT_REASONING_LEVEL;

@@ -1569,6 +1569,32 @@ body.app-shell {
   word-break: break-word;
 }
 
+.profiles-issue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.profiles-issue-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.profiles-issue-time {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #888;
+}
+
+.profiles-issue-text {
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--text-ink);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .profiles-empty {
   margin: 0.75rem 0.4rem;
   font-size: 0.82rem;
@@ -1583,4 +1609,36 @@ body.app-shell {
   padding: 1rem 1.5rem;
   border-top: 1px solid #e8e8e8;
   flex-shrink: 0;
+}
+
+.profiles-btn-delete {
+  padding: 0.52rem 1.2rem;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  border-radius: 10px;
+  border: none;
+  background: #b91c1c;
+  color: var(--surface-solid);
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.profiles-btn-delete:hover:not(:disabled) {
+  background: #991b1b;
+  transform: translateY(-1px);
+}
+
+.profiles-btn-delete:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.profiles-btn-delete:focus-visible {
+  outline: 2px solid rgba(185, 28, 28, 0.55);
+  outline-offset: 2px;
+}
+
+.profiles-btn-delete:disabled {
+  opacity: 0.45;
+  cursor: default;
 }

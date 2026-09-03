@@ -32,4 +32,6 @@ module.exports = {
   SOFTWARE_DOWNLOAD_PROGRESS: "neuroagi:software-download-progress",
   INSTALL_SOFTWARE_UPDATE: "neuroagi:install-software-update",
   GET_PROFILES: "neuroagi:get-profiles",
+  RECORD_PROFILE_ISSUE: "neuroagi:record-profile-issue",
+  DELETE_PROFILE: "neuroagi:delete-profile",
 };
