@@ -1,7 +1,7 @@
 const { BrowserWindow, screen } = require("electron");
 const path = require("path");
 
-const iconPath = path.join(__dirname, "../../renderer/assets/icons/app icon.png");
+const iconPath = path.join(__dirname, "../../renderer/assets/icons/NeuroLogo.png");
 
 function createSplashWindow() {
   const { workArea } = screen.getPrimaryDisplay();

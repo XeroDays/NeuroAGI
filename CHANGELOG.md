@@ -11,6 +11,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- Home wordmark is `NeuroHome.png`; splash, window/taskbar, and packaged exe icon use `NeuroLogo.png` / `build/icon.ico`
+
 ### Fixed
 
 ### Security

@@ -66,14 +66,14 @@ src/
 │   │   ├── log-service.js          # In-memory tool-call logger. addLog / getLogs / clearLogs; broadcasts LOG_UPDATE. Instrumented at advance-llm.js and web-search-service.js
 │   │   └── usage-tracker.js        # Running cost + token totals; broadcasts USAGE_UPDATE
 │   └── windows/
-│       ├── splash-window.js  # Frameless centered splash (~45% work-area width, height 387). show: false until loaded
-│       └── main-window.js    # BrowserWindow 800×600 (restore size). Does not auto-show. showMainWindow() maximizes then show+focus. Not fullscreen
+│       ├── splash-window.js  # Frameless centered splash (~45% work-area width, height 387). show: false until loaded. Window icon NeuroLogo.png
+│       └── main-window.js    # BrowserWindow 800×600 (restore size). Does not auto-show. showMainWindow() maximizes then show+focus. Not fullscreen. Window icon NeuroLogo.png
 ├── preload/
 │   ├── index.js              # contextBridge → window.electronAPI { ping, getUsageTotals, resetUsageTotals, onUsageUpdate, openDevTools, getCredentials, updateCredentials, openExternalUrl, testOpenRouterKey, testTavilyKey, getModelsConfig, updateModelsConfig, addModel, deleteModel, benchmarkModels, onBenchmarkProgress, getLogs, clearLogs, onLogUpdate, advanceSend, advanceCancel, onAdvanceProgress, getLicenseUpdate, registerSoftwareLicense, onLicenseUpdate, checkSoftwareInstaller, downloadSoftwareUpdate, onSoftwareDownloadProgress, installSoftwareUpdate, quitApp }
 │   └── splash-preload.js     # Splash-only: getAppInfo, quitApp, openExternalUrl, onSplashStatus
 ├── renderer/
-│   ├── splash.html           # Frameless splash: NeuroLogo, spinner, status, version + build, Close quits, footer www.softasium.com
-│   ├── index.html            # Home. Top bar: Settings + Models + optional New Release chip. Submit is the only entry to Advance. Release overlay for Softasium installer
+│   ├── splash.html           # Frameless splash: NeuroLogo.png mark, spinner, status, version + build, Close quits, footer www.softasium.com
+│   ├── index.html            # Home. Centered NeuroHome.png wordmark above the input. Top bar: Settings + Models + optional New Release chip. Submit is the only entry to Advance. Release overlay for Softasium installer
 │   ├── screens/
 │   │   └── advance/
 │   │       └── index.html    # Advance chat. Model chips + per-model threads + composer; no settings overlay. Does not link worker-snack.css
@@ -98,6 +98,7 @@ src/
 │   │   ├── usage-bubbles.css # Tokens + cost pills (theme tokens)
 │   │   └── logs-panel.css    # Frosted Logs overlay (theme tokens for card/hairline)
 │   └── assets/
+│       └── icons/            # NeuroHome.png (Home wordmark), NeuroLogo.png (splash mark + window/taskbar icon). Packaged Windows icon is build/icon.ico (from NeuroLogo.png)
 └── shared/
     └── ipc/
         └── channels.js       # PING, ADVANCE_SEND, ADVANCE_PROGRESS, ADVANCE_CANCEL, GET_USAGE_TOTALS, RESET_USAGE_TOTALS, USAGE_UPDATE, OPEN_DEV_TOOLS, GET_CREDENTIALS, UPDATE_CREDENTIALS, OPEN_EXTERNAL_URL, TEST_OPENROUTER_KEY, TEST_TAVILY_KEY, GET_MODELS_CONFIG, UPDATE_MODELS_CONFIG, ADD_MODEL, DELETE_MODEL, BENCHMARK_MODELS, BENCHMARK_PROGRESS, GET_LOGS, CLEAR_LOGS, LOG_UPDATE, GET_APP_INFO, SPLASH_STATUS, QUIT_APP, LICENSE_UPDATE, GET_LICENSE_UPDATE, REGISTER_SOFTWARE_LICENSE, CHECK_SOFTWARE_INSTALLER, DOWNLOAD_SOFTWARE_UPDATE, SOFTWARE_DOWNLOAD_PROGRESS, INSTALL_SOFTWARE_UPDATE
@@ -111,7 +112,7 @@ src/
 
 1. `npm start` → `scripts/start-electron.js` spawns Electron
 2. `src/main/index.js` runs `loadEnv()`, hides the menu, then `bootstrap()`
-3. Splash handlers register first (`GET_APP_INFO`, `QUIT_APP`, `OPEN_EXTERNAL_URL`). [`splash-window.js`](src/main/windows/splash-window.js) creates a frameless centered window (`show: false` until loaded): ~45% of the primary work-area width, height 387, chrome `#24101c`. Splash shows NeuroLogo, spinner, status `Starting…`, `Version v{semver} (Build {BUILD_VERSION})`, Close quits, footer `www.softasium.com`
+3. Splash handlers register first (`GET_APP_INFO`, `QUIT_APP`, `OPEN_EXTERNAL_URL`). [`splash-window.js`](src/main/windows/splash-window.js) creates a frameless centered window (`show: false` until loaded): ~45% of the primary work-area width, height 387, chrome `#24101c`. Splash shows [`NeuroLogo.png`](src/renderer/assets/icons/NeuroLogo.png), spinner, status `Starting…`, `Version v{semver} (Build {BUILD_VERSION})`, Close quits, footer `www.softasium.com`. Window / taskbar icon is the same file; packaged exe uses [`build/icon.ico`](build/icon.ico)
 4. Heavy modules load lazily: IPC (`register.js`, guarded against double-register), `modelConfigService.init()`, hidden main window. [`main-window.js`](src/main/windows/main-window.js) must **not** auto-show on `ready-to-show`. Restore size stays 800×600
 5. Splash status becomes `Checking for updates…` while Softasium Register runs in parallel with main HTML load
 6. **Access denied** (`status !== true`, including offline with no granted cache): splash shows red `Access denied, please contact customer service.` (spinner off). Main window is destroyed. Splash stays until Close
@@ -243,6 +244,7 @@ All screens share [`tokens.css`](src/renderer/styles/tokens.css) (glass + type) 
 | **Title** | White, centered, responsive clamp sizing |
 | **Text input** | Solid white, rounded (`14px`), dark text; 80% viewport width |
 | **Submit button** | `--chrome` rounded square inside the input; hover `--accent`. Only path to Advance |
+| **Home wordmark** | Centered [`NeuroHome.png`](src/renderer/assets/icons/NeuroHome.png) above the health input (`.app-logo`) |
 | **Top bar** | Settings gear + Models + optional **New Release Available** chip |
 
 | **Dropdowns** | Custom listboxes (`.custom-select`). Trigger copies the old closed glass look (frosted white, 10px radius, chevron). Native `<select>` is hidden and remains the value source. Open menu: rounded glass panel. Options use `--text-ink`; hover/selected use `--accent-wash` + `--accent` text — not Windows blue. Age menu `max-height: 16rem` with a thin themed scrollbar. One menu open at a time; click-outside and Escape close; Arrow / Enter / Home / End work; selected age scrolls into view on open |
