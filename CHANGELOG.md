@@ -9,6 +9,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Security
+
+## [1.0.5] - 2026-09-03
+
+Patient profiles, encrypted credentials, and GitHub Release CI.
+
+### Added
+
 - Home Name field (required, left of gender/age); included in the first Advance patient line
 - User profiles in Documents/NeuroAGI/profiles.json, Home Profiles popup, and Advance tools to list / load / create-or-update; first turn lists users, fuzzy-matches, checks the profile before ask_user, and writes answers back
 - Dated issue history on each user profile (`issues` with text + datetime), written only by Advance `manage_user_issues` and shown in the Profiles popup
@@ -134,7 +146,8 @@ First stable release of the NeuroAGI multi-screen diagnostic flow.
 - Logo display and asset path corrections
 - Master-merge fallback when master model JSON parse fails or returns empty results
 
-[Unreleased]: https://github.com/XeroDays/Open-Health/compare/v1.0.4...HEAD
+[Unreleased]: https://github.com/XeroDays/Open-Health/compare/v1.0.5...HEAD
+[1.0.5]: https://github.com/XeroDays/Open-Health/compare/v1.0.4...v1.0.5
 [1.0.4]: https://github.com/XeroDays/Open-Health/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/XeroDays/Open-Health/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/XeroDays/Open-Health/compare/v1.0.0...v1.0.2

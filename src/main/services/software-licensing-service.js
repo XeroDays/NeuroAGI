@@ -9,7 +9,7 @@ const { buildDeviceInfoString } = require('../helpers/device-info');
 const licenseCacheStore = require('./license-cache-store');
 
 const SOFTWARE_APP_ID = "NeuroAGI";
-const BUILD_VERSION = 1;
+const BUILD_VERSION = 2;
 const REGISTER_URL = "https://api.softasium.com/api/SoftwareLicencing/Register";
 const REGISTER_AUTH_BEARER = "iamsyedidrees@gmail.com";
 const FALLBACK_INSTALLER_NAME = "NeuroAGI-Update.exe";
