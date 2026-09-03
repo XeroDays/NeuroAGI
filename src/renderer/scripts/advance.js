@@ -523,7 +523,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const age = params.get('age');
     const gender = params.get('gender');
-    const text = age && gender ? `${issue}\n\nPatient: ${age}-year-old ${gender}.` : issue;
+    const name = params.get('name')?.trim();
+    let text = issue;
+    if (age && gender) {
+      text = name
+        ? `${issue}\n\nPatient: ${name}, ${age}-year-old ${gender}.`
+        : `${issue}\n\nPatient: ${age}-year-old ${gender}.`;
+    }
     if (inputEl) inputEl.value = '';
 
     const pending = [];

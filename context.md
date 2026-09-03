@@ -142,14 +142,14 @@ Same Register API and PC identity as CryptoGenesis. Softasium must have an app w
 ### Home screen → Advance
 
 1. On load, `app.js` fills age options 1–100 (default 30), then calls `enhanceGlassSelect()` on `#select-reasoning`, `#select-gender`, and `#select-age`. The native `<select>` stays in the DOM (hidden) so `handleStartDiagnostics()` still reads `.value`. Custom trigger + listbox replace the Windows native popup
-2. User types a health issue, picks gender, age, and **Reasoning level** (default `medium`)
+2. User types a health issue, enters **Name** (required, empty by default), picks gender, age, and **Reasoning level** (default `medium`)
 3. Clicks the submit button **or** presses **Ctrl+Enter** / **Cmd+Enter** — both call `handleStartDiagnostics()`
-4. Empty issue is a no-op. There is no Home Advance button; submit is the only entry
+4. Empty issue is a no-op. Empty name focuses `#input-name` and aborts. There is no Home Advance button; submit is the only entry
 5. **Enabled model guard:** `hasEnabledModel()` via `getModelsConfig()`. If no `enabled` row, shows `#error-overlay` and aborts
 6. Stashes Reasoning level in `sessionStorage['neuroagi:advanceReasoningLevel']`. Advance's `getReasoningLevel()` validates against `none|low|medium|high|very_high` (default `medium`) and sends it on every `advanceSend`
 7. Awaits `resetUsageTotals()` so cost/tokens reset to `USD 0` / `0 tokens`. Back from Advance does **not** reset
-8. Navigates to `screens/advance/index.html?issue=…&gender=…&age=…`
-9. Advance bootstrap: if `issue` is present, first user message is `{issue}\n\nPatient: {age}-year-old {gender}.` (falls back to just `issue` if age/gender missing), written into every enabled-model thread, then `advanceSend` runs in parallel for each
+8. Navigates to `screens/advance/index.html?issue=…&name=…&gender=…&age=…`
+9. Advance bootstrap: if `issue` is present, first user message is `{issue}\n\nPatient: {name}, {age}-year-old {gender}.` (falls back to `{age}-year-old {gender}` if name missing, or just `issue` if age/gender missing), written into every enabled-model thread, then `advanceSend` runs in parallel for each
 
 ### Advance chat (enabled models + tools)
 
@@ -248,6 +248,7 @@ All screens share [`tokens.css`](src/renderer/styles/tokens.css) (glass + type) 
 | **Top bar** | Settings gear + Models + optional **New Release Available** chip |
 
 | **Dropdowns** | Custom listboxes (`.custom-select`). Trigger copies the old closed glass look (frosted white, 10px radius, chevron). Native `<select>` is hidden and remains the value source. Open menu: rounded glass panel. Options use `--text-ink`; hover/selected use `--accent-wash` + `--accent` text — not Windows blue. Age menu `max-height: 16rem` with a thin themed scrollbar. One menu open at a time; click-outside and Escape close; Arrow / Enter / Home / End work; selected age scrolls into view on open |
+| **Name field** | `#input-name` (`.home-name-input`) left of gender/age. Placeholder `Name`, empty by default, required on submit |
 | **Reasoning level** | Left of the selects row. Five options — None / Low / Medium / High / Very High — Medium default. Stashed as `neuroagi:advanceReasoningLevel` on submit |
 | **Settings (gear)** | Fixed `top: 1rem; left: 1rem`, glass circle; opens Settings popup |
 | **Models button** | Glass pill immediately right of the gear |

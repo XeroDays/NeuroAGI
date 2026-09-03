@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const input = document.getElementById('health-input');
   const btn = document.getElementById('btn-start-diagnostics');
+  const nameInput = document.getElementById('input-name');
   const genderSelect = document.getElementById('select-gender');
   const ageSelect = document.getElementById('select-age');
   const reasoningSelect = document.getElementById('select-reasoning');
@@ -237,6 +238,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const issue = input?.value?.trim() || '';
     if (!issue) return;
 
+    const name = nameInput?.value?.trim() || '';
+    if (!name) {
+      nameInput?.focus();
+      return;
+    }
+
     let hasEnabled = false;
     try {
       hasEnabled = await hasEnabledModel();
@@ -266,6 +273,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const query = new URLSearchParams();
     query.set('issue', issue);
+    query.set('name', name);
     query.set('gender', gender);
     query.set('age', age);
     window.location.href = `screens/advance/index.html?${query}`;
