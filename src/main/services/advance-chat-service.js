@@ -23,7 +23,7 @@ function resolveLlmOptions(level) {
   };
 }
 
-const MAX_TOOL_ROUNDS = 4;
+const MAX_TOOL_ROUNDS = 8;
 
 class AdvanceAbortError extends Error {
   constructor() {
@@ -84,6 +84,14 @@ function toolDetail(name, args) {
     const first = urls.find((u) => typeof u === 'string' && u.trim());
     return first ? String(first).trim() : '';
   }
+  if (name === 'get_profile_by_id' && typeof args.id === 'string') {
+    return args.id.trim();
+  }
+  if (name === 'create_update_user_profile') {
+    const id = args.userid ?? args.userId ?? args.id;
+    if (typeof id === 'string' && id.trim()) return id.trim();
+    if (typeof args.name === 'string' && args.name.trim()) return args.name.trim();
+  }
   return '';
 }
 
@@ -92,6 +100,9 @@ function toolLabel(name, state) {
   if (name === 'web_search') return state === 'running' ? 'Searching…' : 'Searched';
   if (name === 'extract_url') return state === 'running' ? 'Extracting…' : 'Extracted';
   if (name === 'ask_user') return state === 'running' ? 'Asking questions…' : 'Questions asked';
+  if (name === 'get_available_users') return state === 'running' ? 'Listing profiles…' : 'Listed profiles';
+  if (name === 'get_profile_by_id') return state === 'running' ? 'Loading profile…' : 'Loaded profile';
+  if (name === 'create_update_user_profile') return state === 'running' ? 'Saving profile…' : 'Saved profile';
   if (name === 'model') return state === 'running' ? 'Loading…' : 'Loaded';
   return state === 'running' ? `${name}…` : name;
 }

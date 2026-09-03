@@ -1,4 +1,5 @@
 const webSearch = require('./web-search-service');
+const profilesService = require('./profiles-service');
 
 const QUESTION_TYPES = new Set(['text', 'single_select', 'multi_select', 'slider', 'range']);
 const MAX_QUESTIONS = 12;
@@ -57,7 +58,7 @@ const ASK_USER_TOOL = {
   type: 'function',
   function: {
     name: 'ask_user',
-    description: 'Required on the first message of a new personal/diagnostic issue. Ask issue-specific investigation questions (onset, severity, associated symptoms, meds, labs, age/context). Do not skip because they already named a few symptoms. Do not use on definitions or general-education questions. Do not re-ask after they just submitted answers.',
+    description: 'Ask issue-specific investigation questions that the loaded user profile does not already answer (onset, severity, associated symptoms, meds, labs). Check get_profile_by_id first. Do not re-ask facts already in the profile. Do not use on definitions or general-education questions. Do not re-ask after they just submitted answers. After answers, persist lasting facts with create_update_user_profile.',
     parameters: {
       type: 'object',
       required: ['questions'],
@@ -92,7 +93,64 @@ const ASK_USER_TOOL = {
   },
 };
 
-const ADVANCE_TOOLS = [FIND_TOPIC_URLS_TOOL, WEB_SEARCH_TOOL, EXTRACT_URL_TOOL, ASK_USER_TOOL];
+const GET_AVAILABLE_USERS_TOOL = {
+  type: 'function',
+  function: {
+    name: 'get_available_users',
+    description: 'List saved user profiles as id, name, age, and gender only. Use first on a Home submit to match the current Patient line. Does not return the stored profile body.',
+    parameters: {
+      type: 'object',
+      properties: {},
+    },
+  },
+};
+
+const GET_PROFILE_BY_ID_TOOL = {
+  type: 'function',
+  function: {
+    name: 'get_profile_by_id',
+    description: 'Load the full stored profile JSON (id, name, age, gender, profile) for context. Call after matching or creating a user, and before ask_user so you can skip questions the profile already answers.',
+    parameters: {
+      type: 'object',
+      required: ['id'],
+      properties: {
+        id: { type: 'string', description: 'User profile id' },
+      },
+    },
+  },
+};
+
+const CREATE_UPDATE_USER_PROFILE_TOOL = {
+  type: 'function',
+  function: {
+    name: 'create_update_user_profile',
+    description: 'Create or update a user profile. Omit userid to create a new GUID. Pass userid to update that record. content must be short and to the point: medications and timings, other history, nutrition, food intake, daily routine. Merge new facts; do not wipe unrelated prior facts. name, age, and gender are required when creating.',
+    parameters: {
+      type: 'object',
+      required: ['content'],
+      properties: {
+        userid: { type: 'string', description: 'Existing profile id. Omit to create.' },
+        content: {
+          type: 'string',
+          description: 'Short profile body: meds/timings, history, nutrition, food, routine',
+        },
+        name: { type: 'string', description: 'Required when creating' },
+        age: { type: 'number', description: 'Required when creating' },
+        gender: { type: 'string', description: 'Required when creating' },
+      },
+    },
+  },
+};
+
+const ADVANCE_TOOLS = [
+  GET_AVAILABLE_USERS_TOOL,
+  GET_PROFILE_BY_ID_TOOL,
+  CREATE_UPDATE_USER_PROFILE_TOOL,
+  FIND_TOPIC_URLS_TOOL,
+  WEB_SEARCH_TOOL,
+  EXTRACT_URL_TOOL,
+  ASK_USER_TOOL,
+];
 
 const MAX_EXTRACT_URLS = 5;
 const MAX_TOPIC_URLS = 8;
@@ -295,6 +353,26 @@ async function executeExtractUrl(args = {}) {
  * @param {unknown} args
  * @returns {Promise<string>}
  */
+function executeGetAvailableUsers() {
+  return JSON.stringify({ users: profilesService.listSummaries() });
+}
+
+function executeGetProfileById(payload) {
+  const result = profilesService.getById(payload.id);
+  return JSON.stringify(result);
+}
+
+function executeCreateUpdateUserProfile(payload) {
+  const result = profilesService.upsert({
+    userid: payload.userid ?? payload.userId ?? payload.id,
+    content: payload.content,
+    name: payload.name,
+    age: payload.age,
+    gender: payload.gender,
+  });
+  return JSON.stringify(result);
+}
+
 async function executeTool(name, args) {
   const payload = args && typeof args === 'object' ? args : {};
   if (name === 'find_topic_urls') {
@@ -306,6 +384,15 @@ async function executeTool(name, args) {
   if (name === 'extract_url') {
     return executeExtractUrl(payload);
   }
+  if (name === 'get_available_users') {
+    return executeGetAvailableUsers();
+  }
+  if (name === 'get_profile_by_id') {
+    return executeGetProfileById(payload);
+  }
+  if (name === 'create_update_user_profile') {
+    return executeCreateUpdateUserProfile(payload);
+  }
   return JSON.stringify({ error: `Unknown tool: ${name}` });
 }
 
@@ -314,6 +401,9 @@ module.exports = {
   FIND_TOPIC_URLS_TOOL,
   EXTRACT_URL_TOOL,
   ASK_USER_TOOL,
+  GET_AVAILABLE_USERS_TOOL,
+  GET_PROFILE_BY_ID_TOOL,
+  CREATE_UPDATE_USER_PROFILE_TOOL,
   ADVANCE_TOOLS,
   sanitizeQuestions,
   executeWebSearch,

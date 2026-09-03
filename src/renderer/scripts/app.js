@@ -1,9 +1,11 @@
 import { APP_TITLE } from './constants.js';
 import { initReleaseUpdate, isForceUpdateLocked } from './release-update-panel.js';
+import { initProfilesPanel } from './profiles-panel.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   document.title = APP_TITLE;
   void initReleaseUpdate();
+  initProfilesPanel();
 
   const input = document.getElementById('health-input');
   const btn = document.getElementById('btn-start-diagnostics');

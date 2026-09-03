@@ -10,6 +10,7 @@ const modelConfigService = require("../services/model-config-service");
 const { probeModel } = require("../services/latency-benchmark-service");
 const { testOpenRouterKey, testTavilyKey } = require("../services/credential-test-service");
 const SoftwareLicensingService = require("../services/software-licensing-service");
+const profilesService = require("../services/profiles-service");
 
 let ipcHandlersRegistered = false;
 let benchmarkInFlight = false;
@@ -195,6 +196,8 @@ function registerIpcHandlers() {
         : "";
     return SoftwareLicensingService.installInstaller(fileName);
   });
+
+  ipcMain.handle(channels.GET_PROFILES, () => profilesService.getProfiles());
 }
 
 module.exports = { registerIpcHandlers };

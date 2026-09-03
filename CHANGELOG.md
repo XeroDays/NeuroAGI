@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Added
 
 - Home Name field (required, left of gender/age); included in the first Advance patient line
+- User profiles in Documents/NeuroAGI/profiles.json, Home Profiles popup, and Advance tools to list / load / create-or-update; first turn matches name+age+gender, checks the profile before ask_user, and writes answers back
 
 ### Changed
 

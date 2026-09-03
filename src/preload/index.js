@@ -31,6 +31,7 @@ const CH = {
   SOFTWARE_DOWNLOAD_PROGRESS: "neuroagi:software-download-progress",
   INSTALL_SOFTWARE_UPDATE: "neuroagi:install-software-update",
   QUIT_APP: "neuroagi:quit-app",
+  GET_PROFILES: "neuroagi:get-profiles",
 };
 
 function subscribe(channel, cb) {
@@ -77,4 +78,5 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onSoftwareDownloadProgress: (cb) => subscribe(CH.SOFTWARE_DOWNLOAD_PROGRESS, cb),
   installSoftwareUpdate: (fileName) => ipcRenderer.invoke(CH.INSTALL_SOFTWARE_UPDATE, { fileName }),
   quitApp: () => ipcRenderer.invoke(CH.QUIT_APP),
+  getProfiles: () => ipcRenderer.invoke(CH.GET_PROFILES),
 });

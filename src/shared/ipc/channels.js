@@ -31,4 +31,5 @@ module.exports = {
   DOWNLOAD_SOFTWARE_UPDATE: "neuroagi:download-software-update",
   SOFTWARE_DOWNLOAD_PROGRESS: "neuroagi:software-download-progress",
   INSTALL_SOFTWARE_UPDATE: "neuroagi:install-software-update",
+  GET_PROFILES: "neuroagi:get-profiles",
 };

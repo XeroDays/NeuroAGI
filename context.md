@@ -47,15 +47,15 @@ src/
 │   ├── ipc/
 │   │   ├── app-info.js       # GET_APP_INFO: product name, package.json version, BUILD_VERSION
 │   │   ├── register-splash-handlers.js # Early IPC: GET_APP_INFO, QUIT_APP, OPEN_EXTERNAL_URL (allowlist includes Softasium)
-│   │   └── register.js       # IPC: ping, advanceSend / advanceCancel, getUsageTotals, resetUsageTotals, openDevTools, getCredentials, updateCredentials, testOpenRouterKey, testTavilyKey, getModelsConfig, updateModelsConfig, addModel, deleteModel, benchmarkModels, getLogs, clearLogs, license/download/install. USAGE_UPDATE / LOG_UPDATE / ADVANCE_PROGRESS / BENCHMARK_PROGRESS / LICENSE_UPDATE / SOFTWARE_DOWNLOAD_PROGRESS are broadcast, not handle-invoked. Guarded against double-register
+│   │   └── register.js       # IPC: … getProfiles, license/download/install. USAGE_UPDATE / LOG_UPDATE / ADVANCE_PROGRESS / BENCHMARK_PROGRESS / LICENSE_UPDATE / SOFTWARE_DOWNLOAD_PROGRESS are broadcast, not handle-invoked. Guarded against double-register
 │   ├── middlewares/
 │   │   ├── advance-middleware.js   # SendAdvanceChat({ messages, model, resume?, reasoningLevel }, sender) — one enabled-model turn. CancelAdvanceChat(sender, { model? }) aborts that model or all
 │   │   └── cookie-middleware.js    # GetModelsConfig() / UpdateModelsConfig({ activeModels, masterModel }) — thin wrapper around model-config-service
 │   ├── services/
-│   │   ├── advance-chat-service.js # askModelChat: tool loop (max 4 rounds) on one enabled model. Tools: find_topic_urls, extract_url, web_search, ask_user. Resolves LLM_OPTIONS_BY_LEVEL (none/low/medium/high/very_high) into maxTokens + reasoning.effort
+│   │   ├── advance-chat-service.js # askModelChat: tool loop (max 8 rounds) on one enabled model. Tools include profile + find/extract/search/ask_user. Resolves LLM_OPTIONS_BY_LEVEL (none/low/medium/high/very_high) into maxTokens + reasoning.effort
 │   │   ├── advance-llm.js          # Advance-only OpenRouter client: chatCompletionWithTools(messages, model, options). Records usage + type:"ai" logs. Does not use a shared api-helper
-│   │   ├── advance-tools.js        # Tool schemas + executeTool (Tavily search/extract + URL discovery) + ask_user question sanitizer
-│   │   ├── advance-system-prompt.js # ADVANCE_SYSTEM_PROMPT — clinical assistant + diagnostic vs informational turn rules
+│   │   ├── advance-tools.js        # Tool schemas + executeTool (profiles, Tavily search/extract + URL discovery) + ask_user question sanitizer
+│   │   ├── advance-system-prompt.js # ADVANCE_SYSTEM_PROMPT — clinical assistant + diagnostic vs informational + user-profile match/create/ask rules
 │   │   ├── model-config-service.js # Catalog + persisted { activeModels, masterModel, latencies, throughputs, probeErrors, removedModels, customModels } under Electron userData. Advance uses getActiveModelIds(); Delete hides catalog names via removedModels; Add persists customModels
 │   │   ├── web-search-service.js   # Tavily search() + extract(); type:"web" log items on every success/error
 │   │   ├── env-file-service.js     # resolve/read/write `.env`; loadEnv() at startup; GET/UPDATE credentials. Create: project root unpackaged, next to exe when packaged
@@ -63,17 +63,19 @@ src/
 │   │   ├── latency-benchmark-service.js # Shared OpenRouter latency probe (no Electron). Used by Models Test latency and scripts/benchmark-latency.js
 │   │   ├── license-cache-store.js  # Encrypted Softasium Register snapshot at {userData}/register-response.enc via safeStorage
 │   │   ├── software-licensing-service.js # Softasium Register + installer download/open. AppID NeuroAGI, BUILD_VERSION integer (independent of package.json semver)
+│   │   ├── neuroagi-documents-store.js # Documents/NeuroAGI folder; create if missing; atomic JSON read/write
+│   │   ├── profiles-service.js     # profiles.json keyed by id: { id, name, age, gender, profile }. listAll / getById / upsert
 │   │   ├── log-service.js          # In-memory tool-call logger. addLog / getLogs / clearLogs; broadcasts LOG_UPDATE. Instrumented at advance-llm.js and web-search-service.js
 │   │   └── usage-tracker.js        # Running cost + token totals; broadcasts USAGE_UPDATE
 │   └── windows/
 │       ├── splash-window.js  # Frameless centered splash (~45% work-area width, height 387). show: false until loaded. Window icon NeuroLogo.png
 │       └── main-window.js    # BrowserWindow 800×600 (restore size). Does not auto-show. showMainWindow() maximizes then show+focus. Not fullscreen. Window icon NeuroLogo.png
 ├── preload/
-│   ├── index.js              # contextBridge → window.electronAPI { ping, getUsageTotals, resetUsageTotals, onUsageUpdate, openDevTools, getCredentials, updateCredentials, openExternalUrl, testOpenRouterKey, testTavilyKey, getModelsConfig, updateModelsConfig, addModel, deleteModel, benchmarkModels, onBenchmarkProgress, getLogs, clearLogs, onLogUpdate, advanceSend, advanceCancel, onAdvanceProgress, getLicenseUpdate, registerSoftwareLicense, onLicenseUpdate, checkSoftwareInstaller, downloadSoftwareUpdate, onSoftwareDownloadProgress, installSoftwareUpdate, quitApp }
+│   ├── index.js              # contextBridge → window.electronAPI { …, getProfiles, quitApp }
 │   └── splash-preload.js     # Splash-only: getAppInfo, quitApp, openExternalUrl, onSplashStatus
 ├── renderer/
 │   ├── splash.html           # Frameless splash: NeuroLogo.png mark, spinner, status, version + build, Close quits, footer www.softasium.com
-│   ├── index.html            # Home. Centered NeuroHome.png wordmark above the input. Top bar: Settings + Models + optional New Release chip. Submit is the only entry to Advance. Release overlay for Softasium installer
+│   ├── index.html            # Home. Centered NeuroHome.png wordmark above the input. Top bar: Settings + Models + Profiles + optional New Release chip. Submit is the only entry to Advance. Release overlay for Softasium installer. Profiles overlay list/detail
 │   ├── screens/
 │   │   └── advance/
 │   │       └── index.html    # Advance chat. Model chips + per-model threads + composer; no settings overlay. Does not link worker-snack.css
@@ -81,7 +83,8 @@ src/
 │   │   ├── constants.js      # APP_TITLE, SCREEN_ADVANCE, LABEL_START_HUMAN_DIAGNOSTICS, PLACEHOLDER_HEALTH_INPUT
 │   │   ├── splash.js         # Splash status + version label + Close/quit + Softasium footer link
 │   │   ├── release-update-panel.js # Home New Release chip + overlay. Optional dismiss vs ForceUpdate lock. Download/install via IPC; errors as overlay text (no toast)
-│   │   ├── app.js            # Home: enhanceGlassSelect() wraps reasoning/gender/age native <select>s. Gear opens Settings (Credentials tab, Save writes `.env`, Test key probes the current input). Models Add pastes an OpenRouter id onto the visible Free/Paid tab. Test latency spinner + Error chip; hover Delete. initReleaseUpdate() on load. handleStartDiagnostics() — empty issue is a no-op; enabled-model guard; ForceUpdate blocks navigation; stashes reasoning; resetUsageTotals(); navigates to Advance with issue/gender/age
+│   │   ├── profiles-panel.js # Home Profiles popup: list left, detail right (name/age/gender/profile). GET_PROFILES
+│   │   ├── app.js            # Home: enhanceGlassSelect() wraps reasoning/gender/age native <select>s. Gear opens Settings (Credentials tab, Save writes `.env`, Test key probes the current input). Models Add pastes an OpenRouter id onto the visible Free/Paid tab. Test latency spinner + Error chip; hover Delete. initReleaseUpdate() + initProfilesPanel() on load. handleStartDiagnostics() — empty issue is a no-op; name required; enabled-model guard; ForceUpdate blocks navigation; stashes reasoning; resetUsageTotals(); navigates to Advance with issue/name/gender/age
 │   │   ├── advance.js        # Advance chat: one thread per enabled model. First URL `issue` fans out to all; follow-ups go to the selected chip. getReasoningLevel() from sessionStorage['neuroagi:advanceReasoningLevel'] (default medium)
 │   │   ├── advance-questions.js # ask_user form renderer (text / single_select / multi_select / slider / range)
 │   │   ├── usage-bubbles.js  # Global top-right tokens + cost pills (Home + Advance)
@@ -93,7 +96,7 @@ src/
 │   │   ├── themes.css        # Sunset Bloom palette on :root (rose → coral → gold wash)
 │   │   ├── shell.css         # Shared wash for body.app-shell / .adv-shell only
 │   │   ├── splash.css        # Splash chrome (#24101c) + spinner + denied status
-│   │   ├── app.css           # Home chrome, Settings popup, .custom-select, New Release chip + overlay. Native <select> popup is unused
+│   │   ├── app.css           # Home chrome, Settings popup, Profiles popup, .custom-select, New Release chip + overlay. Native <select> popup is unused
 │   │   ├── advance.css       # Advance chat UI
 │   │   ├── usage-bubbles.css # Tokens + cost pills (theme tokens)
 │   │   └── logs-panel.css    # Frosted Logs overlay (theme tokens for card/hairline)
@@ -101,7 +104,7 @@ src/
 │       └── icons/            # NeuroHome.png (Home wordmark), NeuroLogo.png (splash mark + window/taskbar icon). Packaged Windows icon is build/icon.ico (from NeuroLogo.png)
 └── shared/
     └── ipc/
-        └── channels.js       # PING, ADVANCE_SEND, ADVANCE_PROGRESS, ADVANCE_CANCEL, GET_USAGE_TOTALS, RESET_USAGE_TOTALS, USAGE_UPDATE, OPEN_DEV_TOOLS, GET_CREDENTIALS, UPDATE_CREDENTIALS, OPEN_EXTERNAL_URL, TEST_OPENROUTER_KEY, TEST_TAVILY_KEY, GET_MODELS_CONFIG, UPDATE_MODELS_CONFIG, ADD_MODEL, DELETE_MODEL, BENCHMARK_MODELS, BENCHMARK_PROGRESS, GET_LOGS, CLEAR_LOGS, LOG_UPDATE, GET_APP_INFO, SPLASH_STATUS, QUIT_APP, LICENSE_UPDATE, GET_LICENSE_UPDATE, REGISTER_SOFTWARE_LICENSE, CHECK_SOFTWARE_INSTALLER, DOWNLOAD_SOFTWARE_UPDATE, SOFTWARE_DOWNLOAD_PROGRESS, INSTALL_SOFTWARE_UPDATE
+        └── channels.js       # … GET_PROFILES, LICENSE_UPDATE, GET_LICENSE_UPDATE, REGISTER_SOFTWARE_LICENSE, CHECK_SOFTWARE_INSTALLER, DOWNLOAD_SOFTWARE_UPDATE, SOFTWARE_DOWNLOAD_PROGRESS, INSTALL_SOFTWARE_UPDATE
 ```
 
 ---
@@ -137,7 +140,7 @@ Same Register API and PC identity as CryptoGenesis. Softasium must have an app w
 3. Update available when remote `BuildVersion` > local `BUILD_VERSION`. Installer URL = Register `DownloadUrl`. Save to OS Downloads as `{AppID}V.{latest}+{build}.exe`
 4. `downloadInstaller` streams with progress (`SOFTWARE_DOWNLOAD_PROGRESS`). `installInstaller` is `shell.openPath` — the app stays open
 5. Home optional update: header chip **New Release Available** (right of Models) opens a dismissible glass overlay (notes, Download / Install, progress). Escape / backdrop close. Errors stay as `#release-status` text — no toast
-6. **ForceUpdate:** overlay opens as soon as Home shows, gets `.is-force-update` (`z-index: 400`, above Logs). Backdrop / Escape / chip dismiss are blocked. Close **quits**. Home submit, Settings, and Models are blocked until the user installs or quits
+6. **ForceUpdate:** overlay opens as soon as Home shows, gets `.is-force-update` (`z-index: 400`, above Logs). Backdrop / Escape / chip dismiss are blocked. Close **quits**. Home submit, Settings, Models, and Profiles are blocked until the user installs or quits
 
 ### Home screen → Advance
 
@@ -149,21 +152,32 @@ Same Register API and PC identity as CryptoGenesis. Softasium must have an app w
 6. Stashes Reasoning level in `sessionStorage['neuroagi:advanceReasoningLevel']`. Advance's `getReasoningLevel()` validates against `none|low|medium|high|very_high` (default `medium`) and sends it on every `advanceSend`
 7. Awaits `resetUsageTotals()` so cost/tokens reset to `USD 0` / `0 tokens`. Back from Advance does **not** reset
 8. Navigates to `screens/advance/index.html?issue=…&name=…&gender=…&age=…`
-9. Advance bootstrap: if `issue` is present, first user message is `{issue}\n\nPatient: {name}, {age}-year-old {gender}.` (falls back to `{age}-year-old {gender}` if name missing, or just `issue` if age/gender missing), written into every enabled-model thread, then `advanceSend` runs in parallel for each
+9. Advance bootstrap: if `issue` is present, first user message is `{issue}\n\nPatient: {name}, {age}-year-old {gender}.` (falls back to `{age}-year-old {gender}` if name missing, or just `issue` if age/gender missing), written into every enabled-model thread, then `advanceSend` runs in parallel for each. The model is instructed to match or create a Documents profile from that Patient line before research
 
 ### Advance chat (enabled models + tools)
 
 1. Renderer `advanceSend({ messages, model, resume?, reasoningLevel })` → IPC `ADVANCE_SEND` → `SendAdvanceChat` → `askModelChat`
 2. `model` must be in `getActiveModelIds()` (toggled Models, not the star). Throws/returns error if none enabled or the id is not in that set
 3. Home `issue` auto-send fires one `advanceSend` **per enabled model in parallel** (same messages + reasoning). Follow-ups go only to the selected chip
-4. Loop (max 4 tool rounds) via `chatCompletionWithTools` in `advance-llm.js`. Progress events go out on `ADVANCE_PROGRESS` and include `model`
+4. Loop (max 8 tool rounds) via `chatCompletionWithTools` in `advance-llm.js`. Progress events go out on `ADVANCE_PROGRESS` and include `model`
 5. Tools (from `advance-tools.js` + `ADVANCE_SYSTEM_PROMPT`):
-   - **find_topic_urls** — first research step on a new personal/diagnostic issue
+   - **get_available_users** — `{ id, name, age, gender }` only from `{documents}/NeuroAGI/profiles.json`
+   - **get_profile_by_id** — full `{ id, name, age, gender, profile }`
+   - **create_update_user_profile** — omit `userid` to create a GUID; pass `userid` + `content` to update. `name`/`age`/`gender` required on create
+   - **find_topic_urls** — first research step on a new personal/diagnostic issue (after profile load)
    - **extract_url** — fetch page text (Tavily extract)
    - **web_search** — extra targeted Tavily search after find + extract
-   - **ask_user** — pauses that model's turn; renderer shows a form in that model's thread; resume sends answers back as a tool result
-6. Informational turns (definitions, general education) answer from knowledge without tools unless a URL, misspelled medicine, or time-sensitive fact needs lookup
+   - **ask_user** — pauses that model's turn; renderer shows a form in that model's thread; resume sends answers back as a tool result. Check the loaded profile first; only ask missing items; after answers, persist via `create_update_user_profile`
+6. Informational turns (definitions, general education) answer from knowledge without tools unless a URL, misspelled medicine, or time-sensitive fact needs lookup. Do not create/update profiles unless the same patient is adding lasting facts
 7. `advanceCancel({ model })` aborts that model's AbortController; omit `model` to abort all for that window
+
+### Profiles button → Profiles popup
+
+1. Home `#btn-profiles` immediately right of Models
+2. Opens `#profiles-overlay`. `getProfiles()` reads `{documents}/NeuroAGI/profiles.json` (folder created if missing)
+3. Left list: name + `{age} years · {gender}`. Click fills the right pane with Name, Age, Gender, and the stored `profile` text
+4. Empty list: “No profiles yet.” Empty detail: “Select a profile.” Close / Escape / backdrop dismiss. ForceUpdate blocks open
+5. Records are `{ id, name, age, gender, profile }`. `profile` is short: medications and timings, other history, nutrition, food intake, daily routine. Create/update is via Advance tools, not this popup
 
 ### Settings (gear icon)
 
@@ -245,16 +259,18 @@ All screens share [`tokens.css`](src/renderer/styles/tokens.css) (glass + type) 
 | **Text input** | Solid white, rounded (`14px`), dark text; 80% viewport width |
 | **Submit button** | `--chrome` rounded square inside the input; hover `--accent`. Only path to Advance |
 | **Home wordmark** | Centered [`NeuroHome.png`](src/renderer/assets/icons/NeuroHome.png) above the health input (`.app-logo`) |
-| **Top bar** | Settings gear + Models + optional **New Release Available** chip |
+| **Top bar** | Settings gear + Models + Profiles + optional **New Release Available** chip |
 
 | **Dropdowns** | Custom listboxes (`.custom-select`). Trigger copies the old closed glass look (frosted white, 10px radius, chevron). Native `<select>` is hidden and remains the value source. Open menu: rounded glass panel. Options use `--text-ink`; hover/selected use `--accent-wash` + `--accent` text — not Windows blue. Age menu `max-height: 16rem` with a thin themed scrollbar. One menu open at a time; click-outside and Escape close; Arrow / Enter / Home / End work; selected age scrolls into view on open |
 | **Name field** | `#input-name` (`.home-name-input`) left of gender/age. Placeholder `Name`, empty by default, required on submit |
 | **Reasoning level** | Left of the selects row. Five options — None / Low / Medium / High / Very High — Medium default. Stashed as `neuroagi:advanceReasoningLevel` on submit |
 | **Settings (gear)** | Fixed `top: 1rem; left: 1rem`, glass circle; opens Settings popup |
 | **Models button** | Glass pill immediately right of the gear |
+| **Profiles button** | Glass pill immediately right of Models. Opens list/detail popup of `{documents}/NeuroAGI/profiles.json` |
 | **New Release chip** | Hidden unless Softasium says a newer `BuildVersion` is available. Coral/gold glow pill right of Models. Opens the release overlay |
 | **Release overlay** | `#release-overlay` above Logs (`z-index: 400`). White card: notes (`white-space: pre-wrap`), `#release-status` error text, Download / Install + progress. Optional: Escape/backdrop/close dismiss. **ForceUpdate:** `.is-force-update` blocks dismiss; Close quits |
 | **Models popup** | Full-viewport `.glass-overlay`. White card. Star fills `--accent`. Probe spinner left of the name (`--accent` ring). **Error** chip (red) with hover tooltip. Hover **Delete** (muted → destructive red) left of the toggle. Footer: Add (`--chrome`) + Test latency (`--chrome`, left) + Close (`--chrome`) + Update (`--accent`). Add reveals a `--surface-solid` / `--text-ink` model-id input |
+| **Profiles popup** | Settings-style split card. Left list (name + age/gender). Right read-only Name, Age, Gender, Profile. Footer Close only |
 | **Settings popup** | Wider white card. Left tab list (Credentials) + right pane. Password inputs (`--surface-solid`, `--text-ink`). Muted hint links under each field. **Test key** (`--chrome`) plus Valid/Invalid status. Footer: **Open DevTools** (left) + Close (`--chrome`) + Save (`--accent`). Save closes after a successful write. Close/Escape/backdrop dismiss without saving |
 | **Enable a model popup** | `#error-overlay` — title "Enable a model"; **OK** + **Open Models** |
 

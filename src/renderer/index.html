@@ -21,6 +21,7 @@
     </svg>
     </button>
     <button type="button" id="btn-models" class="glass-models-btn" aria-label="Models">Models</button>
+    <button type="button" id="btn-profiles" class="glass-models-btn" aria-label="Profiles">Profiles</button>
     <button type="button" id="btn-new-release" class="btn-new-release" hidden aria-label="New Release Available" title="New Release Available">
       New Release Available
     </button>
@@ -89,6 +90,25 @@
         <button type="button" id="btn-models-test" class="models-btn-close models-btn-test">Test latency</button>
         <button type="button" id="btn-models-close" class="models-btn-close">Close</button>
         <button type="button" id="btn-models-update" class="models-btn-update">Update</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profiles popup -->
+  <div id="profiles-overlay" class="glass-overlay profiles-overlay" hidden aria-modal="true" role="dialog" aria-labelledby="profiles-modal-title">
+    <div class="profiles-modal">
+      <div class="profiles-modal-header">
+        <h2 class="profiles-modal-title" id="profiles-modal-title">Profiles</h2>
+        <p class="profiles-modal-subtitle">Saved user profiles.</p>
+      </div>
+      <div class="profiles-modal-body">
+        <div id="profiles-list" class="profiles-list" role="list"></div>
+        <div id="profiles-detail" class="profiles-detail">
+          <p class="profiles-empty">Select a profile.</p>
+        </div>
+      </div>
+      <div class="profiles-modal-footer">
+        <button type="button" id="btn-profiles-close" class="models-btn-close">Close</button>
       </div>
     </div>
   </div>
