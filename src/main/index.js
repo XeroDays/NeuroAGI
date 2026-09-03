@@ -1,7 +1,5 @@
-const { loadEnv } = require("./services/env-file-service");
-loadEnv();
-
 const { app, Menu, BrowserWindow } = require("electron");
+const { loadCredentials } = require("./services/credentials-store");
 const { createSplashWindow } = require("./windows/splash-window");
 const { registerSplashHandlers } = require("./ipc/register-splash-handlers");
 const channels = require("../shared/ipc/channels");
@@ -107,6 +105,7 @@ async function bootstrap() {
 
 app.whenReady().then(() => {
   Menu.setApplicationMenu(null);
+  loadCredentials();
   bootstrap();
 
   app.on("activate", () => {

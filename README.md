@@ -42,9 +42,7 @@ Use **Back** on any screen to return home. Starting a new run from home resets u
 
 1. Clone the repository and open the project folder (quote the path if it contains spaces).
 2. Run `npm install`, then `npm start`.
-3. Create a `.env` file in the project root with your OpenRouter API key (the file is git-ignored). Open the **Models** popup on the home screen to enable models and star a master before running questionnaire steps.
-
-   For an **installed Windows build**, place `.env` in the same folder as `NeuroAGI.exe` (typically `C:\Users\<you>\AppData\Local\Programs\NeuroAGI\`) with the same `OPENROUTER_API_KEY=sk-or-...` line.
+3. Open **Settings → Credentials** and save your OpenRouter and Tavily keys. They are stored encrypted under Documents/NeuroAGI. Open the **Models** popup on the home screen to enable models before starting a run.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines.
 

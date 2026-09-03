@@ -11,13 +11,7 @@ This guide explains how to run the OpenRouter latency benchmark for every model 
    npm install
    ```
 
-3. **OpenRouter API key** — create a `.env` file in the project root:
-
-   ```env
-   OPENROUTER_API_KEY=sk-or-...
-   ```
-
-   The script reads this key automatically. Without it, the benchmark exits with an error.
+3. **OpenRouter API key** — save it in the app under **Settings → Credentials**, or set `OPENROUTER_API_KEY` in the shell before running this script. The CLI cannot read the encrypted Documents file. Without a key, the benchmark exits with an error.
 
 ## Run the benchmark
 
@@ -101,7 +95,7 @@ The full run can take several minutes. Some models respond in under 2 seconds; o
 
 | Problem | Solution |
 |---------|----------|
-| `OPENROUTER_API_KEY is not set` | Add the key to `.env` in the project root. |
+| `OPENROUTER_API_KEY is not set` | Save the key in Settings → Credentials, or set `OPENROUTER_API_KEY` in the shell. |
 | `Catalog not found` | Run the command from the project root, not from `scripts/`. |
 | HTTP 404 / 451 errors for specific models | Those endpoints may be unavailable or region-restricted. Remove them from the catalog or skip them when reviewing results. |
 | Very long run times | Normal for large catalogs or slow models. Watch the live logs to track progress. |
@@ -112,5 +106,5 @@ The full run can take several minutes. Some models respond in under 2 seconds; o
 |------|---------|
 | `scripts/benchmark-latency.js` | Benchmark script |
 | `models-catalog.json` | List of models to test |
-| `.env` | OpenRouter API key (not committed to git) |
+| Documents/NeuroAGI/credentials.json | Encrypted app keys (in-app Test latency). CLI uses a shell env var |
 | `benchmark-results-*.json` | Generated run reports |

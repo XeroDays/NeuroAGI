@@ -80,7 +80,7 @@ function buildRequestBody(messages, model, options = {}) {
 async function chatCompletionWithTools(messages, model, options = {}) {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
-    throw new Error('OPENROUTER_API_KEY is not set. Add it to the .env file in the project root.');
+    throw new Error('OPENROUTER_API_KEY is not set. Add it in Settings → Credentials.');
   }
   if (!model) {
     throw new Error('chatCompletionWithTools requires a model id');

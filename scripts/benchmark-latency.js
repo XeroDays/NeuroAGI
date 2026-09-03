@@ -1,6 +1,5 @@
 const fs = require("fs");
 const path = require("path");
-const dotenv = require("dotenv");
 const {
   BENCHMARK_PROMPT,
   LLM_OPTIONS,
@@ -11,8 +10,6 @@ const {
 
 const PROJECT_ROOT = path.join(__dirname, "..");
 const CATALOG_PATH = path.join(PROJECT_ROOT, "models-catalog.json");
-
-dotenv.config({ path: path.join(PROJECT_ROOT, ".env") });
 
 async function benchmarkModel(modelEntry, index, total) {
   const { name: model, type } = modelEntry;
@@ -77,7 +74,7 @@ async function main() {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
     console.error(
-      "OPENROUTER_API_KEY is not set. Add it to the .env file in the project root."
+      "OPENROUTER_API_KEY is not set. Save it in Settings → Credentials, or set the env var in this shell."
     );
     process.exit(1);
   }

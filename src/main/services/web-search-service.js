@@ -6,7 +6,7 @@ const TAVILY_EXTRACT_URL = 'https://api.tavily.com/extract';
 function getApiKey() {
   const apiKey = process.env.TAVILY_API_KEY;
   if (!apiKey) {
-    throw new Error('TAVILY_API_KEY is not set. Add it to the .env file in the project root.');
+    throw new Error('TAVILY_API_KEY is not set. Add it in Settings → Credentials.');
   }
   return apiKey;
 }

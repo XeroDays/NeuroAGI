@@ -30,7 +30,7 @@
 | Entry | `src/main/index.js` |
 | Start | `npm start` → `scripts/start-electron.js` |
 | API | OpenRouter (chat completions) + Tavily (search / extract) |
-| Env | `.env` file (git-ignored). Loaded at startup via [`env-file-service.js`](src/main/services/env-file-service.js) (`loadEnv()` from `src/main/index.js`). Keys: `OPENROUTER_API_KEY` (OpenRouter), `TAVILY_API_KEY` (Tavily web search). Settings → Credentials can create or update this file |
+| Env | Encrypted `{Documents}/NeuroAGI/credentials.json` via [`credentials-store.js`](src/main/services/credentials-store.js) (`loadCredentials()` after `app.whenReady()`). Keys: `OPENROUTER_API_KEY` (OpenRouter), `TAVILY_API_KEY` (Tavily web search). Applied to `process.env` at runtime. Settings → Credentials creates or updates this file. First launch migrates a leftover `.env` then deletes it |
 | Dependencies | `electron` (devDep), `dotenv` (dep), `jsonrepair` (dep — leftover, unused after the collector delete), `marked` (dep — vendored into renderer at `src/renderer/scripts/vendor/marked.esm.js` so the renderer CSP `default-src 'self'` keeps holding; Advance imports the local copy) |
 
 ---
@@ -40,7 +40,7 @@
 ```
 src/
 ├── main/
-│   ├── index.js              # Bootstrap: loadEnv(), splash first, hidden main until Softasium grant, then maximize + show
+│   ├── index.js              # Bootstrap: loadCredentials() after whenReady, splash first, hidden main until Softasium grant, then maximize + show
 │   ├── helpers/
 │   │   ├── machine-id.js     # Windows MachineGuid (uppercase); in-memory UUID fallback
 │   │   └── device-info.js    # Softasium DeviceInfo string (hostname, CPU, OS, boot, screens)
@@ -58,7 +58,7 @@ src/
 │   │   ├── advance-system-prompt.js # ADVANCE_SYSTEM_PROMPT — clinical assistant + diagnostic vs informational + list-then-fuzzy-match profile rules + manage_user_issues
 │   │   ├── model-config-service.js # Catalog + persisted { activeModels, masterModel, latencies, throughputs, probeErrors, removedModels, customModels } under Electron userData. Advance uses getActiveModelIds(); Delete hides catalog names via removedModels; Add persists customModels
 │   │   ├── web-search-service.js   # Tavily search() + extract(); type:"web" log items on every success/error
-│   │   ├── env-file-service.js     # resolve/read/write `.env`; loadEnv() at startup; GET/UPDATE credentials. Create: project root unpackaged, next to exe when packaged
+│   │   ├── credentials-store.js    # Encrypted Documents/NeuroAGI/credentials.json (safeStorage). loadCredentials / read / write. Migrates leftover `.env` then deletes it
 │   │   ├── credential-test-service.js # Probe OpenRouter GET /api/v1/key and Tavily POST /search (basic ping). No logs, no usage, never echoes the key
 │   │   ├── latency-benchmark-service.js # Shared OpenRouter latency probe (no Electron). Used by Models Test latency and scripts/benchmark-latency.js
 │   │   ├── license-cache-store.js  # Encrypted Softasium Register snapshot at {userData}/register-response.enc via safeStorage
@@ -84,7 +84,7 @@ src/
 │   │   ├── splash.js         # Splash status + version label + Close/quit + Softasium footer link
 │   │   ├── release-update-panel.js # Home New Release chip + overlay. Optional dismiss vs ForceUpdate lock. Download/install via IPC; errors as overlay text (no toast)
 │   │   ├── profiles-panel.js # Home Profiles popup: list left, detail right (name/age/gender/profile + issue history). GET_PROFILES / DELETE_PROFILE
-│   │   ├── app.js            # Home: enhanceGlassSelect() wraps reasoning/gender/age native <select>s. Gear opens Settings (Credentials tab, Save writes `.env`, Test key probes the current input). Models Add pastes an OpenRouter id onto the visible Free/Paid tab. Test latency spinner + Error chip; hover Delete. initReleaseUpdate() + initProfilesPanel() on load. handleStartDiagnostics() — empty issue is a no-op; name required; enabled-model guard; ForceUpdate blocks navigation; stashes reasoning; resetUsageTotals(); navigates to Advance with issue/name/gender/age (no profileId; does not record profiles)
+│   │   ├── app.js            # Home: enhanceGlassSelect() wraps reasoning/gender/age native <select>s. Gear opens Settings (Credentials tab, Save writes encrypted Documents credentials, Test key probes the current input). Models Add pastes an OpenRouter id onto the visible Free/Paid tab. Test latency spinner + Error chip; hover Delete. initReleaseUpdate() + initProfilesPanel() on load. handleStartDiagnostics() — empty issue is a no-op; name required; enabled-model guard; ForceUpdate blocks navigation; stashes reasoning; resetUsageTotals(); navigates to Advance with issue/name/gender/age (no profileId; does not record profiles)
 │   │   ├── advance.js        # Advance chat: one thread per enabled model. First URL `issue` fans out to all; follow-ups go to the selected chip. Patient line is name/age/gender + Reported local datetime (no ProfileId). getReasoningLevel() from sessionStorage['neuroagi:advanceReasoningLevel'] (default very_high)
 │   │   ├── advance-questions.js # ask_user form renderer (text / single_select / multi_select / slider / range)
 │   │   ├── usage-bubbles.js  # Global top-right tokens + cost pills (Home + Advance)
@@ -114,7 +114,7 @@ src/
 ### App startup
 
 1. `npm start` → `scripts/start-electron.js` spawns Electron
-2. `src/main/index.js` runs `loadEnv()`, hides the menu, then `bootstrap()`
+2. `src/main/index.js` waits for `app.whenReady()`, hides the menu, runs `loadCredentials()`, then `bootstrap()`
 3. Splash handlers register first (`GET_APP_INFO`, `QUIT_APP`, `OPEN_EXTERNAL_URL`). [`splash-window.js`](src/main/windows/splash-window.js) creates a frameless centered window (`show: false` until loaded): ~45% of the primary work-area width, height 387, chrome `#24101c`. Splash shows [`NeuroLogo.png`](src/renderer/assets/icons/NeuroLogo.png), spinner, status `Starting…`, `Version v{semver} (Build {BUILD_VERSION})`, Close quits, footer `www.softasium.com`. Window / taskbar icon is the same file; packaged exe uses [`build/icon.ico`](build/icon.ico)
 4. Heavy modules load lazily: IPC (`register.js`, guarded against double-register), `modelConfigService.init()`, hidden main window. [`main-window.js`](src/main/windows/main-window.js) must **not** auto-show on `ready-to-show`. Restore size stays 800×600
 5. Splash status becomes `Checking for updates…` while Softasium Register runs in parallel with main HTML load
@@ -184,9 +184,9 @@ Same Register API and PC identity as CryptoGenesis. Softasium must have an app w
 ### Settings (gear icon)
 
 1. Home `#btn-settings` (fixed top-left) opens `#settings-overlay`
-2. Left tabs / right pane. **Credentials** is the only tab. On open, `getCredentials()` fills the OpenRouter and Tavily password fields from `.env` (empty if missing)
-3. **Save** invokes `updateCredentials`; main creates or updates `.env` and reloads `process.env` (`dotenv.config` override), then closes the popup. Close / Escape / backdrop discard without saving
-4. **Test key** (per field) probes the **current input** via `testOpenRouterKey` / `testTavilyKey` — does not write `.env`. Empty input → Invalid with no network. Status: Testing… / Valid / Invalid
+2. Left tabs / right pane. **Credentials** is the only tab. On open, `getCredentials()` fills the OpenRouter and Tavily password fields from the encrypted Documents store (empty if missing)
+3. **Save** invokes `updateCredentials`; main encrypts and writes `{Documents}/NeuroAGI/credentials.json` and updates `process.env`, then closes the popup. Close / Escape / backdrop discard without saving. If `safeStorage` is unavailable, Save fails and does not write plaintext
+4. **Test key** (per field) probes the **current input** via `testOpenRouterKey` / `testTavilyKey` — does not write the store. Empty input → Invalid with no network. Status: Testing… / Valid / Invalid
 5. Hint links under each field open in the system browser via `openExternalUrl` (allowlisted: `https://openrouter.ai/keys`, `https://app.tavily.com/home`)
 6. **Open DevTools** invokes IPC `OPEN_DEV_TOOLS`
 
@@ -242,7 +242,7 @@ Records every Advance OpenRouter call (`advance-llm.js`, type `"ai"`) and every 
 4. Move filled `[Unreleased]` notes — especially **Added** and **Fixed** — into `## [X.Y.Z] - YYYY-MM-DD` in [`CHANGELOG.md`](CHANGELOG.md); restore empty Unreleased stubs; update the compare links at the bottom
 5. If the major line changed, update the supported-versions table in [`SECURITY.md`](SECURITY.md)
 6. If this build is tracked in Softasium, bump `BUILD_VERSION` in [`software-licensing-service.js`](src/main/services/software-licensing-service.js) (integer, independent of semver)
-7. Stop. The user commits, tags, and creates the GitHub Release (including [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml) if they want the Windows installer)
+7. Stop. The user commits and **pushes to `main`**. [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml) compares `package.json` `"version"` to the latest GitHub Release tag (leading `v` ignored). Match → skip. Mismatch or no releases → `npm run build:win` and publish `NeuroAGI v{version}` with `dist/*.exe`. The agent still does not commit, tag, or publish
 
 ---
 
@@ -310,7 +310,7 @@ Full-viewport overlay (z-index 300). The `.logs-modal` card uses `--logs-card` +
 
 - `contextIsolation: true`, `nodeIntegration: false`
 - CSP: `default-src 'self'; script-src 'self'; style-src 'self'`
-- API keys are not hardcoded in renderer or preload source. File I/O stays in main (`env-file-service.js`). Settings Credentials loads keys over IPC into password fields
+- API keys are not hardcoded in renderer or preload source. File I/O stays in main (`credentials-store.js`). Keys are `safeStorage`-encrypted in `{Documents}/NeuroAGI/credentials.json`. Settings Credentials loads keys over IPC into password fields
 - `OPEN_EXTERNAL_URL` allowlists `https://www.softasium.com`, `https://openrouter.ai/keys`, and `https://app.tavily.com/home` (registered early in splash handlers)
 - Softasium Register bearer is main-process only and must never be logged
 - License cache is `safeStorage`-encrypted at `{userData}/register-response.enc`

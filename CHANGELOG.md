@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - User profiles in Documents/NeuroAGI/profiles.json, Home Profiles popup, and Advance tools to list / load / create-or-update; first turn lists users, fuzzy-matches, checks the profile before ask_user, and writes answers back
 - Dated issue history on each user profile (`issues` with text + datetime), written only by Advance `manage_user_issues` and shown in the Profiles popup
 - Home Profiles popup can delete a patient profile (confirm, then remove from profiles.json)
+- Push to `main` builds the Windows installer and creates a GitHub Release when `package.json` version differs from the latest release
 
 ### Changed
 
@@ -22,6 +23,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Issue rows are only written via `manage_user_issues` (list / create / update / delete); profile upsert no longer appends them; the model stores a short cleaned summary, not the raw query
 - Home reasoning level defaults to Very High
 - Advance chat thread scrollbar uses the Sunset Bloom accent (coral pill, warmer orange on hover)
+- API keys move to encrypted `{Documents}/NeuroAGI/credentials.json`; existing `.env` keys are migrated then the `.env` file is deleted
 
 ### Fixed
 
