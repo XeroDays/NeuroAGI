@@ -420,6 +420,15 @@ body.adv-shell::-webkit-scrollbar-thumb:hover,
   white-space: nowrap;
 }
 
+.adv-status-timer {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.55);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .adv-status.is-error {
   border-color: rgba(255, 160, 160, 0.45);
   background: rgba(140, 40, 50, 0.22);

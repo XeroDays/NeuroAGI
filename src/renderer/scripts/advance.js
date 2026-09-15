@@ -137,6 +137,17 @@ document.addEventListener('DOMContentLoaded', () => {
     syncComposer();
   }
 
+  function formatElapsed(startMs) {
+    return `(${Math.round((Date.now() - startMs) / 1000)}s)`;
+  }
+
+  function clearStepTimer(session, id) {
+    const entry = session.stepTimers.get(id);
+    if (!entry) return;
+    clearInterval(entry.intervalId);
+    session.stepTimers.delete(id);
+  }
+
   function truncateDetail(detail) {
     const text = typeof detail === 'string' ? detail.trim() : '';
     if (!text) return '';
@@ -195,6 +206,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const tool = typeof payload.tool === 'string' ? payload.tool : '';
     if (tool === 'model' && (state === 'done' || state === 'error')) {
       if (block) {
+        clearStepTimer(session, id);
         block.remove();
         session.statusBlocks.delete(id);
       }
@@ -210,7 +222,9 @@ document.addEventListener('DOMContentLoaded', () => {
       icon.className = 'adv-status-icon';
       const text = document.createElement('span');
       text.className = 'adv-status-text';
-      block.append(icon, text);
+      const timer = document.createElement('span');
+      timer.className = 'adv-status-timer';
+      block.append(icon, text, timer);
       threadEl.appendChild(block);
       session.statusBlocks.set(id, block);
     }
@@ -221,6 +235,31 @@ document.addEventListener('DOMContentLoaded', () => {
     renderStatusIcon(block.querySelector('.adv-status-icon'), state);
     const textEl = block.querySelector('.adv-status-text');
     if (textEl) textEl.textContent = statusCaption(payload.label, payload.detail);
+
+    const timerEl = block.querySelector('.adv-status-timer');
+
+    if (state === 'running') {
+      // Mark the start of the first tool step in this run
+      if (session.toolsRunStart === null) session.toolsRunStart = Date.now();
+
+      // Start a fresh timer for this step (clear any stale one)
+      clearStepTimer(session, id);
+      const startMs = Date.now();
+      if (timerEl) timerEl.textContent = formatElapsed(startMs);
+      const intervalId = setInterval(() => {
+        if (timerEl) timerEl.textContent = formatElapsed(startMs);
+      }, 1000);
+      session.stepTimers.set(id, { startMs, intervalId });
+    } else {
+      // done / error — freeze the elapsed time
+      const entry = session.stepTimers.get(id);
+      const startMs = entry ? entry.startMs : null;
+      clearStepTimer(session, id);
+      if (timerEl && startMs !== null) {
+        timerEl.textContent = formatElapsed(startMs);
+      }
+    }
+
     threadEl.scrollTop = threadEl.scrollHeight;
   }
 
@@ -232,6 +271,14 @@ document.addEventListener('DOMContentLoaded', () => {
         hideStatusBlock(session, id, block);
         continue;
       }
+
+      // Freeze the elapsed timer before marking error
+      const entry = session.stepTimers.get(id);
+      const startMs = entry ? entry.startMs : null;
+      clearStepTimer(session, id);
+      const timerEl = block.querySelector('.adv-status-timer');
+      if (timerEl && startMs !== null) timerEl.textContent = formatElapsed(startMs);
+
       block.dataset.state = 'error';
       block.classList.add('is-error');
       renderStatusIcon(block.querySelector('.adv-status-icon'), 'error');
@@ -242,6 +289,7 @@ document.addEventListener('DOMContentLoaded', () => {
           : 'Failed';
       }
     }
+    session.toolsRunStart = null;
   }
 
   function completedLabel(current) {
@@ -255,6 +303,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function hideStatusBlock(session, id, block) {
+    clearStepTimer(session, id);
     block.remove();
     session.statusBlocks.delete(id);
   }
@@ -291,6 +340,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function completeRunningStatusBlocks(session) {
+    let completedCount = 0;
     for (const [id, block] of session.statusBlocks.entries()) {
       if (block.dataset.state !== 'running') continue;
       const text = block.querySelector('.adv-status-text')?.textContent || '';
@@ -298,12 +348,45 @@ document.addEventListener('DOMContentLoaded', () => {
         hideStatusBlock(session, id, block);
         continue;
       }
+
+      // Freeze the elapsed timer before marking done
+      const entry = session.stepTimers.get(id);
+      const startMs = entry ? entry.startMs : null;
+      clearStepTimer(session, id);
+      const timerEl = block.querySelector('.adv-status-timer');
+      if (timerEl && startMs !== null) timerEl.textContent = formatElapsed(startMs);
+
       block.dataset.state = 'done';
       block.classList.remove('is-error');
       renderStatusIcon(block.querySelector('.adv-status-icon'), 'done');
       const textEl = block.querySelector('.adv-status-text');
       if (textEl) textEl.textContent = completedLabel(textEl.textContent);
+      completedCount++;
     }
+
+    // Append total time summary if any steps actually completed
+    const threadEl = session?.threadEl;
+    if (completedCount > 0 && session.toolsRunStart !== null && threadEl) {
+      const totalSec = Math.round((Date.now() - session.toolsRunStart) / 1000);
+      const summary = document.createElement('div');
+      summary.className = 'adv-status adv-status--summary';
+      summary.dataset.state = 'done';
+      summary.dataset.tool = 'summary';
+
+      const icon = document.createElement('div');
+      icon.className = 'adv-status-icon';
+      renderStatusIcon(icon, 'done');
+
+      const text = document.createElement('span');
+      text.className = 'adv-status-text';
+      text.textContent = `Total: ${totalSec}s`;
+
+      summary.append(icon, text);
+      threadEl.appendChild(summary);
+      threadEl.scrollTop = threadEl.scrollHeight;
+    }
+
+    session.toolsRunStart = null;
   }
 
   if (typeof window.electronAPI?.onAdvanceProgress === 'function') {
@@ -343,6 +426,12 @@ document.addEventListener('DOMContentLoaded', () => {
       appendBubble(session, 'assistant', 'Advance chat is not available.', true);
       return;
     }
+
+    // Clear any lingering step timers from a cancelled prior run
+    for (const id of session.stepTimers.keys()) {
+      clearStepTimer(session, id);
+    }
+    session.toolsRunStart = null;
 
     setBusy(session, true);
     try {
@@ -483,6 +572,8 @@ document.addEventListener('DOMContentLoaded', () => {
       threadEl,
       chipEl,
       statusBlocks: new Map(),
+      stepTimers: new Map(),
+      toolsRunStart: null,
     };
     sessions.set(model, session);
     return session;
