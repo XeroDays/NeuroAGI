@@ -212,6 +212,7 @@ body.adv-shell::-webkit-scrollbar-thumb:hover,
   align-self: stretch;
   width: 100%;
   max-width: none;
+  flex-shrink: 0;
   color: rgba(255, 255, 255, 0.96);
   background: var(--glass-bg-strong);
   border: 1px solid var(--glass-border);
@@ -228,7 +229,6 @@ body.adv-shell::-webkit-scrollbar-thumb:hover,
 }
 
 .adv-prose {
-  overflow-x: auto;
   font-size: var(--fs-body);
   line-height: var(--lh-body);
   color: var(--text-primary);
