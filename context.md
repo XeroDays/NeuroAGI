@@ -234,7 +234,7 @@ Records every Advance OpenRouter call (`advance-llm.js`, type `"ai"`) and every 
 
 ### Preparing a release (user publishes)
 
-**“Create a release” / “new release” means local version prep only** — not a git commit, tag, push, or GitHub Release. Current shipped version is `1.0.5` in [`package.json`](package.json).
+**“Create a release” / “new release” means local version prep only** — not a git commit, tag, push, or GitHub Release. Current shipped version is `1.0.6` in [`package.json`](package.json).
 
 1. Do **not** commit, push, tag, or publish
 2. Choose the next SemVer from [`package.json`](package.json) (breaking product change → major)
@@ -278,7 +278,7 @@ All screens share [`tokens.css`](src/renderer/styles/tokens.css) (glass + type) 
 
 ### Advance screen (`advance.css`)
 
-Themed chat UI (same `shell.css` wash as Home): `--chrome` Back, model **chips** under the header (last path segment of catalog `name`; full id on `title`), one `.adv-thread` panel per enabled model (click a chip to switch). User/assistant bubbles (assistant Markdown via vendored `marked`), status step pills for tool work, optional `ask_user` form cards in that model's thread, bottom composer matching Home. First Home query fans out to every enabled model; later Send goes to the selected chip. Send / sliders use `--accent`. Shell is viewport-locked (`html`/`body.adv-shell` `overflow: hidden`) so only the thread scrolls. Right-side scrollbar (thread + document fallback) is a thin rounded pill (`--accent` thumb, `--grad-2` hover, chrome-tinted track). **No Settings chip, overlay, or reasoning dropdown** — reasoning comes from Home via sessionStorage. Palette is Sunset Bloom from [`themes.css`](src/renderer/styles/themes.css).
+Themed chat UI (same `shell.css` wash as Home): `--chrome` Back, model **chips** under the header (last path segment of catalog `name`; full id on `title`), one `.adv-thread` panel per enabled model (click a chip to switch). User/assistant bubbles (assistant Markdown via vendored `marked`), status step pills for tool work (live elapsed timer per pill; `Total: Ns` summary when the run finishes), optional `ask_user` form cards in that model's thread, bottom composer matching Home. First Home query fans out to every enabled model; later Send goes to the selected chip. Send / sliders use `--accent`. Shell is viewport-locked (`html`/`body.adv-shell` `overflow: hidden`) so only the thread scrolls. Right-side scrollbar (thread + document fallback) is a thin rounded pill (`--accent` thumb, `--grad-2` hover, chrome-tinted track). **No Settings chip, overlay, or reasoning dropdown** — reasoning comes from Home via sessionStorage. Palette is Sunset Bloom from [`themes.css`](src/renderer/styles/themes.css).
 
 ### Global UI — Usage bubbles (`usage-bubbles.css`)
 

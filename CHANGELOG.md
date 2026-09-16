@@ -15,6 +15,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Security
 
+## [1.0.6] - 2026-09-16
+
+Advance tool-step elapsed timers and thread layout fixes.
+
+### Added
+
+- Advance tool-step status pills show a live elapsed timer, plus a Total: Ns summary when the run finishes
+
+### Changed
+
+### Fixed
+
+- Advance status pills no longer shrink in the thread; assistant prose no longer gets a nested horizontal scrollbar
+
+### Security
+
 ## [1.0.5] - 2026-09-03
 
 Patient profiles, encrypted credentials, and GitHub Release CI.
@@ -146,7 +162,8 @@ First stable release of the NeuroAGI multi-screen diagnostic flow.
 - Logo display and asset path corrections
 - Master-merge fallback when master model JSON parse fails or returns empty results
 
-[Unreleased]: https://github.com/XeroDays/Open-Health/compare/v1.0.5...HEAD
+[Unreleased]: https://github.com/XeroDays/Open-Health/compare/v1.0.6...HEAD
+[1.0.6]: https://github.com/XeroDays/Open-Health/compare/v1.0.5...v1.0.6
 [1.0.5]: https://github.com/XeroDays/Open-Health/compare/v1.0.4...v1.0.5
 [1.0.4]: https://github.com/XeroDays/Open-Health/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/XeroDays/Open-Health/compare/v1.0.2...v1.0.3
