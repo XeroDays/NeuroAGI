@@ -133,7 +133,7 @@ Same Register API and PC identity as CryptoGenesis. Softasium must have an app w
 | Register URL | `https://api.softasium.com/api/SoftwareLicencing/Register` |
 | Bearer | same as CryptoGenesis (never log) |
 | `SOFTWARE_APP_ID` | `NeuroAGI` |
-| `BUILD_VERSION` | integer in [`software-licensing-service.js`](src/main/services/software-licensing-service.js), starts at `1`, independent of `package.json` semver. Bump when shipping a Softasium-tracked build |
+| `BUILD_VERSION` | integer in [`software-licensing-service.js`](src/main/services/software-licensing-service.js), currently `7`, independent of `package.json` semver. Bump when shipping a Softasium-tracked build |
 | `VERSION_NAME` | `package.json` version |
 | Fallback installer | `NeuroAGI-Update.exe` |
 
@@ -236,7 +236,7 @@ Records every Advance OpenRouter call (`advance-llm.js`, type `"ai"`) and every 
 
 ### Preparing a release (user publishes)
 
-**“Create a release” / “new release” means local version prep only** — not a git commit, tag, push, or GitHub Release. Current shipped version is `1.0.6` in [`package.json`](package.json).
+**“Create a release” / “new release” means local version prep only** — not a git commit, tag, push, or GitHub Release. Current shipped version is `1.0.7` in [`package.json`](package.json).
 
 1. Do **not** commit, push, tag, or publish
 2. Choose the next SemVer from [`package.json`](package.json) (breaking product change → major)

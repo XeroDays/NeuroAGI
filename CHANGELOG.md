@@ -9,6 +9,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Security
+
+## [1.0.7] - 2026-09-24
+
+Streamed Advance reports, saved sessions, and encrypted profile storage.
+
+### Added
+
 - Streamed Advance replies, thinking pill, report viewer, compare/consensus, saved sessions, and profile export/import
 - Home example prompts, recent issues, onboarding checklist, and animated overlays with a themed confirm dialog
 
@@ -17,12 +29,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Home no longer shows example-issue or recent-issue chips under the form
 - Advance tool rounds cap is 12. Home issue text grows in a textarea. Models save as you toggle them
 - Splash hands off with a fade instead of a fixed one-second wait
+- The Profiles popup is wider so issue history is easier to read
 
 ### Fixed
 
 - Advance no longer leaves a blank bubble between status pills when a model streams only whitespace
 - A collapsed model reply is replaced with a short retry message instead of the garbled paragraph
 - Compare opens as a centered dialog. A last turn that only wrote hidden reasoning is asked once more for the visible report
+- A mid-chat issue save no longer accepts placeholder ids like NEW or Saved, and a failed tool pill shows the error
 - Settings, Models, and Profiles show save and load errors in the dialog instead of only the console
 - Advance report text uses the theme text tokens
 
@@ -177,7 +191,8 @@ First stable release of the NeuroAGI multi-screen diagnostic flow.
 - Logo display and asset path corrections
 - Master-merge fallback when master model JSON parse fails or returns empty results
 
-[Unreleased]: https://github.com/XeroDays/Open-Health/compare/v1.0.6...HEAD
+[Unreleased]: https://github.com/XeroDays/Open-Health/compare/v1.0.7...HEAD
+[1.0.7]: https://github.com/XeroDays/Open-Health/compare/v1.0.6...v1.0.7
 [1.0.6]: https://github.com/XeroDays/Open-Health/compare/v1.0.5...v1.0.6
 [1.0.5]: https://github.com/XeroDays/Open-Health/compare/v1.0.4...v1.0.5
 [1.0.4]: https://github.com/XeroDays/Open-Health/compare/v1.0.3...v1.0.4

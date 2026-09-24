@@ -156,14 +156,19 @@ function toolLabel(name, state, args) {
   return state === 'running' ? `${name}…` : name;
 }
 
-function toolResultHasError(content) {
-  if (typeof content !== 'string' || !content.trim()) return false;
+function toolErrorText(content) {
+  if (typeof content !== 'string' || !content.trim()) return '';
   try {
     const parsed = JSON.parse(content);
-    return Boolean(parsed && typeof parsed === 'object' && parsed.error);
+    const error = parsed && typeof parsed.error === 'string' ? parsed.error.trim() : '';
+    return error;
   } catch {
-    return false;
+    return '';
   }
+}
+
+function toolResultHasError(content) {
+  return Boolean(toolErrorText(content));
 }
 
 function sanitizeAssistantMessage(raw) {
@@ -400,8 +405,8 @@ async function askModelChat(messages, hooks = {}, resume = null) {
         id: stepId,
         tool: name || 'tool',
         state: failed ? 'error' : 'done',
-        label: failed ? 'Failed' : toolLabel(name, 'done', args),
-        detail,
+        label: failed ? (toolErrorText(toolResult) || 'Failed') : toolLabel(name, 'done', args),
+        ...(failed ? {} : { detail }),
       });
 
       const resultMsg = {

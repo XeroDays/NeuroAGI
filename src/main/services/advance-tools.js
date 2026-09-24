@@ -391,9 +391,32 @@ function executeGetProfileById(payload) {
   return JSON.stringify(result);
 }
 
+const PLACEHOLDER_TOKENS = new Set(['new', 'saved', 'create', 'update', 'none', 'add']);
+const PROFILE_ID_ERROR = 'Profile not found. Reuse the id from the earlier profile tool result.';
+
+function isPlaceholderToken(value) {
+  return PLACEHOLDER_TOKENS.has(String(value || '').trim().toLowerCase());
+}
+
+function rejectBadUserId(userid) {
+  const key = String(userid || '').trim();
+  if (!key) return null;
+  if (isPlaceholderToken(key) || !profilesService.getById(key).ok) return PROFILE_ID_ERROR;
+  return null;
+}
+
 function executeCreateUpdateUserProfile(payload) {
+  const userid = payload.userid ?? payload.userId ?? payload.id;
+  const key = String(userid || '').trim();
+  if (!key && isPlaceholderToken(payload.name)) {
+    return JSON.stringify({ ok: false, error: PROFILE_ID_ERROR });
+  }
+  if (key) {
+    const rejected = rejectBadUserId(key);
+    if (rejected) return JSON.stringify({ ok: false, error: rejected });
+  }
   const result = profilesService.upsert({
-    userid: payload.userid ?? payload.userId ?? payload.id,
+    userid,
     content: payload.content,
     name: payload.name,
     age: payload.age,
@@ -404,7 +427,10 @@ function executeCreateUpdateUserProfile(payload) {
 
 function executeManageUserIssues(payload) {
   const userid = payload.userid ?? payload.userId ?? payload.id;
-  const action = String(payload.action || '').trim().toLowerCase();
+  let action = String(payload.action || '').trim().toLowerCase();
+  if (action === 'new' || action === 'add') action = 'create';
+  const rejected = rejectBadUserId(userid);
+  if (rejected) return JSON.stringify({ ok: false, error: rejected });
   const text = payload.text;
   const issueId = payload.issueid ?? payload.issueId ?? payload.issue_id;
   if (action === 'list') {

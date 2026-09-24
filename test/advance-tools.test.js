@@ -170,6 +170,46 @@ test('profile tools round-trip through the profiles service', async () => {
   }
 });
 
+test('placeholder profile ids are rejected and new means create', async () => {
+  const { tools, documents, userData } = loadTools();
+  try {
+    const invented = JSON.parse(await tools.executeTool('manage_user_issues', {
+      userid: 'NEW',
+      action: 'new',
+      text: 'Morning insomnia.',
+    }));
+    assert.match(invented.error, /Profile not found/);
+    const listed = JSON.parse(await tools.executeTool('get_available_users', {}));
+    assert.deepEqual(listed.users, []);
+
+    const named = JSON.parse(await tools.executeTool('create_update_user_profile', {
+      content: 'Notes.',
+      name: 'Saved',
+      age: 28,
+      gender: 'male',
+    }));
+    assert.match(named.error, /Profile not found/);
+    assert.deepEqual(JSON.parse(await tools.executeTool('get_available_users', {})).users, []);
+
+    const created = JSON.parse(await tools.executeTool('create_update_user_profile', {
+      content: 'Prilosec each morning.',
+      name: 'Sayed',
+      age: 29,
+      gender: 'male',
+    }));
+    const added = JSON.parse(await tools.executeTool('manage_user_issues', {
+      userid: created.profile.id,
+      action: 'add',
+      text: 'Wakes at 3am.',
+    }));
+    assert.equal(added.ok, true);
+    assert.equal(added.issues.length, 1);
+  } finally {
+    removeDir(documents);
+    removeDir(userData);
+  }
+});
+
 test('web tools validate their arguments before calling Tavily', async () => {
   const { tools, documents, userData } = loadTools();
   try {

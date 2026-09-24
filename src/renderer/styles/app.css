@@ -1461,7 +1461,7 @@ body.app-shell {
 
 /* ── Profiles popup ───────────────────────────────────────────────────────── */
 .profiles-modal {
-  width: min(92vw, 640px);
+  width: min(92vw, 960px);
   max-height: 78vh;
   display: flex;
   flex-direction: column;
