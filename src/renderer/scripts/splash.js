@@ -33,19 +33,55 @@
     });
   }
 
+  // Restart the crossfade even when the same class is already present.
+  function replayStatusAnimation() {
+    if (!statusText) return;
+    statusText.classList.remove("is-changing");
+    void statusText.offsetWidth;
+    statusText.classList.add("is-changing");
+  }
+
   if (typeof window.electronAPI.onSplashStatus === "function") {
     window.electronAPI.onSplashStatus((payload) => {
       const text = typeof payload === "string" ? payload : payload && payload.text;
       const loading = typeof payload === "string" ? true : payload?.loading !== false;
       const denied = typeof payload === "object" && payload?.denied === true;
 
-      if (statusText && typeof text === "string" && text) {
+      if (statusText && typeof text === "string" && text && text !== statusText.textContent) {
         statusText.textContent = text;
         statusText.classList.toggle("splash-status-text--denied", denied);
+        // The denied state owns the animation slot with its own shake.
+        if (!denied) replayStatusAnimation();
       }
       if (spinner) {
         spinner.classList.toggle("is-hidden", !loading);
       }
+    });
+  }
+
+  if (typeof window.electronAPI.onSplashFadeOut === "function") {
+    window.electronAPI.onSplashFadeOut(() => {
+      const panel = document.querySelector(".splash-panel");
+      const report = () => window.electronAPI.notifySplashFaded?.();
+
+      if (!panel) {
+        report();
+        return;
+      }
+
+      // transitionend may never fire under reduced motion, so cap the wait.
+      const timer = setTimeout(report, 320);
+      panel.addEventListener(
+        "transitionend",
+        (event) => {
+          if (event.propertyName !== "opacity") return;
+          clearTimeout(timer);
+          report();
+        },
+        { once: true }
+      );
+
+      document.body.classList.add("is-leaving");
     });
   }
 

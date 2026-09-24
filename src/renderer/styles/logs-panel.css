@@ -47,6 +47,16 @@
 }
 
 /* ── Full-screen overlay ─────────────────────────────────── */
+.logs-unread {
+  min-width: 1.1rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
 .logs-overlay {
   position: fixed;
   inset: 0;
@@ -57,16 +67,10 @@
   background: var(--logs-overlay);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
-  animation: logs-overlay-in 180ms ease-out both;
 }
 
 .logs-overlay[hidden] {
   display: none !important;
-}
-
-@keyframes logs-overlay-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
 }
 
 /* ── Modal card ─────────────────────────────────────────── */
@@ -86,12 +90,6 @@
     inset 0 1px 0 rgba(var(--hairline-rgb), 0.28),
     inset 0 0 0 1px rgba(255, 255, 255, 0.06);
   overflow: hidden;
-  animation: logs-modal-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-@keyframes logs-modal-in {
-  from { opacity: 0; transform: scale(0.97) translateY(8px); }
-  to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 /* ── Modal header ───────────────────────────────────────── */

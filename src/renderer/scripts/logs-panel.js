@@ -6,6 +6,8 @@
  * tool-call log entries collected by the main process log-service.
  */
 
+import { openOverlay, closeOverlay } from './ui/overlay-controller.js';
+
 /* ── State ──────────────────────────────────────────────── */
 let currentLogs = [];
 let selectedId = null;
@@ -66,8 +68,8 @@ function buildBubble() {
     <line x1="7" y1="13" x2="10" y2="13"/>
   </svg>`;
 
-  btn.innerHTML = `${iconSvg}<span>Logs</span>`;
-  btn.addEventListener('click', openOverlay);
+  btn.innerHTML = `${iconSvg}<span>Logs</span><span class="logs-unread" hidden>0</span>`;
+  btn.addEventListener('click', openLogsPanel);
   return btn;
 }
 
@@ -102,10 +104,7 @@ function buildOverlay() {
     </div>
   `;
 
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) closeOverlay();
-  });
-  overlay.querySelector('#logs-btn-close').addEventListener('click', closeOverlay);
+  overlay.querySelector('#logs-btn-close').addEventListener('click', closeLogsPanel);
   overlay.querySelector('#logs-btn-clear').addEventListener('click', async () => {
     if (window.electronAPI?.clearLogs) {
       await window.electronAPI.clearLogs();
@@ -282,9 +281,20 @@ function escHtml(str) {
 
 /* ── Open / close overlay ───────────────────────────────── */
 
-async function openOverlay() {
+async function openLogsPanel() {
   if (!overlayEl) return;
-  overlayEl.hidden = false;
+
+  const badge = document.querySelector('.logs-unread');
+  if (badge) {
+    badge.hidden = true;
+    badge.textContent = '0';
+  }
+
+  openOverlay(overlayEl, {
+    initialFocus: '#logs-btn-close',
+    closeOnBackdrop: true,
+    onClosed: () => { document.body.style.overflow = ''; },
+  });
   document.body.style.overflow = 'hidden';
 
   if (window.electronAPI?.getLogs) {
@@ -299,18 +309,8 @@ async function openOverlay() {
   renderDetail(selectedId ? currentLogs.find((l) => l.id === selectedId) ?? null : null);
 }
 
-function closeOverlay() {
-  if (!overlayEl) return;
-  overlayEl.hidden = true;
-  document.body.style.overflow = '';
-}
-
-/* ── Keyboard handler ───────────────────────────────────── */
-
-function handleKeydown(e) {
-  if (e.key === 'Escape' && overlayEl && !overlayEl.hidden) {
-    closeOverlay();
-  }
+function closeLogsPanel() {
+  closeOverlay(overlayEl);
 }
 
 /* ── Mount into the page ────────────────────────────────── */
@@ -345,22 +345,28 @@ async function init() {
   listEl = overlayEl.querySelector('#logs-list');
   detailEl = overlayEl.querySelector('#logs-detail');
 
-  document.addEventListener('keydown', handleKeydown);
-
   if (window.electronAPI?.onLogUpdate) {
     offLogUpdate = window.electronAPI.onLogUpdate(({ logs }) => {
       currentLogs = Array.isArray(logs) ? logs : [];
       if (overlayEl && !overlayEl.hidden) {
         renderList();
-        // Keep the selected entry up-to-date if it was refreshed.
         const active = selectedId ? currentLogs.find((l) => l.id === selectedId) ?? null : null;
         renderDetail(active);
+      } else {
+        const badge = document.querySelector('.logs-unread');
+        if (badge) {
+          const count = Number(badge.textContent || 0) + 1;
+          badge.hidden = false;
+          badge.textContent = String(count);
+          badge.classList.remove('motion-pop');
+          void badge.offsetWidth;
+          badge.classList.add('motion-pop');
+        }
       }
     });
   }
 
   window.addEventListener('beforeunload', () => {
-    document.removeEventListener('keydown', handleKeydown);
     try { offLogUpdate?.(); } catch {}
   });
 }

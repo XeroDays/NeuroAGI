@@ -52,7 +52,9 @@ src/
 │   │   ├── advance-middleware.js   # SendAdvanceChat({ messages, model, resume?, reasoningLevel }, sender) — one enabled-model turn. CancelAdvanceChat(sender, { model? }) aborts that model or all
 │   │   └── cookie-middleware.js    # GetModelsConfig() / UpdateModelsConfig({ activeModels, masterModel }) — thin wrapper around model-config-service
 │   ├── services/
-│   │   ├── advance-chat-service.js # askModelChat: tool loop (max 8 rounds) on one enabled model. Tools include profile + find/extract/search/ask_user. Resolves LLM_OPTIONS_BY_LEVEL (none/low/medium/high/very_high) into maxTokens + reasoning.effort
+│   │   ├── advance-chat-service.js # askModelChat: tool loop (max 12 rounds) on one enabled model. Streams text deltas. Tools include profile + find/extract/search/ask_user. Resolves LLM_OPTIONS_BY_LEVEL (none/low/medium/high/very_high) into maxTokens + reasoning.effort
+│   │   ├── secure-json-store.js    # safeStorage seal/open for profiles and sessions; plaintext fallback when encryption is unavailable
+│   │   ├── sessions-service.js     # last 50 Advance threads in sessions.json
 │   │   ├── advance-llm.js          # Advance-only OpenRouter client: chatCompletionWithTools(messages, model, options). Records usage + type:"ai" logs. Does not use a shared api-helper
 │   │   ├── advance-tools.js        # Tool schemas + executeTool (profiles, manage_user_issues, Tavily search/extract + URL discovery) + ask_user question sanitizer
 │   │   ├── advance-system-prompt.js # ADVANCE_SYSTEM_PROMPT — clinical assistant + diagnostic vs informational + list-then-fuzzy-match profile rules + manage_user_issues
@@ -159,7 +161,7 @@ Same Register API and PC identity as CryptoGenesis. Softasium must have an app w
 1. Renderer `advanceSend({ messages, model, resume?, reasoningLevel })` → IPC `ADVANCE_SEND` → `SendAdvanceChat` → `askModelChat`
 2. `model` must be in `getActiveModelIds()` (toggled Models, not the star). Throws/returns error if none enabled or the id is not in that set
 3. Home `issue` auto-send fires one `advanceSend` **per enabled model in parallel** (same messages + reasoning). Follow-ups go only to the selected chip
-4. Loop (max 8 tool rounds) via `chatCompletionWithTools` in `advance-llm.js`. Progress events go out on `ADVANCE_PROGRESS` and include `model`
+4. Loop (max 12 tool rounds) via `chatCompletionWithTools` in `advance-llm.js` with `stream: true`. Text deltas go out as `ADVANCE_PROGRESS` `{ type: 'delta' }`. If the response body is not a web stream, the same SSE text is parsed from `res.text()`. Progress events include `model`
 5. Tools (from `advance-tools.js` + `ADVANCE_SYSTEM_PROMPT`):
    - **get_available_users** — `{ id, name, age, gender }` only from `{documents}/NeuroAGI/profiles.json`. Required first when no userid is in a prior profile tool result. The Patient line never includes an id
    - **get_profile_by_id** — full `{ id, name, age, gender, profile, issues }`. Use only after an id from a tool result. Required immediately before `ask_user`, and again after they submit answers (before update)
@@ -311,9 +313,19 @@ Full-viewport overlay (z-index 300). The `.logs-modal` card uses `--logs-card` +
 - `contextIsolation: true`, `nodeIntegration: false`
 - CSP: `default-src 'self'; script-src 'self'; style-src 'self'`
 - API keys are not hardcoded in renderer or preload source. File I/O stays in main (`credentials-store.js`). Keys are `safeStorage`-encrypted in `{Documents}/NeuroAGI/credentials.json`. Settings Credentials loads keys over IPC into password fields
+- `profiles.json` and `sessions.json` are sealed with the same `safeStorage` helper. A plaintext file is migrated on the next read. If encryption is unavailable the write stays plaintext and Settings shows a warning, so health data is not refused
 - `OPEN_EXTERNAL_URL` allowlists `https://www.softasium.com`, `https://openrouter.ai/keys`, and `https://app.tavily.com/home` (registered early in splash handlers)
 - Softasium Register bearer is main-process only and must never be logged
 - License cache is `safeStorage`-encrypted at `{userData}/register-response.enc`
 - Installer downloads are confined to the OS Downloads folder; `installInstaller` only opens a path inside that folder
 - IPC channels centralized in `src/shared/ipc/channels.js`; preload mirrors them
 - All file paths use `path.join(__dirname, ...)` for spaces and packaging compatibility
+
+## Streaming, sessions, reports
+
+- Advance renders streamed assistant text behind a caret, then keeps the finished bubble. A thinking pill shows between tool rounds
+- A finished run is stored by `sessions-service` (50-session cap). Home lists recent analyses and reopening restores each model's messages
+- Replies that contain `# Pre-doctor Clinical Analysis` render as a sectioned report with urgency and confidence badges, a section list, source chips, copy, and Save PDF (`webContents.printToPDF` behind a save dialog). Other replies stay plain bubbles
+- A red-flag report starts with `> **EMERGENCY**` and pins a banner on the thread
+- Compare lays out each model's leading impression. Consensus sends those impressions to the starred master model
+- Profiles can be edited, exported, and imported. Individual issues can be removed. Home offers example prompts, recent issues, name suggestions, and a first-run checklist

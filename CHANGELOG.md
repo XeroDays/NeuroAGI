@@ -9,11 +9,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- Streamed Advance replies, thinking pill, report viewer, compare/consensus, saved sessions, and profile export/import
+- Home example prompts, recent issues, onboarding checklist, and animated overlays with a themed confirm dialog
+
 ### Changed
+
+- Home no longer shows example-issue or recent-issue chips under the form
+- Advance tool rounds cap is 12. Home issue text grows in a textarea. Models save as you toggle them
+- Splash hands off with a fade instead of a fixed one-second wait
 
 ### Fixed
 
+- Advance no longer leaves a blank bubble between status pills when a model streams only whitespace
+- A collapsed model reply is replaced with a short retry message instead of the garbled paragraph
+- Compare opens as a centered dialog. A last turn that only wrote hidden reasoning is asked once more for the visible report
+- Settings, Models, and Profiles show save and load errors in the dialog instead of only the console
+- Advance report text uses the theme text tokens
+
 ### Security
+
+- profiles.json and sessions.json are encrypted with safeStorage, with a plaintext fallback when encryption is unavailable
 
 ## [1.0.6] - 2026-09-16
 

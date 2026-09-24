@@ -1,18 +1,27 @@
 const crypto = require('crypto');
-const documentsStore = require('./neuroagi-documents-store');
+const secureStore = require('./secure-json-store');
 
 const PROFILES_FILENAME = 'profiles.json';
 
+let storageWarning = '';
+
 function loadMap() {
-  const raw = documentsStore.readJson(PROFILES_FILENAME, {});
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
-    return {};
-  }
+  const opened = secureStore.readSecure(PROFILES_FILENAME, {});
+  storageWarning = opened.warning || '';
+  const raw = opened.value;
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  if (opened.migrated) saveMap(raw);
   return raw;
 }
 
 function saveMap(map) {
-  documentsStore.writeJson(PROFILES_FILENAME, map);
+  const written = secureStore.writeSecure(PROFILES_FILENAME, map);
+  storageWarning = written.warning || '';
+}
+
+function getStorageWarning() {
+  loadMap();
+  return storageWarning;
 }
 
 function toAge(value) {
@@ -115,12 +124,13 @@ function getById(id) {
 
 function upsert({ userid, content, name, age, gender } = {}) {
   const profileText = content == null ? '' : String(content);
-  if (!String(profileText).trim()) {
-    return { ok: false, error: 'content is required.' };
-  }
-
   const map = loadMap();
   const existingId = String(userid || '').trim();
+
+  // New records need notes. An existing record may clear them.
+  if (!existingId && !String(profileText).trim()) {
+    return { ok: false, error: 'content is required.' };
+  }
 
   if (!existingId) {
     const nextName = normalizeName(name);
@@ -271,6 +281,54 @@ function getProfiles() {
   return { ok: true, profiles: listAll() };
 }
 
+/** Newest issue rows across every profile, for the Home recent row. */
+function listRecentIssues(limit = 6) {
+  const cap = Number.isFinite(Number(limit)) ? Math.max(1, Math.min(20, Number(limit))) : 6;
+  const rows = [];
+  for (const profile of listAll()) {
+    for (const issue of profile.issues) {
+      rows.push({
+        profileId: profile.id,
+        name: profile.name,
+        age: profile.age,
+        gender: profile.gender,
+        text: issue.text,
+        datetime: issue.datetime,
+      });
+    }
+  }
+  rows.sort((a, b) => String(b.datetime).localeCompare(String(a.datetime)));
+  return rows.slice(0, cap);
+}
+
+function exportSnapshot() {
+  return loadMap();
+}
+
+/**
+ * Merge a previously exported profiles object into the store.
+ * Unknown shapes are skipped; matching ids are replaced.
+ */
+function importSnapshot(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return { ok: false, error: 'File is not a profiles export.' };
+  }
+
+  const incoming = {};
+  for (const [key, value] of Object.entries(raw)) {
+    const record = toRecord(value, key);
+    if (record && record.name) incoming[record.id] = record;
+  }
+
+  const imported = Object.keys(incoming).length;
+  if (!imported) return { ok: false, error: 'No profiles found in that file.' };
+
+  const map = loadMap();
+  Object.assign(map, incoming);
+  saveMap(map);
+  return { ok: true, imported };
+}
+
 function removeById(id) {
   const key = String(id || '').trim();
   if (!key) return { ok: false, error: 'Profile id is required.' };
@@ -295,6 +353,10 @@ module.exports = {
   removeById,
   findByDemographics,
   getProfiles,
+  getStorageWarning,
+  listRecentIssues,
+  exportSnapshot,
+  importSnapshot,
   normalizeName,
   normalizeGender,
 };

@@ -1,36 +1,33 @@
 # NeuroAGI
 
-Desktop health diagnostics app built with [Electron](https://www.electronjs.org/) and JavaScript. A pastel glassmorphism experience that walks you through intake, lab results, final clarifications, and multi-model AI analysis.
+Desktop health diagnostics app built with [Electron](https://www.electronjs.org/) and JavaScript. You describe an issue on Home and Advance runs it across the models you enable.
 
 
 <img width="770" height="542" alt="image" src="https://github.com/user-attachments/assets/f06df5a7-82bf-4b2c-a4ce-d58851b5597d" />
 
 ## What it does
 
-NeuroAGI helps you explore a health concern step by step. You describe your issue on the home screen; AI then generates tailored follow-up questions, lab-style result inputs, and a last round of clarifications. On the doctor screen, several AI models stream independent pre-doctor analyses in parallel so you can compare perspectives.
+NeuroAGI helps you explore a health concern with the models you turn on. Home collects the issue, name, age, gender, and reasoning level. Advance streams a reply from each enabled model, can ask follow-up questions, and turns a full pre-doctor write-up into a sectioned report.
 
-The app uses [OpenRouter](https://openrouter.ai/) for AI requests. Multiple models work together on structured steps (questionnaire, laboratory, pre-doctor room), with a user-chosen master model consolidating their outputs. The doctor step streams prose from a dedicated set of analysis models.
+The app uses [OpenRouter](https://openrouter.ai/) for model calls and [Tavily](https://tavily.com/) when a model searches or extracts a page. A starred master model can write a consensus report from the other replies.
 
 ## User journey
 
 | Step | Screen | Purpose |
 |------|--------|---------|
-| 1 | **Home** | Enter health issue, gender, age, and reasoning depth; start a new run |
-| 2 | **Questionnaire** | Answer AI-generated intake questions (you can remove questions you do not want) |
-| 3 | **Laboratory** | Enter results for suggested tests and imaging (mark which reports you have) |
-| 4 | **Pre-doctor room** | Answer final clarifying questions after intake and lab data are collected |
-| 5 | **Doctor** | Read streaming analyses from multiple AI models, with optional reasoning views |
+| 1 | **Home** | Describe the issue, set name, age, gender, and reasoning (default Very High), then start |
+| 2 | **Advance** | Watch each enabled model stream, answer any questions it asks, then read or export the report |
 
-Use **Back** on any screen to return home. Starting a new run from home resets usage totals for that session.
+Use **Back** to return home. Starting a new run resets usage totals for that session. Recent analyses on Home reopen a saved thread.
 
 ## Key features
 
-- **Multi-model pipeline** — Worker models propose content in parallel; a starred master model merges questionnaire-style steps when possible, with a fallback if merge is unavailable.
-- **Models settings** — Choose which models are active, designate one master for merge steps, and browse free vs paid options with latency, throughput, and price hints.
-- **Reasoning level** — On home, pick how deeply doctor models reason (None through Very High); default is Medium.
-- **Usage tracking** — Cost and token totals appear in the top-right on every screen and update live during a run.
-- **Doctor experience** — One tab per analysis model; live streaming, optional “thinking” view for models that expose reasoning, and a way to copy the analysis prompt on the doctor screen.
-- **Developer tools** — Gear icon on home toggles DevTools for debugging.
+- **Multi-model Advance** — Each enabled model runs the same issue. Chips show running, waiting, and error states.
+- **Models settings** — Toggle free and paid models, star a master for consensus, filter the list, and probe latency.
+- **Reasoning level** — None through Very High. The default is Very High.
+- **Reports** — Structured replies show urgency, confidence, sections, and source chips, with copy and Save PDF.
+- **Profiles and sessions** — Profiles and past analyses stay in your Documents folder. Profiles can be edited, exported, and imported.
+- **Usage tracking** — Cost and token totals sit in the corner and update as calls finish.
 
 ## Requirements
 

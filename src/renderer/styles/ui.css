@@ -1,0 +1,194 @@
+/* =========================================================
+   ui.css — shared renderer components that both Home and
+   Advance use. Self-contained: Advance does not load app.css.
+   ========================================================= */
+
+/* ── Confirm dialog ──────────────────────────────────────── */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.confirm-overlay[hidden] {
+  display: none;
+}
+
+.confirm-modal {
+  width: min(92vw, 420px);
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.28), 0 2px 8px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+}
+
+.confirm-modal-header {
+  padding: 1.3rem 1.5rem 1rem;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.confirm-modal-title {
+  margin: 0 0 0.55rem;
+  font-size: 1.12rem;
+  font-weight: 700;
+  color: #111;
+  letter-spacing: -0.01em;
+}
+
+.confirm-modal-message {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: #444;
+  white-space: pre-line;
+}
+
+.confirm-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #e8e8e8;
+}
+
+.confirm-btn {
+  padding: 0.52rem 1.2rem;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  background: var(--chrome);
+  color: var(--surface-solid);
+  transition: background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.confirm-btn:hover {
+  transform: translateY(-1px);
+}
+
+.confirm-btn:active {
+  transform: translateY(0);
+}
+
+.confirm-btn:focus-visible {
+  outline: 2px solid rgba(var(--accent-rgb), 0.8);
+  outline-offset: 2px;
+}
+
+.confirm-btn--cancel:hover {
+  background: var(--accent);
+}
+
+.confirm-btn--accept {
+  font-weight: 600;
+  background: var(--accent);
+  box-shadow: 0 2px 12px rgba(var(--accent-rgb), 0.35);
+}
+
+.confirm-btn--accept:hover {
+  background: var(--accent-strong);
+  box-shadow: 0 6px 18px rgba(var(--accent-rgb), 0.45);
+}
+
+.confirm-btn--danger {
+  font-weight: 600;
+  background: #c0392b;
+  box-shadow: 0 2px 12px rgba(192, 57, 43, 0.35);
+}
+
+.confirm-btn--danger:hover {
+  background: #96291d;
+  box-shadow: 0 6px 18px rgba(192, 57, 43, 0.45);
+}
+
+/* ── Inline status line (modal footers, field rows) ──────── */
+.ui-status {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  font-weight: 500;
+  color: #555;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ui-status[hidden] {
+  display: none;
+}
+
+.ui-status:not(:empty) {
+  animation: motion-fade-down 200ms ease-out both;
+}
+
+.ui-status--error {
+  color: #c0392b;
+}
+
+.ui-status--success {
+  color: #1f7a4d;
+}
+
+.ui-status--busy {
+  color: #555;
+}
+
+.ui-status--busy::before {
+  content: '';
+  display: inline-block;
+  width: 0.62em;
+  height: 0.62em;
+  margin-right: 0.45em;
+  vertical-align: -0.02em;
+  border: 2px solid rgba(0, 0, 0, 0.18);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: motion-spin 0.85s linear infinite;
+}
+
+/* On the dark Advance chrome the ink colours flip. */
+.adv-shell .ui-status {
+  color: var(--text-muted);
+}
+
+.adv-shell .ui-status--error {
+  color: #ff9c8c;
+}
+
+.adv-shell .ui-status--success {
+  color: #9be8c0;
+}
+
+.shortcuts-sheet {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 500;
+  padding: 0.8rem 1rem;
+  border-radius: 12px;
+  background: rgba(20, 8, 16, 0.92);
+  color: #fff;
+  font: 0.78rem/1.5 system-ui, sans-serif;
+}
+
+.shortcuts-sheet[hidden] {
+  display: none;
+}
+
+.adv-shell .ui-status--busy::before {
+  border-color: rgba(255, 255, 255, 0.22);
+  border-top-color: var(--accent);
+}

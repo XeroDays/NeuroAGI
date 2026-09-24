@@ -1,4 +1,9 @@
 import { isForceUpdateLocked } from './release-update-panel.js';
+import { openOverlay, closeOverlay } from './ui/overlay-controller.js';
+import { ensureFooterStatus, setStatus, closeWithStatusReset } from './ui/status-line.js';
+import { confirmDialog } from './ui/confirm-dialog.js';
+
+let footerStatus = null;
 
 let loadedProfiles = [];
 let selectedId = null;
@@ -30,7 +35,15 @@ function formatIssueDatetime(value) {
   if (!text) return 'Unknown time';
   const date = new Date(text);
   if (Number.isNaN(date.getTime())) return text;
-  return date.toLocaleString();
+  const delta = Date.now() - date.getTime();
+  const minutes = Math.round(delta / 60000);
+  if (minutes < 1) return 'Just now';
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} hr ago`;
+  const days = Math.round(hours / 24);
+  if (days < 30) return `${days} day${days === 1 ? '' : 's'} ago`;
+  return date.toLocaleDateString();
 }
 
 function selectedProfile() {
@@ -58,7 +71,24 @@ function appendDetailRow(parent, label, value) {
   parent.appendChild(row);
 }
 
-function renderIssueHistory(parent, issues) {
+function fieldInput(label, value, attrs) {
+  const wrap = document.createElement('label');
+  wrap.className = 'profiles-edit-field';
+  const caption = document.createElement('span');
+  caption.className = 'profiles-detail-label';
+  caption.textContent = label;
+  const input = document.createElement(attrs.multiline ? 'textarea' : 'input');
+  input.className = 'profiles-edit-input';
+  if (!attrs.multiline) input.type = attrs.type || 'text';
+  if (attrs.multiline) input.rows = 3;
+  input.value = value == null ? '' : String(value);
+  for (const [key, val] of Object.entries(attrs.extra || {})) input.setAttribute(key, val);
+  wrap.append(caption, input);
+  return { wrap, input };
+}
+
+function renderIssueHistory(parent, profile) {
+  const issues = profile?.issues;
   const row = document.createElement('div');
   row.className = 'profiles-detail-row';
   const dt = document.createElement('div');
@@ -85,17 +115,23 @@ function renderIssueHistory(parent, issues) {
     const when = document.createElement('div');
     when.className = 'profiles-issue-time';
     when.textContent = formatIssueDatetime(item.datetime);
+    when.title = String(item.datetime || '');
     const text = document.createElement('div');
     text.className = 'profiles-issue-text';
     text.textContent = String(item.text || '').trim() || '—';
-    entry.append(when, text);
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'profiles-issue-delete';
+    remove.textContent = 'Remove';
+    remove.addEventListener('click', () => { void deleteIssue(profile, item); });
+    entry.append(when, text, remove);
     wrap.appendChild(entry);
   }
   row.appendChild(wrap);
   parent.appendChild(row);
 }
 
-function renderDetail(profile) {
+function renderDetail(profile, animate) {
   const { detail } = els();
   if (!detail) return;
   if (!profile) {
@@ -109,22 +145,42 @@ function renderDetail(profile) {
   }
 
   detail.replaceChildren();
-  appendDetailRow(detail, 'Name', profile.name || '—');
-  appendDetailRow(detail, 'Age', formatAge(profile.age));
-  appendDetailRow(detail, 'Gender', formatGender(profile.gender));
-  appendDetailRow(detail, 'Profile', profile.profile?.trim() || 'No profile notes yet.');
-  renderIssueHistory(detail, profile.issues);
+  const nameField = fieldInput('Name', profile.name || '', {});
+  const ageField = fieldInput('Age', profile.age ?? '', { type: 'number', extra: { min: '1', max: '100' } });
+  const genderField = fieldInput('Gender', profile.gender || '', {});
+  const notesField = fieldInput('Profile notes', profile.profile || '', { multiline: true });
+  const save = document.createElement('button');
+  save.type = 'button';
+  save.className = 'models-btn-update profiles-save-btn';
+  save.textContent = 'Save changes';
+  save.addEventListener('click', () => {
+    void saveProfileEdits(profile, {
+      name: nameField.input.value,
+      age: ageField.input.value,
+      gender: genderField.input.value,
+      content: notesField.input.value,
+    });
+  });
+  detail.append(nameField.wrap, ageField.wrap, genderField.wrap, notesField.wrap, save);
+  renderIssueHistory(detail, profile);
   syncDeleteButton();
+
+  if (animate) {
+    detail.classList.remove('is-swapping');
+    void detail.offsetWidth;
+    detail.classList.add('is-swapping');
+  }
 }
 
-function selectProfile(id) {
+function selectProfile(id, animate) {
+  const changed = Boolean(id) && id !== selectedId;
   selectedId = id || null;
   const profile = selectedProfile();
   const { list } = els();
   list?.querySelectorAll('.profiles-list-item').forEach((el) => {
     el.classList.toggle('is-active', el.dataset.id === selectedId);
   });
-  renderDetail(profile);
+  renderDetail(profile, animate && changed);
 }
 
 function renderList() {
@@ -155,11 +211,19 @@ function renderList() {
 
     const metaEl = document.createElement('span');
     metaEl.className = 'profiles-list-meta';
+    const count = Array.isArray(profile.issues) ? profile.issues.length : 0;
     metaEl.textContent = `${formatAge(profile.age)} · ${formatGender(profile.gender)}`;
+    if (count) {
+      const badge = document.createElement('span');
+      badge.className = 'profiles-count-badge';
+      badge.textContent = String(count);
+      badge.title = `${count} issue${count === 1 ? '' : 's'}`;
+      metaEl.append(' ', badge);
+    }
 
     btn.append(nameEl, metaEl);
     btn.addEventListener('click', () => {
-      selectProfile(profile.id);
+      selectProfile(profile.id, true);
     });
     list.appendChild(btn);
   }
@@ -167,9 +231,64 @@ function renderList() {
   renderDetail(selectedProfile());
 }
 
+async function reloadProfiles() {
+  const result = await window.electronAPI?.getProfiles?.();
+  loadedProfiles = Array.isArray(result?.profiles) ? result.profiles : [];
+  if (selectedId && !loadedProfiles.some((item) => item.id === selectedId)) {
+    selectedId = loadedProfiles[0]?.id || null;
+  }
+  renderList();
+}
+
+async function saveProfileEdits(profile, fields) {
+  const content = String(fields.content || '').trim() || ' ';
+  try {
+    const result = await window.electronAPI?.updateProfile?.({
+      userid: profile.id,
+      name: fields.name,
+      age: fields.age,
+      gender: fields.gender,
+      content,
+    });
+    if (!result?.ok) {
+      setStatus(footerStatus, result?.error || 'Could not save that profile.', { tone: 'error' });
+      return;
+    }
+    await reloadProfiles();
+    setStatus(footerStatus, 'Profile saved.', { tone: 'success', autoClearMs: 3000 });
+  } catch (err) {
+    console.error('[profiles] updateProfile failed:', err);
+    setStatus(footerStatus, 'Could not save that profile.', { tone: 'error' });
+  }
+}
+
+async function deleteIssue(profile, issue) {
+  const confirmed = await confirmDialog({
+    title: 'Remove this issue?',
+    message: 'The recorded issue will be deleted from this profile.',
+    confirmLabel: 'Remove issue',
+  });
+  if (!confirmed) return;
+  try {
+    const result = await window.electronAPI?.deleteProfileIssue?.({
+      userid: profile.id,
+      issueId: issue.id,
+    });
+    if (!result?.ok) {
+      setStatus(footerStatus, result?.error || 'Could not remove that issue.', { tone: 'error' });
+      return;
+    }
+    await reloadProfiles();
+    setStatus(footerStatus, 'Issue removed.', { tone: 'success', autoClearMs: 3000 });
+  } catch (err) {
+    console.error('[profiles] deleteProfileIssue failed:', err);
+    setStatus(footerStatus, 'Could not remove that issue.', { tone: 'error' });
+  }
+}
+
 function closeProfilesPopup() {
   const { overlay } = els();
-  if (overlay) overlay.hidden = true;
+  closeWithStatusReset(overlay, footerStatus);
 }
 
 async function openProfilesPopup() {
@@ -177,6 +296,7 @@ async function openProfilesPopup() {
   const { overlay } = els();
   if (!overlay) return;
 
+  setStatus(footerStatus, '');
   loadedProfiles = [];
   try {
     const result = await window.electronAPI?.getProfiles?.();
@@ -184,11 +304,15 @@ async function openProfilesPopup() {
   } catch (err) {
     console.error('[profiles] getProfiles failed:', err);
     loadedProfiles = [];
+    setStatus(footerStatus, 'Could not read saved profiles.', { tone: 'error' });
   }
 
   selectedId = loadedProfiles[0]?.id || null;
   renderList();
-  overlay.hidden = false;
+  openOverlay(overlay, {
+    initialFocus: '.profiles-list-item.is-active, .profiles-list-item',
+    closeOnBackdrop: true,
+  });
 }
 
 async function handleDeleteProfile() {
@@ -196,18 +320,27 @@ async function handleDeleteProfile() {
   if (!profile) return;
 
   const name = profile.name || 'Unnamed';
-  const confirmed = window.confirm(`Delete profile “${name}”? This cannot be undone.`);
+  const confirmed = await confirmDialog({
+    title: 'Delete this profile?',
+    message: `“${name}” and their recorded issue history will be removed. This cannot be undone.`,
+    confirmLabel: 'Delete profile',
+  });
   if (!confirmed) return;
+
+  // The selection may have moved while the dialog was open.
+  if (selectedId !== profile.id) return;
 
   const removedIndex = loadedProfiles.findIndex((item) => item.id === profile.id);
   try {
     const result = await window.electronAPI?.deleteProfile?.({ id: profile.id });
     if (!result?.ok) {
       console.error('[profiles] deleteProfile failed:', result?.error || 'unknown error');
+      setStatus(footerStatus, result?.error || 'Could not delete that profile.', { tone: 'error' });
       return;
     }
   } catch (err) {
     console.error('[profiles] deleteProfile failed:', err);
+    setStatus(footerStatus, 'Could not delete that profile.', { tone: 'error' });
     return;
   }
 
@@ -215,10 +348,16 @@ async function handleDeleteProfile() {
   const next = loadedProfiles[removedIndex] || loadedProfiles[removedIndex - 1] || null;
   selectedId = next?.id || null;
   renderList();
+  setStatus(footerStatus, `Deleted ${name}.`, { tone: 'success', autoClearMs: 4000 });
 }
 
 export function initProfilesPanel() {
   const { btn, overlay, deleteBtn, closeBtn } = els();
+
+  footerStatus = ensureFooterStatus(
+    overlay?.querySelector('.profiles-modal-footer'),
+    'profiles-footer-status',
+  );
 
   btn?.addEventListener('click', () => {
     void openProfilesPopup();
@@ -230,13 +369,34 @@ export function initProfilesPanel() {
 
   closeBtn?.addEventListener('click', closeProfilesPopup);
 
-  overlay?.addEventListener('click', (e) => {
-    if (e.target === overlay) closeProfilesPopup();
+  document.getElementById('btn-profiles-export')?.addEventListener('click', async () => {
+    try {
+      const result = await window.electronAPI?.exportProfiles?.();
+      if (result?.canceled) return;
+      if (!result?.ok) {
+        setStatus(footerStatus, result?.error || 'Export failed.', { tone: 'error' });
+        return;
+      }
+      setStatus(footerStatus, 'Profiles exported.', { tone: 'success', autoClearMs: 3000 });
+    } catch (err) {
+      console.error('[profiles] export failed:', err);
+      setStatus(footerStatus, 'Export failed.', { tone: 'error' });
+    }
   });
 
-  document.addEventListener('keydown', (e) => {
-    if (e.key !== 'Escape') return;
-    if (isForceUpdateLocked()) return;
-    if (overlay && !overlay.hidden) closeProfilesPopup();
+  document.getElementById('btn-profiles-import')?.addEventListener('click', async () => {
+    try {
+      const result = await window.electronAPI?.importProfiles?.();
+      if (result?.canceled) return;
+      if (!result?.ok) {
+        setStatus(footerStatus, result?.error || 'Import failed.', { tone: 'error' });
+        return;
+      }
+      await reloadProfiles();
+      setStatus(footerStatus, `Imported ${result.imported} profile${result.imported === 1 ? '' : 's'}.`, { tone: 'success', autoClearMs: 4000 });
+    } catch (err) {
+      console.error('[profiles] import failed:', err);
+      setStatus(footerStatus, 'Import failed.', { tone: 'error' });
+    }
   });
 }

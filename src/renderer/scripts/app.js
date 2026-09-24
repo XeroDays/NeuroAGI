@@ -1,6 +1,34 @@
 import { APP_TITLE } from './constants.js';
 import { initReleaseUpdate, isForceUpdateLocked } from './release-update-panel.js';
 import { initProfilesPanel } from './profiles-panel.js';
+import { openOverlay, closeOverlay } from './ui/overlay-controller.js';
+import { ensureFooterStatus, setStatus, closeWithStatusReset } from './ui/status-line.js';
+
+/** Short, user-facing text for a rejected IPC call. */
+function errorText(err) {
+  const raw = err?.message || String(err || '');
+  return raw.replace(/^Error invoking remote method '[^']*':\s*/, '').trim() || 'unknown error';
+}
+
+/** Replay a one-shot animation class that may already be present. */
+function replayClass(el, className) {
+  if (!el) return;
+  el.classList.remove(className);
+  void el.offsetWidth;
+  el.classList.add(className);
+}
+
+/** Fade the page out, then navigate. Falls back to an immediate jump. */
+function navigateWithFade(href) {
+  const settled = () => { window.location.href = href; };
+  const timer = setTimeout(settled, 220);
+  document.body.addEventListener('transitionend', (event) => {
+    if (event.target !== document.body || event.propertyName !== 'opacity') return;
+    clearTimeout(timer);
+    settled();
+  }, { once: true });
+  document.body.classList.add('is-leaving');
+}
 
 document.addEventListener('DOMContentLoaded', () => {
   document.title = APP_TITLE;
@@ -11,18 +39,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const btn = document.getElementById('btn-start-diagnostics');
   const nameInput = document.getElementById('input-name');
   const genderSelect = document.getElementById('select-gender');
-  const ageSelect = document.getElementById('select-age');
+  const ageInput = document.getElementById('input-age');
   const reasoningSelect = document.getElementById('select-reasoning');
-
-  if (ageSelect) {
-    for (let i = 1; i <= 100; i++) {
-      const opt = document.createElement('option');
-      opt.value = i;
-      opt.textContent = `${i} years`;
-      if (i === 30) opt.selected = true;
-      ageSelect.appendChild(opt);
-    }
-  }
+  const nameSuggest = document.getElementById('name-suggest');
+  const onboarding = document.getElementById('home-onboarding');
 
   if (input) {
     input.focus();
@@ -197,7 +217,151 @@ document.addEventListener('DOMContentLoaded', () => {
 
   enhanceGlassSelect(reasoningSelect);
   enhanceGlassSelect(genderSelect);
-  enhanceGlassSelect(ageSelect);
+
+  function clampAge(value) {
+    const n = Math.round(Number(value));
+    if (!Number.isFinite(n)) return 30;
+    return Math.max(1, Math.min(100, n));
+  }
+
+  function setAge(value) {
+    if (ageInput) ageInput.value = String(clampAge(value));
+  }
+
+  document.getElementById('btn-age-down')?.addEventListener('click', () => {
+    setAge(clampAge(ageInput?.value) - 1);
+  });
+  document.getElementById('btn-age-up')?.addEventListener('click', () => {
+    setAge(clampAge(ageInput?.value) + 1);
+  });
+  ageInput?.addEventListener('change', () => setAge(ageInput.value));
+
+  function growComposer() {
+    if (!input) return;
+    input.style.height = 'auto';
+    const max = 8 * 24;
+    input.style.height = `${Math.min(input.scrollHeight, max)}px`;
+  }
+
+  input?.addEventListener('input', growComposer);
+
+  function applyPatient({ name, age, gender, text }) {
+    if (nameInput && name) nameInput.value = name;
+    if (genderSelect && gender) {
+      genderSelect.value = String(gender).toLowerCase() === 'female' ? 'female' : 'male';
+      genderSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    if (age != null) setAge(age);
+    if (input && text) {
+      input.value = text;
+      growComposer();
+    }
+  }
+
+  function hideNameSuggest() {
+    if (!nameSuggest) return;
+    nameSuggest.hidden = true;
+    nameInput?.setAttribute('aria-expanded', 'false');
+  }
+
+  function showNameSuggest(matches) {
+    if (!nameSuggest) return;
+    nameSuggest.replaceChildren();
+    if (!matches.length) {
+      hideNameSuggest();
+      return;
+    }
+    for (const profile of matches) {
+      const li = document.createElement('li');
+      li.setAttribute('role', 'option');
+      li.textContent = `${profile.name} · ${profile.age} · ${profile.gender}`;
+      li.addEventListener('mousedown', (event) => {
+        event.preventDefault();
+        applyPatient(profile);
+        hideNameSuggest();
+      });
+      nameSuggest.appendChild(li);
+    }
+    nameSuggest.hidden = false;
+    nameInput?.setAttribute('aria-expanded', 'true');
+  }
+
+  let knownProfiles = [];
+
+  nameInput?.addEventListener('input', () => {
+    const q = nameInput.value.trim().toLowerCase();
+    if (q.length < 1) {
+      hideNameSuggest();
+      return;
+    }
+    const matches = knownProfiles
+      .filter((p) => String(p.name || '').toLowerCase().includes(q))
+      .slice(0, 6);
+    showNameSuggest(matches);
+  });
+  nameInput?.addEventListener('blur', () => {
+    setTimeout(hideNameSuggest, 120);
+  });
+
+  async function refreshHomeProfiles() {
+    try {
+      const result = await window.electronAPI?.getProfiles?.();
+      knownProfiles = Array.isArray(result?.profiles) ? result.profiles : [];
+    } catch (err) {
+      console.warn('[app] Failed to load profiles:', err);
+      knownProfiles = [];
+    }
+  }
+
+  async function refreshOnboarding() {
+    if (!onboarding) return;
+    let hasOpenRouter = false;
+    let hasTavily = false;
+    let hasModel = false;
+    try {
+      const creds = await window.electronAPI?.getCredentials?.();
+      hasOpenRouter = Boolean(String(creds?.OPENROUTER_API_KEY || '').trim());
+      hasTavily = Boolean(String(creds?.TAVILY_API_KEY || '').trim());
+    } catch (err) {
+      console.warn('[app] Failed to read credentials for onboarding:', err);
+    }
+    try {
+      hasModel = await hasEnabledModel();
+    } catch (err) {
+      console.warn('[app] Failed to read models for onboarding:', err);
+    }
+    const steps = [
+      { ok: hasOpenRouter, label: 'Add an OpenRouter key', action: 'settings' },
+      { ok: hasTavily, label: 'Add a Tavily key', action: 'settings' },
+      { ok: hasModel, label: 'Enable one model', action: 'models' },
+    ];
+    if (steps.every((step) => step.ok)) {
+      onboarding.hidden = true;
+      onboarding.replaceChildren();
+      return;
+    }
+    onboarding.hidden = false;
+    onboarding.replaceChildren();
+    const title = document.createElement('p');
+    title.className = 'home-onboarding-title';
+    title.textContent = 'Before the first analysis';
+    onboarding.appendChild(title);
+    for (const step of steps) {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = `home-onboarding-step${step.ok ? ' is-done' : ''}`;
+      item.textContent = step.ok ? `Done — ${step.label}` : step.label;
+      item.disabled = step.ok;
+      item.addEventListener('click', () => {
+        if (step.action === 'models') openModelsPopup();
+        else openSettingsPopup();
+      });
+      onboarding.appendChild(item);
+    }
+  }
+
+  void refreshHomeProfiles();
+  void refreshOnboarding();
 
   const errorOverlay = document.getElementById('error-overlay');
   const errorOkBtn = document.getElementById('btn-error-ok');
@@ -209,13 +373,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function closeErrorPopup() {
-    if (errorOverlay) errorOverlay.hidden = true;
+    closeOverlay(errorOverlay);
   }
 
   function showEnableModelError() {
-    if (!errorOverlay) return;
-    errorOverlay.hidden = false;
-    errorOkBtn?.focus();
+    openOverlay(errorOverlay, { initialFocus: errorOkBtn, closeOnBackdrop: true });
   }
 
   if (errorOkBtn) {
@@ -229,22 +391,27 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  if (errorOverlay) {
-    errorOverlay.addEventListener('click', (e) => {
-      if (e.target === errorOverlay) closeErrorPopup();
-    });
-  }
+  let startingDiagnostics = false;
 
   async function handleStartDiagnostics() {
-    if (isForceUpdateLocked()) return;
+    if (isForceUpdateLocked() || startingDiagnostics) return;
+
     const issue = input?.value?.trim() || '';
-    if (!issue) return;
+    if (!issue) {
+      replayClass(input, 'motion-shake');
+      input?.focus();
+      return;
+    }
 
     const name = nameInput?.value?.trim() || '';
     if (!name) {
+      replayClass(nameInput, 'motion-shake');
       nameInput?.focus();
       return;
     }
+
+    startingDiagnostics = true;
+    btn?.classList.add('is-busy');
 
     let hasEnabled = false;
     try {
@@ -253,12 +420,14 @@ document.addEventListener('DOMContentLoaded', () => {
       console.warn('[app] Failed to read models config:', err);
     }
     if (!hasEnabled) {
+      startingDiagnostics = false;
+      btn?.classList.remove('is-busy');
       showEnableModelError();
       return;
     }
 
     const gender = genderSelect?.value || 'male';
-    const age = ageSelect?.value || '30';
+    const age = String(clampAge(ageInput?.value));
     const reasoningLevel = reasoningSelect?.value || 'very_high';
 
     try {
@@ -278,7 +447,7 @@ document.addEventListener('DOMContentLoaded', () => {
     query.set('name', name);
     query.set('gender', gender);
     query.set('age', age);
-    window.location.href = `screens/advance/index.html?${query}`;
+    navigateWithFade(`screens/advance/index.html?${query}`);
   }
 
   if (btn) {
@@ -289,7 +458,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (input && btn) {
     input.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+      if (event.key === 'Enter' && !event.shiftKey) {
         event.preventDefault();
         btn.click();
       }
@@ -308,6 +477,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const testTavilyBtn = document.getElementById('btn-test-tavily');
   const openRouterStatus = document.getElementById('status-openrouter-key');
   const tavilyStatus = document.getElementById('status-tavily-key');
+  const settingsFooterStatus = ensureFooterStatus(
+    settingsOverlay?.querySelector('.settings-modal-footer'),
+    'settings-footer-status',
+    settingsCloseBtn,
+  );
 
   function setTestStatus(el, kind, text) {
     if (!el) return;
@@ -350,7 +524,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function closeSettingsPopup() {
-    if (settingsOverlay) settingsOverlay.hidden = true;
+    closeWithStatusReset(settingsOverlay, settingsFooterStatus);
   }
 
   function selectSettingsTab(tabId) {
@@ -375,6 +549,13 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error('[app] Failed to load credentials:', err);
       openRouterKeyInput.value = '';
       tavilyKeyInput.value = '';
+      setStatus(settingsFooterStatus, 'Could not read saved keys.', { tone: 'error' });
+    }
+    try {
+      const storage = await window.electronAPI?.getStorageWarning?.();
+      if (storage?.warning) setStatus(settingsFooterStatus, storage.warning, { tone: 'error' });
+    } catch (err) {
+      console.warn('[app] storage warning failed:', err);
     }
   }
 
@@ -382,8 +563,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (isForceUpdateLocked()) return;
     if (!settingsOverlay) return;
     selectSettingsTab('credentials');
+    setStatus(settingsFooterStatus, '');
     await fillCredentialsForm();
-    settingsOverlay.hidden = false;
+    openOverlay(settingsOverlay, { initialFocus: openRouterKeyInput });
   }
 
   if (settingsBtn) {
@@ -438,14 +620,17 @@ document.addEventListener('DOMContentLoaded', () => {
     settingsSaveBtn.addEventListener('click', async () => {
       settingsSaveBtn.disabled = true;
       settingsSaveBtn.textContent = 'Saving…';
+      setStatus(settingsFooterStatus, 'Saving keys…', { tone: 'busy' });
       try {
         await window.electronAPI?.updateCredentials?.({
           OPENROUTER_API_KEY: openRouterKeyInput?.value || '',
           TAVILY_API_KEY: tavilyKeyInput?.value || '',
         });
         closeSettingsPopup();
+        void refreshOnboarding();
       } catch (err) {
         console.error('[app] Failed to save credentials:', err);
+        setStatus(settingsFooterStatus, `Save failed — ${errorText(err)}`, { tone: 'error' });
       } finally {
         settingsSaveBtn.disabled = false;
         settingsSaveBtn.textContent = 'Save';
@@ -454,9 +639,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (settingsOverlay) {
-    settingsOverlay.addEventListener('click', (e) => {
-      if (e.target === settingsOverlay) closeSettingsPopup();
-    });
     settingsOverlay.addEventListener('click', (e) => {
       const link = e.target.closest('.settings-ext-link');
       if (!link) return;
@@ -477,6 +659,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const modelsAddBtn    = document.getElementById('btn-models-add');
   const modelsAddInput  = document.getElementById('input-models-add');
   const modelsTabs      = document.querySelectorAll('.models-tab');
+  const modelsFooterStatus = ensureFooterStatus(
+    modelsOverlay?.querySelector('.models-modal-footer'),
+    'models-footer-status',
+    modelsTestBtn,
+  );
 
   // Local snapshot of the model list; mutated by toggle/star interactions.
   let modelsState = [];
@@ -543,13 +730,16 @@ document.addEventListener('DOMContentLoaded', () => {
       const result = await window.electronAPI?.deleteModel?.({ name: modelName });
       if (!result?.ok) {
         console.error('[app] Delete model failed:', result?.error || 'unknown error');
+        setStatus(modelsFooterStatus, `Could not remove ${modelName} — ${result?.error || 'unknown error'}`, { tone: 'error' });
         return;
       }
       modelsState = modelsState.filter((m) => m.name !== modelName);
       if (modelsProbingName === modelName) modelsProbingName = '';
       renderModelsList();
+      setStatus(modelsFooterStatus, `Removed ${modelName}.`, { tone: 'success', autoClearMs: 4000 });
     } catch (err) {
       console.error('[app] Delete model failed:', err);
+      setStatus(modelsFooterStatus, `Could not remove ${modelName} — ${errorText(err)}`, { tone: 'error' });
     }
   }
 
@@ -568,6 +758,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     renderModelsList();
+    scheduleModelsSave();
   }
 
   // Build a single panel's rows from a filtered slice of modelsState.
@@ -659,6 +850,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const entry = modelsState.find((m) => m.name === e.target.dataset.modelName);
         if (entry) entry.enabled = e.target.checked;
         updateTabCounts();
+        scheduleModelsSave();
       });
 
       const toggleSlider = document.createElement('span');
@@ -684,6 +876,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  /** Snapshot of the saved selection, used to flag unsaved toggles. */
+  let modelsSavedSignature = '';
+  /** Suppresses the count pop on the first paint after the popup opens. */
+  let modelsCountsSettled = false;
+
+  function modelsSignature() {
+    const enabled = modelsState.filter((m) => m.enabled).map((m) => m.name).sort();
+    const master = modelsState.find((m) => m.isMaster)?.name || '';
+    return JSON.stringify({ enabled, master });
+  }
+
+  function syncModelsDirtyState() {
+    if (!modelsUpdateBtn) return;
+    modelsUpdateBtn.classList.toggle('has-changes', modelsSignature() !== modelsSavedSignature);
+  }
+
   // Update the enabled-count badge on each tab button.
   function updateTabCounts() {
     const freeEnabled = modelsState.filter(m => m.type.toLowerCase() === 'free' && m.enabled).length;
@@ -692,20 +900,74 @@ document.addEventListener('DOMContentLoaded', () => {
     const paidTotal   = modelsState.filter(m => m.type.toLowerCase() === 'paid').length;
 
     modelsTabs.forEach((tab) => {
-      if (tab.dataset.tab === 'free') {
-        tab.textContent = `Free (${freeEnabled}/${freeTotal})`;
-      } else {
-        tab.textContent = `Paid (${paidEnabled}/${paidTotal})`;
-      }
+      const next = tab.dataset.tab === 'free'
+        ? `Free (${freeEnabled}/${freeTotal})`
+        : `Paid (${paidEnabled}/${paidTotal})`;
+      if (tab.textContent === next) return;
+      tab.textContent = next;
+      if (modelsCountsSettled) replayClass(tab, 'is-bumped');
     });
+
+    modelsCountsSettled = true;
+    syncModelsDirtyState();
   }
 
   // Render both panels and refresh tab counts.
+  const modelsFilterInput = document.getElementById('input-models-filter');
+  let modelsFilter = '';
+
+  function modelsMatching(type) {
+    const q = modelsFilter.trim().toLowerCase();
+    return modelsState.filter((m) => {
+      if (m.type.toLowerCase() !== type) return false;
+      if (!q) return true;
+      return String(m.name || '').toLowerCase().includes(q);
+    });
+  }
+
   function renderModelsList() {
-    renderTabPanel(modelsListFree, modelsState.filter(m => m.type.toLowerCase() === 'free'));
-    renderTabPanel(modelsListPaid, modelsState.filter(m => m.type.toLowerCase() === 'paid'));
+    renderTabPanel(modelsListFree, modelsMatching('free'));
+    renderTabPanel(modelsListPaid, modelsMatching('paid'));
     updateTabCounts();
   }
+
+  let modelsSaveTimer = 0;
+
+  async function persistModels({ close = false } = {}) {
+    const activeModels = modelsState.filter((m) => m.enabled).map((m) => m.name);
+    const masterModel = modelsState.find((m) => m.isMaster)?.name ?? '';
+    if (modelsUpdateBtn) {
+      modelsUpdateBtn.disabled = true;
+      modelsUpdateBtn.textContent = 'Saving…';
+    }
+    setStatus(modelsFooterStatus, 'Saving selection…', { tone: 'busy' });
+    try {
+      await window.electronAPI?.updateModelsConfig?.({ activeModels, masterModel });
+      modelsSavedSignature = modelsSignature();
+      syncModelsDirtyState();
+      setStatus(modelsFooterStatus, close ? '' : 'Saved.', { tone: 'success', autoClearMs: 2000 });
+      if (close) closeModelsPopup();
+      void refreshOnboarding();
+    } catch (err) {
+      console.error('[app] Failed to update models config:', err);
+      setStatus(modelsFooterStatus, `Save failed — ${errorText(err)}`, { tone: 'error' });
+    } finally {
+      if (modelsUpdateBtn) {
+        modelsUpdateBtn.disabled = false;
+        modelsUpdateBtn.textContent = 'Update';
+      }
+    }
+  }
+
+  function scheduleModelsSave() {
+    clearTimeout(modelsSaveTimer);
+    modelsSaveTimer = setTimeout(() => { void persistModels(); }, 250);
+  }
+
+  modelsFilterInput?.addEventListener('input', () => {
+    modelsFilter = modelsFilterInput.value || '';
+    renderModelsList();
+  });
 
   function findModelsRow(modelName) {
     const lists = [modelsListFree, modelsListPaid];
@@ -733,6 +995,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
     badge.textContent = text;
+    replayClass(badge, 'motion-pop');
     return badge;
   }
 
@@ -786,15 +1049,22 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       if (!result?.ok) {
         console.error('[app] Add model failed:', result?.error || 'unknown error');
+        setStatus(modelsFooterStatus, result?.error || 'Could not add that model.', { tone: 'error' });
+        modelsAddInput.classList.remove('motion-shake');
+        void modelsAddInput.offsetWidth;
+        modelsAddInput.classList.add('motion-shake');
+        modelsAddInput.focus();
         return;
       }
       if (result.model && !modelsState.some((m) => m.name === result.model.name)) {
         modelsState.push(result.model);
         renderModelsList();
       }
+      setStatus(modelsFooterStatus, `Added ${name}.`, { tone: 'success', autoClearMs: 4000 });
       hideModelsAddInput();
     } catch (err) {
       console.error('[app] Add model failed:', err);
+      setStatus(modelsFooterStatus, `Could not add that model — ${errorText(err)}`, { tone: 'error' });
     }
   }
 
@@ -864,13 +1134,26 @@ document.addEventListener('DOMContentLoaded', () => {
   async function openModelsPopup() {
     if (isForceUpdateLocked()) return;
     if (!modelsOverlay) return;
+    setStatus(modelsFooterStatus, '');
     try {
       const config = await window.electronAPI?.getModelsConfig?.();
       modelsState = Array.isArray(config) ? config : [];
+      modelsSavedSignature = modelsSignature();
+      modelsCountsSettled = false;
       renderModelsList();
       switchTab('free'); // always open on Free tab
       hideModelsAddInput();
-      modelsOverlay.hidden = false;
+      openOverlay(modelsOverlay, {
+        initialFocus: '.models-tab.is-active',
+        closeOnBackdrop: true,
+        // Escape first dismisses the inline "add model" field.
+        onEscape: () => {
+          if (modelsAddInput && !modelsAddInput.hidden) {
+            hideModelsAddInput();
+            return false;
+          }
+        },
+      });
     } catch (err) {
       console.error('[app] Failed to load models config:', err);
     }
@@ -878,30 +1161,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function closeModelsPopup() {
     hideModelsAddInput();
-    if (modelsOverlay) modelsOverlay.hidden = true;
+    closeWithStatusReset(modelsOverlay, modelsFooterStatus);
   }
 
   if (modelsBtn) {
     modelsBtn.addEventListener('click', openModelsPopup);
-  }
-
-  if (modelsOverlay) {
-    // Close on backdrop click
-    modelsOverlay.addEventListener('click', (e) => {
-      if (e.target === modelsOverlay) closeModelsPopup();
-    });
-    // Close on Escape key
-    document.addEventListener('keydown', (e) => {
-      if (e.key !== 'Escape') return;
-      if (isForceUpdateLocked()) return;
-      if (!modelsOverlay.hidden && modelsAddInput && !modelsAddInput.hidden) {
-        hideModelsAddInput();
-        return;
-      }
-      if (!modelsOverlay.hidden) closeModelsPopup();
-      if (errorOverlay && !errorOverlay.hidden) closeErrorPopup();
-      if (settingsOverlay && !settingsOverlay.hidden) closeSettingsPopup();
-    });
   }
 
   if (modelsCloseBtn) {
@@ -910,21 +1174,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (modelsUpdateBtn) {
     modelsUpdateBtn.addEventListener('click', async () => {
-      const activeModels = modelsState.filter((m) => m.enabled).map((m) => m.name);
-      const masterModelEntry = modelsState.find((m) => m.isMaster);
-      const masterModel = masterModelEntry?.name ?? '';
-      modelsUpdateBtn.disabled = true;
-      modelsUpdateBtn.textContent = 'Saving…';
-      try {
-        console.log('[app] Saving models config:', { activeModels, masterModel });
-        await window.electronAPI?.updateModelsConfig?.({ activeModels, masterModel });
-        closeModelsPopup();
-      } catch (err) {
-        console.error('[app] Failed to update models config:', err);
-      } finally {
-        modelsUpdateBtn.disabled = false;
-        modelsUpdateBtn.textContent = 'Update';
-      }
+      await persistModels({ close: true });
     });
   }
 
@@ -934,15 +1184,18 @@ document.addEventListener('DOMContentLoaded', () => {
       modelsBenchmarkRunning = true;
       modelsTestBtn.disabled = true;
       modelsTestBtn.textContent = 'Testing…';
+      setStatus(modelsFooterStatus, '');
       try {
         const result = await window.electronAPI?.benchmarkModels?.({
           type: getActiveModelsTabType(),
         });
         if (!result?.ok) {
           console.error('[app] Latency test failed:', result?.error || 'unknown error');
+          setStatus(modelsFooterStatus, result?.error || 'Latency test failed.', { tone: 'error' });
         }
       } catch (err) {
         console.error('[app] Latency test failed:', err);
+        setStatus(modelsFooterStatus, `Latency test failed — ${errorText(err)}`, { tone: 'error' });
       } finally {
         setModelsTestIdle();
       }
@@ -954,14 +1207,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (modelsAddInput) {
+    // Escape is handled by the overlay controller's onEscape hook.
     modelsAddInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        confirmModelsAdd();
-      } else if (e.key === 'Escape') {
-        e.preventDefault();
-        hideModelsAddInput();
-      }
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      confirmModelsAdd();
     });
   }
 });

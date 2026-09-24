@@ -108,6 +108,7 @@ const ADVANCE_SYSTEM_PROMPT = [
   '',
   'Output format requirements (REQUIRED for every personal / diagnostic final reply — skip this entire block only for informational or follow-up replies):',
   'Return a single Markdown document ONLY. Include every heading below. Do not omit, rename, or collapse sections:',
+  'If the presentation needs emergency care now, the first line of the document must be exactly: > **EMERGENCY**',
   '',
   '# Pre-doctor Clinical Analysis',
   '',

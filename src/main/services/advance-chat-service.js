@@ -23,7 +23,49 @@ function resolveLlmOptions(level) {
   };
 }
 
-const MAX_TOOL_ROUNDS = 8;
+const MAX_TOOL_ROUNDS = 12;
+
+const UNUSABLE_REPLY = 'This model returned an unusable reply. Try another model, or set reasoning to Medium, and run it again.';
+const BLANK_REPORT_REPLY = 'The model finished its reasoning but did not write the report. Try again, or set reasoning to Medium.';
+const REPORT_FOLLOW_UP = 'Write the required Pre-doctor Clinical Analysis in the assistant message now. Do not call tools.';
+
+function needsReportFollowUp(result) {
+  const content = String(result?.content || '').trim();
+  const toolCalls = Array.isArray(result?.toolCalls) ? result.toolCalls : [];
+  if (content || toolCalls.length) return false;
+  const tokens = Number(result?.usage?.completion_tokens_details?.reasoning_tokens) || 0;
+  const chars = Number(result?.reasoningChars) || 0;
+  return tokens > 0 || chars > 0;
+}
+
+function isUnusableReply(text) {
+  const raw = String(text || '');
+  if (!raw.trim()) return false;
+
+  const tokens = raw.toLowerCase().match(/[a-z]{4,}/g) || [];
+  for (let i = 0; i < tokens.length; i += 1) {
+    const window = tokens.slice(i, i + 30);
+    const counts = new Map();
+    for (const word of window) {
+      const next = (counts.get(word) || 0) + 1;
+      if (next >= 8) return true;
+      counts.set(word, next);
+    }
+  }
+
+  const latin = (raw.match(/[A-Za-z]/g) || []).length;
+  const arabic = (raw.match(/[\u0600-\u06FF]/g) || []).length;
+  const cyrillic = (raw.match(/[\u0400-\u04FF]/g) || []).length;
+  const cjk = (raw.match(/[\u4E00-\u9FFF]/g) || []).length;
+  const otherScripts = [arabic, cyrillic, cjk].filter((count) => count >= 8).length;
+  return latin >= 20 && otherScripts >= 2;
+}
+
+function finishedReply(content) {
+  const text = typeof content === 'string' ? content : '';
+  if (!isUnusableReply(text)) return { reply: text, unusable: false };
+  return { reply: UNUSABLE_REPLY, unusable: true };
+}
 
 class AdvanceAbortError extends Error {
   constructor() {
@@ -229,6 +271,9 @@ async function askModelChat(messages, hooks = {}, resume = null) {
   const llmOptions = {
     ...resolveLlmOptions(hooks.reasoningLevel),
     ...(signal ? { signal } : {}),
+    onDelta: (text) => {
+      if (typeof text === 'string' && text) onProgress({ type: 'delta', text });
+    },
   };
   const working = [
     { role: 'system', content: ADVANCE_SYSTEM_PROMPT },
@@ -240,8 +285,11 @@ async function askModelChat(messages, hooks = {}, resume = null) {
     `[advance-chat] query → ${model} (${working.length} messages${resumed ? ', resume' : ''}, reasoning=${hooks.reasoningLevel || DEFAULT_REASONING_LEVEL})`
   );
 
+  let reportFollowUpUsed = false;
+
   for (let round = 0; round <= MAX_TOOL_ROUNDS; round += 1) {
     throwIfAborted(signal);
+    onProgress({ type: 'round', round: round + 1, max: MAX_TOOL_ROUNDS });
     const modelId = nextStepId('model');
     emitStep(onProgress, {
       id: modelId,
@@ -253,8 +301,10 @@ async function askModelChat(messages, hooks = {}, resume = null) {
     let content;
     let toolCalls;
     let message;
+    let usage;
+    let reasoningChars;
     try {
-      ({ content, toolCalls, message } = await chatCompletionWithTools(
+      ({ content, toolCalls, message, usage, reasoningChars } = await chatCompletionWithTools(
         working,
         model,
         llmOptions
@@ -286,14 +336,33 @@ async function askModelChat(messages, hooks = {}, resume = null) {
     });
 
     if (!toolCalls.length) {
-      return { reply: content, model };
+      if (!reportFollowUpUsed && needsReportFollowUp({ content, toolCalls, usage, reasoningChars })) {
+        reportFollowUpUsed = true;
+        working.push({ role: 'user', content: REPORT_FOLLOW_UP });
+        const followOptions = {
+          maxTokens: llmOptions.maxTokens,
+          ...(signal ? { signal } : {}),
+          onDelta: llmOptions.onDelta,
+          tools: [],
+        };
+        let follow;
+        try {
+          follow = await chatCompletionWithTools(working, model, followOptions);
+        } catch (err) {
+          if (isAbortError(err) || signal?.aborted) throw new AdvanceAbortError();
+          throw err;
+        }
+        const followText = typeof follow?.content === 'string' ? follow.content.trim() : '';
+        if (!followText) return { reply: BLANK_REPORT_REPLY, unusable: false, model };
+        return { ...finishedReply(follow.content), model };
+      }
+      return { ...finishedReply(content), model };
     }
 
     if (round === MAX_TOOL_ROUNDS) {
-      return {
-        reply: content || 'I reached the tool limit before I could finish. Please try again.',
-        model,
-      };
+      const fallback = content || 'I reached the tool limit before I could finish. Please try again.';
+      const finished = content ? finishedReply(content) : { reply: fallback, unusable: false };
+      return { ...finished, model };
     }
 
     const assistantMessage = {
@@ -395,4 +464,15 @@ async function askModelChat(messages, hooks = {}, resume = null) {
   return { reply: '', model };
 }
 
-module.exports = { askModelChat, isAbortError, AdvanceAbortError };
+module.exports = {
+  askModelChat,
+  isAbortError,
+  AdvanceAbortError,
+  applyResume,
+  sanitizeAssistantMessage,
+  sanitizeToolResults,
+  sanitizeAnswers,
+  isUnusableReply,
+  needsReportFollowUp,
+  UNUSABLE_REPLY,
+};

@@ -1,4 +1,5 @@
-const { ipcMain, BrowserWindow } = require("electron");
+const { ipcMain, BrowserWindow, dialog, Notification } = require("electron");
+const fs = require("fs");
 const path = require("path");
 const channels = require("../../shared/ipc/channels");
 const { GetModelsConfig, UpdateModelsConfig } = require("../middlewares/cookie-middleware");
@@ -11,6 +12,7 @@ const { probeModel } = require("../services/latency-benchmark-service");
 const { testOpenRouterKey, testTavilyKey } = require("../services/credential-test-service");
 const SoftwareLicensingService = require("../services/software-licensing-service");
 const profilesService = require("../services/profiles-service");
+const sessionsService = require("../services/sessions-service");
 
 let ipcHandlersRegistered = false;
 let benchmarkInFlight = false;
@@ -197,13 +199,89 @@ function registerIpcHandlers() {
     return SoftwareLicensingService.installInstaller(fileName);
   });
 
+  ipcMain.handle(channels.SAVE_REPORT_PDF, async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const picked = await dialog.showSaveDialog(win || undefined, {
+      title: "Save report as PDF",
+      defaultPath: "neuroagi-report.pdf",
+      filters: [{ name: "PDF", extensions: ["pdf"] }],
+    });
+    if (picked.canceled || !picked.filePath) return { ok: false, canceled: true };
+    const data = await event.sender.printToPDF({ printBackground: true });
+    fs.writeFileSync(picked.filePath, data);
+    return { ok: true, path: picked.filePath };
+  });
+
   ipcMain.handle(channels.GET_PROFILES, () => profilesService.getProfiles());
   ipcMain.handle(channels.RECORD_PROFILE_ISSUE, (_event, payload) => (
     profilesService.recordIssue(payload)
   ));
+  ipcMain.handle(channels.UPDATE_PROFILE, (_event, payload) => (
+    profilesService.upsert(payload || {})
+  ));
+  ipcMain.handle(channels.DELETE_PROFILE_ISSUE, (_event, payload) => (
+    profilesService.deleteIssue(payload?.userid, payload?.issueId)
+  ));
+  ipcMain.handle(channels.EXPORT_PROFILES, async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const picked = await dialog.showSaveDialog(win || undefined, {
+      title: "Export profiles",
+      defaultPath: "neuroagi-profiles.json",
+      filters: [{ name: "JSON", extensions: ["json"] }],
+    });
+    if (picked.canceled || !picked.filePath) return { ok: false, canceled: true };
+    const body = JSON.stringify(profilesService.exportSnapshot(), null, 2);
+    fs.writeFileSync(picked.filePath, body, "utf8");
+    return { ok: true, path: picked.filePath };
+  });
+  ipcMain.handle(channels.IMPORT_PROFILES, async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const picked = await dialog.showOpenDialog(win || undefined, {
+      title: "Import profiles",
+      filters: [{ name: "JSON", extensions: ["json"] }],
+      properties: ["openFile"],
+    });
+    if (picked.canceled || !picked.filePaths?.length) return { ok: false, canceled: true };
+    let raw;
+    try {
+      raw = JSON.parse(fs.readFileSync(picked.filePaths[0], "utf8"));
+    } catch (err) {
+      return { ok: false, error: "That file is not valid JSON." };
+    }
+    return profilesService.importSnapshot(raw);
+  });
   ipcMain.handle(channels.DELETE_PROFILE, (_event, payload) => (
     profilesService.removeById(payload?.id)
   ));
+  ipcMain.handle(channels.GET_STORAGE_WARNING, () => ({
+    warning: profilesService.getStorageWarning(),
+  }));
+  ipcMain.handle(channels.LIST_SESSIONS, () => sessionsService.listSessions());
+  ipcMain.handle(channels.GET_SESSION, (_event, payload) => (
+    sessionsService.getSession(payload?.id)
+  ));
+  ipcMain.handle(channels.GET_MASTER_MODEL, () => ({
+    model: modelConfigService.getMasterModelRuntimeId(),
+  }));
+  ipcMain.handle(channels.SAVE_SESSION, (_event, payload) => {
+    const saved = sessionsService.upsertSession(payload || {});
+    const win = BrowserWindow.getFocusedWindow();
+    const unfocused = !win || !win.isFocused();
+    if (unfocused && payload?.notify && Notification.isSupported()) {
+      const note = new Notification({
+        title: 'NeuroAGI',
+        body: payload.title ? `Analysis ready: ${payload.title}` : 'An analysis finished.',
+      });
+      note.on('click', () => {
+        const target = BrowserWindow.getAllWindows().find((item) => !item.isDestroyed());
+        if (!target) return;
+        target.show();
+        target.focus();
+      });
+      note.show();
+    }
+    return saved;
+  });
 }
 
 module.exports = { registerIpcHandlers };

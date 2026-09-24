@@ -3,6 +3,8 @@
  * Driven by Softasium license Register response (build number compare).
  */
 
+import { openOverlay, closeOverlay } from './ui/overlay-controller.js';
+
 /** @type {{
  *   payload: object | null,
  *   filename: string | null,
@@ -157,24 +159,30 @@ async function refreshInstallerState() {
 function closeReleaseModal() {
   if (state.forceUpdate) return;
   const { overlay } = els();
-  if (overlay) overlay.hidden = true;
+  closeOverlay(overlay);
 }
 
 async function openReleaseModal() {
   if (!state.payload) return;
 
-  const { overlay } = els();
+  const { overlay, btnAction } = els();
   if (!overlay) return;
 
   fillModalFromPayload(state.payload);
-  applyForceChrome(isForceUpdate(state.payload));
+  const force = isForceUpdate(state.payload);
+  applyForceChrome(force);
   setStatus('');
 
   if (!state.downloading) {
     await refreshInstallerState();
   }
 
-  overlay.hidden = false;
+  // A forced update cannot be dismissed: the close button quits the app instead.
+  openOverlay(overlay, {
+    initialFocus: btnAction,
+    dismissible: !force,
+    closeOnBackdrop: !force,
+  });
 }
 
 async function startDownload() {
@@ -257,7 +265,7 @@ function wireReleaseUiOnce() {
   if (uiWired) return;
   uiWired = true;
 
-  const { btnNewRelease, overlay, btnClose, btnAction } = els();
+  const { btnNewRelease, btnClose, btnAction } = els();
 
   btnNewRelease?.addEventListener('click', () => {
     openReleaseModal();
@@ -271,20 +279,8 @@ function wireReleaseUiOnce() {
     closeReleaseModal();
   });
 
-  overlay?.addEventListener('click', (e) => {
-    if (e.target === overlay && !state.forceUpdate) {
-      closeReleaseModal();
-    }
-  });
-
   btnAction?.addEventListener('click', () => {
     onActionClick();
-  });
-
-  document.addEventListener('keydown', (e) => {
-    if (e.key !== 'Escape') return;
-    if (!overlay || overlay.hidden || state.forceUpdate) return;
-    closeReleaseModal();
   });
 }
 
@@ -296,9 +292,7 @@ function applyLicenseResult(result) {
     state.payload = null;
     state.filename = null;
     state.installerExists = false;
-    if (overlay && !overlay.hidden && !state.forceUpdate) {
-      overlay.hidden = true;
-    }
+    if (!state.forceUpdate) closeOverlay(overlay);
     return;
   }
 

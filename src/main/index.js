@@ -1,4 +1,4 @@
-const { app, Menu, BrowserWindow } = require("electron");
+const { app, Menu, BrowserWindow, ipcMain } = require("electron");
 const { loadCredentials } = require("./services/credentials-store");
 const { createSplashWindow } = require("./windows/splash-window");
 const { registerSplashHandlers } = require("./ipc/register-splash-handlers");
@@ -26,6 +26,31 @@ function waitForWebContentsLoad(win) {
 
 function yieldToEventLoop() {
   return new Promise((resolve) => setImmediate(resolve));
+}
+
+/** Upper bound on waiting for the splash fade; it must never stall startup. */
+const SPLASH_FADE_TIMEOUT_MS = 500;
+
+/**
+ * Ask the splash to play its exit animation and resolve once it reports back.
+ * Replaces the fixed one-second pause that used to sit before the handoff.
+ */
+function fadeOutSplash(splash) {
+  if (!splash || splash.isDestroyed() || !splash.webContents || splash.webContents.isDestroyed()) {
+    return Promise.resolve();
+  }
+
+  splash.webContents.send(channels.SPLASH_FADE_OUT);
+
+  return new Promise((resolve) => {
+    const finish = () => {
+      clearTimeout(timer);
+      ipcMain.removeListener(channels.SPLASH_FADE_DONE, finish);
+      resolve();
+    };
+    const timer = setTimeout(finish, SPLASH_FADE_TIMEOUT_MS);
+    ipcMain.once(channels.SPLASH_FADE_DONE, finish);
+  });
 }
 
 function loadHeavyModules() {
@@ -88,18 +113,22 @@ async function bootstrap() {
   }
 
   sendSplashStatus(splash, "Loading workspace…");
-  await new Promise((resolve) => setTimeout(resolve, 1000));
 
   if (!main.isDestroyed() && main.webContents && !main.webContents.isDestroyed()) {
     main.webContents.send(channels.LICENSE_UPDATE, licenseResult);
   }
 
-  if (!splash.isDestroyed()) {
-    splash.close();
-  }
+  // Cross-fade: the splash dims while the main window rises behind it.
+  const splashFaded = fadeOutSplash(splash);
 
   if (!main.isDestroyed()) {
     deps.showMainWindow(main);
+  }
+
+  await splashFaded;
+
+  if (!splash.isDestroyed()) {
+    splash.close();
   }
 }
 

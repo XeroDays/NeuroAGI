@@ -23,6 +23,7 @@ const CH = {
   ADVANCE_SEND: "neuroagi:advance-send",
   ADVANCE_PROGRESS: "neuroagi:advance-progress",
   ADVANCE_CANCEL: "neuroagi:advance-cancel",
+  SAVE_REPORT_PDF: "neuroagi:save-report-pdf",
   GET_LICENSE_UPDATE: "neuroagi:get-license-update",
   LICENSE_UPDATE: "neuroagi:license-update",
   REGISTER_SOFTWARE_LICENSE: "neuroagi:register-software-license",
@@ -33,7 +34,16 @@ const CH = {
   QUIT_APP: "neuroagi:quit-app",
   GET_PROFILES: "neuroagi:get-profiles",
   RECORD_PROFILE_ISSUE: "neuroagi:record-profile-issue",
+  UPDATE_PROFILE: "neuroagi:update-profile",
+  DELETE_PROFILE_ISSUE: "neuroagi:delete-profile-issue",
+  EXPORT_PROFILES: "neuroagi:export-profiles",
+  IMPORT_PROFILES: "neuroagi:import-profiles",
   DELETE_PROFILE: "neuroagi:delete-profile",
+  GET_STORAGE_WARNING: "neuroagi:get-storage-warning",
+  LIST_SESSIONS: "neuroagi:list-sessions",
+  GET_SESSION: "neuroagi:get-session",
+  SAVE_SESSION: "neuroagi:save-session",
+  GET_MASTER_MODEL: "neuroagi:get-master-model",
 };
 
 function subscribe(channel, cb) {
@@ -70,6 +80,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   advanceSend: (payload) => ipcRenderer.invoke(CH.ADVANCE_SEND, payload),
   advanceCancel: (payload) => ipcRenderer.invoke(CH.ADVANCE_CANCEL, payload),
+  saveReportPdf: () => ipcRenderer.invoke(CH.SAVE_REPORT_PDF),
   onAdvanceProgress: (cb) => subscribe(CH.ADVANCE_PROGRESS, cb),
 
   getLicenseUpdate: () => ipcRenderer.invoke(CH.GET_LICENSE_UPDATE),
@@ -82,5 +93,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
   quitApp: () => ipcRenderer.invoke(CH.QUIT_APP),
   getProfiles: () => ipcRenderer.invoke(CH.GET_PROFILES),
   recordProfileIssue: (payload) => ipcRenderer.invoke(CH.RECORD_PROFILE_ISSUE, payload),
+  updateProfile: (payload) => ipcRenderer.invoke(CH.UPDATE_PROFILE, payload),
+  deleteProfileIssue: (payload) => ipcRenderer.invoke(CH.DELETE_PROFILE_ISSUE, payload),
+  exportProfiles: () => ipcRenderer.invoke(CH.EXPORT_PROFILES),
+  importProfiles: () => ipcRenderer.invoke(CH.IMPORT_PROFILES),
   deleteProfile: (payload) => ipcRenderer.invoke(CH.DELETE_PROFILE, payload),
+  getStorageWarning: () => ipcRenderer.invoke(CH.GET_STORAGE_WARNING),
+  listSessions: () => ipcRenderer.invoke(CH.LIST_SESSIONS),
+  getSession: (id) => ipcRenderer.invoke(CH.GET_SESSION, { id }),
+  saveSession: (payload) => ipcRenderer.invoke(CH.SAVE_SESSION, payload),
+  getMasterModel: () => ipcRenderer.invoke(CH.GET_MASTER_MODEL),
 });

@@ -5,6 +5,7 @@
   "main": "src/main/index.js",
   "scripts": {
     "start": "node scripts/start-electron.js",
+    "test": "node --test \"test/**/*.test.js\"",
     "benchmark:latency": "node scripts/benchmark-latency.js",
     "build": "electron-builder --publish never",
     "build:win": "electron-builder --win --publish never"
@@ -18,7 +19,6 @@
   },
   "dependencies": {
     "dotenv": "^17.4.2",
-    "jsonrepair": "^3.14.0",
     "marked": "^18.0.4"
   },
   "build": {

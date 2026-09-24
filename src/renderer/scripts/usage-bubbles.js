@@ -1,3 +1,8 @@
+function tickText(el, next) {
+  if (!el || el.textContent === next) return;
+  el.textContent = next;
+}
+
 function formatCost(n) {
   const num = Number(n);
   if (!Number.isFinite(num) || num === 0) return 'USD 0';
@@ -55,8 +60,10 @@ async function init() {
   }
 
   const off = window.electronAPI.onUsageUpdate(({ totalUSD, totalTokens } = {}) => {
-    els.costEl.textContent = formatCost(totalUSD);
-    els.tokensEl.textContent = formatTokens(totalTokens);
+    tickText(els.tokensEl, formatTokens(totalTokens));
+    tickText(els.costEl, formatCost(totalUSD));
+    els.tokensEl.classList.add('motion-flash-ring');
+    setTimeout(() => els.tokensEl.classList.remove('motion-flash-ring'), 600);
   });
 
   window.addEventListener('beforeunload', () => {

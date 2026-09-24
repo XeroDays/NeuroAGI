@@ -126,7 +126,12 @@ async function SendAdvanceChat(payload = {}, sender) {
       };
     }
 
-    return { ok: true, reply: result?.reply ?? '', model: result?.model };
+    return {
+      ok: true,
+      reply: result?.reply ?? '',
+      model: result?.model,
+      unusable: result?.unusable === true,
+    };
   } catch (err) {
     if (isAbortError(err) || controller.signal.aborted) {
       return { ok: false, aborted: true, model };
