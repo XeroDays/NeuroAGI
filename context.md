@@ -117,7 +117,7 @@ src/
 
 1. `npm start` → `scripts/start-electron.js` spawns Electron
 2. `src/main/index.js` waits for `app.whenReady()`, hides the menu, runs `loadCredentials()`, then `bootstrap()`
-3. Splash handlers register first (`GET_APP_INFO`, `QUIT_APP`, `OPEN_EXTERNAL_URL`). [`splash-window.js`](src/main/windows/splash-window.js) creates a frameless centered window (`show: false` until loaded): ~45% of the primary work-area width, height 387, chrome `#24101c`. Splash shows [`NeuroLogo.png`](src/renderer/assets/icons/NeuroLogo.png), spinner, status `Starting…`, `Version v{semver} (Build {BUILD_VERSION})`, Close quits, footer `www.softasium.com`. Window / taskbar icon is the same file; packaged exe uses [`build/icon.ico`](build/icon.ico)
+3. Splash handlers register first (`GET_APP_INFO`, `QUIT_APP`, `OPEN_EXTERNAL_URL`). [`splash-window.js`](src/main/windows/splash-window.js) creates a frameless centered window (`show: false` until loaded): ~45% of the primary work-area width, height 387, chrome `#24101c`. Splash shows [`NeuroLogo.png`](src/renderer/assets/icons/NeuroLogo.png), spinner, status `Starting…`, `Version {semver} Build +{BUILD_VERSION}` (single-digit builds padded, so `7` shows as `+07`), Close quits, footer `www.softasium.com`. Window / taskbar icon is the same file; packaged exe uses [`build/icon.ico`](build/icon.ico)
 4. Heavy modules load lazily: IPC (`register.js`, guarded against double-register), `modelConfigService.init()`, hidden main window. [`main-window.js`](src/main/windows/main-window.js) must **not** auto-show on `ready-to-show`. Restore size stays 800×600
 5. Splash status becomes `Checking for updates…` while Softasium Register runs in parallel with main HTML load
 6. **Access denied** (`status !== true`, including offline with no granted cache): splash shows red `Access denied, please contact customer service.` (spinner off). Main window is destroyed. Splash stays until Close
@@ -133,7 +133,7 @@ Same Register API and PC identity as CryptoGenesis. Softasium must have an app w
 | Register URL | `https://api.softasium.com/api/SoftwareLicencing/Register` |
 | Bearer | same as CryptoGenesis (never log) |
 | `SOFTWARE_APP_ID` | `NeuroAGI` |
-| `BUILD_VERSION` | integer in [`software-licensing-service.js`](src/main/services/software-licensing-service.js), currently `7`, independent of `package.json` semver. Bump when shipping a Softasium-tracked build |
+| `BUILD_VERSION` | integer in [`software-licensing-service.js`](src/main/services/software-licensing-service.js), currently `8`, independent of `package.json` semver. Bump when shipping a Softasium-tracked build |
 | `VERSION_NAME` | `package.json` version |
 | Fallback installer | `NeuroAGI-Update.exe` |
 
@@ -236,7 +236,7 @@ Records every Advance OpenRouter call (`advance-llm.js`, type `"ai"`) and every 
 
 ### Preparing a release (user publishes)
 
-**“Create a release” / “new release” means local version prep only** — not a git commit, tag, push, or GitHub Release. Current shipped version is `1.0.7` in [`package.json`](package.json).
+**“Create a release” / “new release” means local version prep only** — not a git commit, tag, push, or GitHub Release. Current shipped version is `1.0.8` in [`package.json`](package.json).
 
 1. Do **not** commit, push, tag, or publish
 2. Choose the next SemVer from [`package.json`](package.json) (breaking product change → major)

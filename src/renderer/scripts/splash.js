@@ -13,9 +13,12 @@
       const info = await window.electronAPI.getAppInfo();
       if (!info || !versionLabel) return;
       const version = info.version || "—";
+      const buildNum = Number(info.build);
       const build =
-        info.build != null && info.build !== "" ? ` (Build ${info.build})` : "";
-      versionLabel.textContent = `Version v${version}${build}`;
+        info.build != null && info.build !== "" && Number.isFinite(buildNum)
+          ? ` Build +${String(Math.trunc(buildNum)).padStart(2, "0")}`
+          : "";
+      versionLabel.textContent = `Version ${version}${build}`;
     } catch (err) {
       console.error("[splash] failed to load app info", err);
     }

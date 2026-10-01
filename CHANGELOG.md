@@ -15,6 +15,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Security
 
+## [1.0.8] - 2026-10-01
+
+Windows installer and desktop shortcut use the NeuroAGI icon.
+
+### Added
+
+### Changed
+
+### Fixed
+
+- Packaged exe and desktop shortcut use `build/icon.ico` instead of Electron’s default icon
+
+### Security
+
 ## [1.0.7] - 2026-09-24
 
 Streamed Advance reports, saved sessions, and encrypted profile storage.
@@ -191,7 +205,8 @@ First stable release of the NeuroAGI multi-screen diagnostic flow.
 - Logo display and asset path corrections
 - Master-merge fallback when master model JSON parse fails or returns empty results
 
-[Unreleased]: https://github.com/XeroDays/Open-Health/compare/v1.0.7...HEAD
+[Unreleased]: https://github.com/XeroDays/Open-Health/compare/v1.0.8...HEAD
+[1.0.8]: https://github.com/XeroDays/Open-Health/compare/v1.0.7...v1.0.8
 [1.0.7]: https://github.com/XeroDays/Open-Health/compare/v1.0.6...v1.0.7
 [1.0.6]: https://github.com/XeroDays/Open-Health/compare/v1.0.5...v1.0.6
 [1.0.5]: https://github.com/XeroDays/Open-Health/compare/v1.0.4...v1.0.5
